@@ -1,27 +1,34 @@
 #pragma once
 
-#include <mutex>
-#include <memory>
-
-class CameraPrivate;
+#include <string>
 
 class Camera
 {
+
 public:
 
-    static Camera* create();
+    virtual ~Camera();
 
-    Camera(Camera&& o) = delete;
-    Camera(const Camera& o) = delete;
-    void operator=(const Camera& o) = delete;
+    virtual std::string humanName() = 0;
+    virtual void start() = 0;
+    virtual void stop() = 0;
+    virtual void readNextImage() = 0;
+};
 
-    void initialize();
-    void start();
-    void stop();
-    void readNextImage();
+class CameraManager
+{
 
-protected:
-    Camera();
-    CameraPrivate* d;
+public:
+
+    virtual ~CameraManager();
+
+    static CameraManager* createDefaultCameraManager();
+
+    virtual bool initialize() = 0;
+    virtual void finalize() = 0;
+
+    virtual int getNumCameras() = 0;
+    virtual Camera* getCamera(int id) = 0;
+    virtual Camera* getDefaultCamera() = 0;
 };
 

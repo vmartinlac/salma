@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 find_package(Qt5 COMPONENTS OpenGL Core Widgets Gui PrintSupport Test Multimedia REQUIRED)
-#find_package(Vimba REQUIRED)
+find_package(Vimba REQUIRED)
 find_package(OpenCV REQUIRED)
 #find_package(OSG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
@@ -38,4 +38,5 @@ add_executable(
     src/MainWindow.cpp
 )
 
-target_link_libraries(slam PUBLIC Qt5::Widgets)
+target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core)
+
