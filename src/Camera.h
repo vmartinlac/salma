@@ -7,12 +7,18 @@ class Camera
 
 public:
 
+    Camera(int id);
     virtual ~Camera();
 
-    virtual std::string humanName() = 0;
-    virtual void start() = 0;
+    int getId();
+    virtual std::string getHumanName() = 0;
+    virtual bool start() = 0;
     virtual void stop() = 0;
-    virtual void readNextImage() = 0;
+    //virtual void readNextImage() = 0;
+
+private:
+
+    int m_id;
 };
 
 class CameraManager

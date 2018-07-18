@@ -31,6 +31,8 @@ add_executable(
     src/main.cpp
     src/Camera.h
     src/Camera.cpp
+    src/VimbaCamera.h
+    src/VimbaCamera.cpp
     src/Image.h
     src/Image.cpp
     src/Image.cpp
