@@ -20,6 +20,13 @@ public:
     bool start() override;
 
     void stop() override;
+ 
+protected:
+
+    struct FrameUserData
+    {
+        ;
+    };
 
 protected:
 
@@ -32,6 +39,8 @@ protected:
 
     bool m_is_open;
     VmbHandle_t m_handle;
+    std::vector<VmbFrame_t> m_frames;
+    FrameUserData m_frame_user_data;
 };
 
 // CameraManager

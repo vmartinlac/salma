@@ -1,6 +1,24 @@
+#include <cassert>
+#include <iostream>
+#include <stdexcept>
 #include "VimbaCamera.h"
 
 // VimbaCamera
+
+static void VMB_CALL VimbaCameraFrameCallback(
+    const VmbHandle_t camera,
+    VmbFrame_t* frame)
+{
+    if( VmbFrameStatusComplete == frame->receiveStatus )
+    {
+        std::cout << "frame received !" << std::endl;
+    }
+    else
+    {
+        std::cout << "error while receiving frame !" << std::endl;
+    }
+    VmbCaptureFrameQueue( camera, frame, VimbaCameraFrameCallback );
+}
 
 VimbaCamera::VimbaCamera(int id, const VmbCameraInfo_t& infos) : Camera(id)
 {
@@ -29,12 +47,11 @@ std::string VimbaCamera::getHumanName()
 bool VimbaCamera::start()
 {
     VmbError_t err = VmbErrorSuccess;
+    VmbInt64_t payload_size = 0;
     bool ok = true;
 
     if( m_is_open == false )
     {
-        VmbError_t err;
-        
         if(ok)
         {
             err = VmbCameraOpen(m_camera_id.c_str(), VmbAccessModeFull, &m_handle);
@@ -49,14 +66,58 @@ bool VimbaCamera::start()
 
         if(ok)
         {
-            // TO BE CONTINUED !
+            err = VmbFeatureIntGet(m_handle, "PayloadSize", &payload_size);
+            ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            VmbCameraClose(m_handle);
-            m_is_open = true;
+            assert( m_frames.empty() );
+
+            const int num_frames = 3;
+            m_frames.resize(num_frames);
+
+            for( VmbFrame_t& frame : m_frames )
+            {
+                frame.buffer = new uint8_t[payload_size];
+                frame.bufferSize = payload_size;
+                frame.context[0] = &m_frame_user_data;
+                frame.context[1] = nullptr;
+                frame.context[2] = nullptr;
+                frame.context[3] = nullptr;
+
+                err = VmbFrameAnnounce(m_handle, &frame, sizeof(VmbFrame_t));
+                ok = ok && (VmbErrorSuccess == err);
+            }
         }
+
+        if(ok)
+        {
+            err = VmbCaptureStart(m_handle);
+            ok = (VmbErrorSuccess == err);
+        }
+
+        if(ok)
+        {
+            for(VmbFrame_t& frame : m_frames)
+            {
+                err = VmbCaptureFrameQueue(m_handle, &frame, VimbaCameraFrameCallback);
+                ok = ok && (VmbErrorSuccess == err);
+            }
+        }
+
+        if(ok)
+        {
+            err = VmbFeatureCommandRun(m_handle, "AcquisitionStart");
+            ok = (VmbErrorSuccess == err);
+        }
+    }
+
+    // for the time being, we make sure that an error will be remarked.
+
+    if(ok == false)
+    {
+        throw std::runtime_error("Error while starting acquisition from the camera");
     }
 
     return ok;
@@ -66,7 +127,25 @@ void VimbaCamera::stop()
 {
     if( m_is_open )
     {
-        VmbCameraClose( m_handle );
+        bool ok = true;
+
+        ok = ok && ( VmbErrorSuccess == VmbFeatureCommandRun(m_handle, "AcquisitionStop") );
+
+        ok = ok && ( VmbErrorSuccess == VmbCaptureEnd( m_handle ) );
+
+        ok = ok && (VmbErrorSuccess == VmbCaptureQueueFlush( m_handle ) );
+
+        ok = ok && (VmbErrorSuccess == VmbFrameRevokeAll( m_handle ) );
+
+        ok = ok && (VmbErrorSuccess == VmbCameraClose( m_handle ) );
+
+        for(VmbFrame_t& frame : m_frames)
+        {
+            delete[] ( (uint8_t*) frame.buffer );
+        }
+
+        m_frames.clear();
+
         m_is_open = false;
     }
 }
