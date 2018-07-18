@@ -23,10 +23,7 @@ public:
  
 protected:
 
-    struct FrameUserData
-    {
-        ;
-    };
+    static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
 
 protected:
 
@@ -40,7 +37,6 @@ protected:
     bool m_is_open;
     VmbHandle_t m_handle;
     std::vector<VmbFrame_t> m_frames;
-    FrameUserData m_frame_user_data;
 };
 
 // CameraManager

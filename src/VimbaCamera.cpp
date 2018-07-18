@@ -5,10 +5,12 @@
 
 // VimbaCamera
 
-static void VMB_CALL VimbaCameraFrameCallback(
-    const VmbHandle_t camera,
+void VMB_CALL VimbaCamera::frame_callback(
+    const VmbHandle_t handle,
     VmbFrame_t* frame)
 {
+    VimbaCamera* camera = static_cast<VimbaCamera*>(frame->context[0]);
+
     if( VmbFrameStatusComplete == frame->receiveStatus )
     {
         std::cout << "frame received !" << std::endl;
@@ -17,7 +19,8 @@ static void VMB_CALL VimbaCameraFrameCallback(
     {
         std::cout << "error while receiving frame !" << std::endl;
     }
-    VmbCaptureFrameQueue( camera, frame, VimbaCameraFrameCallback );
+
+    VmbCaptureFrameQueue( handle, frame, &VimbaCamera::frame_callback );
 }
 
 VimbaCamera::VimbaCamera(int id, const VmbCameraInfo_t& infos) : Camera(id)
@@ -81,7 +84,7 @@ bool VimbaCamera::start()
             {
                 frame.buffer = new uint8_t[payload_size];
                 frame.bufferSize = payload_size;
-                frame.context[0] = &m_frame_user_data;
+                frame.context[0] = this;
                 frame.context[1] = nullptr;
                 frame.context[2] = nullptr;
                 frame.context[3] = nullptr;
@@ -101,7 +104,7 @@ bool VimbaCamera::start()
         {
             for(VmbFrame_t& frame : m_frames)
             {
-                err = VmbCaptureFrameQueue(m_handle, &frame, VimbaCameraFrameCallback);
+                err = VmbCaptureFrameQueue(m_handle, &frame, &VimbaCamera::frame_callback);
                 ok = ok && (VmbErrorSuccess == err);
             }
         }
