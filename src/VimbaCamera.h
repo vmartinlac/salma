@@ -40,8 +40,7 @@ protected:
     bool m_is_open;
     VmbHandle_t m_handle;
     std::vector<VmbFrame_t> m_frames;
-    std::mutex m_mutex_can_write;
-    std::mutex m_mutex_can_read;
+    std::mutex m_mutex;
     Image* m_newest_image;
 };
 

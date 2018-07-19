@@ -21,13 +21,15 @@ void VMB_CALL VimbaCamera::frame_callback(
         new_image->frame().create(640, 480, CV_32FC3);
         new_image->frame() = 0.0;
 
-        // TODO : use semaphores for synchronisation with Camera::readImage().
+        camera->m_mutex.lock();
 
         if( camera->m_newest_image != nullptr )
         {
             delete camera->m_newest_image;
         }
         camera->m_newest_image = new_image;
+
+        camera->m_mutex.unlock();
     }
     else
     {
@@ -92,7 +94,7 @@ bool VimbaCamera::start()
         {
             assert( m_frames.empty() );
 
-            const int num_frames = 3;
+            const int num_frames = 2;
             m_frames.resize(num_frames);
 
             for( VmbFrame_t& frame : m_frames )
@@ -179,10 +181,12 @@ Image* VimbaCamera::readImage()
 
     if( m_is_open )
     {
-        // TODO : use semaphore for synchronisation with frame callback.
+        m_mutex.lock();
 
         ret = m_newest_image;
         m_newest_image = nullptr;
+
+        m_mutex.unlock();
     }
 
     return ret;
