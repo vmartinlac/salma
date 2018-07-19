@@ -14,7 +14,7 @@ class VimbaCamera : public Camera
 public:
 
     VimbaCamera(int id, const VmbCameraInfo_t& infos);
-    ~VimbaCamera();
+    ~VimbaCamera() override;
 
     std::string getHumanName() override;
 

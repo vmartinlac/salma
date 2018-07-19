@@ -15,7 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(Qt5 COMPONENTS OpenGL Core Widgets Gui PrintSupport Test Multimedia REQUIRED)
 find_package(Vimba REQUIRED)
 find_package(OpenCV REQUIRED)
-#find_package(OSG REQUIRED)
+find_package(OSG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 #find_package(Aravis REQUIRED)
 #find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
@@ -38,7 +38,13 @@ add_executable(
     src/Image.cpp
     src/MainWindow.h
     src/MainWindow.cpp
+    src/SLAMEngine.h
+    src/SLAMEngine.cpp
+    src/DefaultSLAMEngine.h
+    src/DefaultSLAMEngine.cpp
+    src/ViewerWidget.h
+    src/ViewerWidget.cpp
 )
 
-target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core)
+target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core OpenSceneGraph Eigen3::Eigen)
 

@@ -18,8 +18,12 @@ void VMB_CALL VimbaCamera::frame_callback(
 
         new_image->setTimestamp(frame->timestamp);
 
-        new_image->frame().create(640, 480, CV_32FC3);
-        new_image->frame() = 0.0;
+        cv::Mat& frame = new_image->frame();
+        
+        frame.create(640, 480, CV_32FC3);
+        frame = 0.0;
+
+        // TODO : fill the frame.
 
         camera->m_mutex.lock();
 
