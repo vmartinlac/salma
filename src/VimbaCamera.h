@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include <VimbaC/Include/VimbaC.h>
 #include <string>
+#include <mutex>
 #include <vector>
 
 // VimbaCamera
@@ -20,7 +21,9 @@ public:
     bool start() override;
 
     void stop() override;
- 
+
+    Image* readImage() override;
+
 protected:
 
     static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
@@ -37,6 +40,9 @@ protected:
     bool m_is_open;
     VmbHandle_t m_handle;
     std::vector<VmbFrame_t> m_frames;
+    std::mutex m_mutex_can_write;
+    std::mutex m_mutex_can_read;
+    Image* m_newest_image;
 };
 
 // CameraManager

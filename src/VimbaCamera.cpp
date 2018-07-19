@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "VimbaCamera.h"
+#include "Image.h"
 
 // VimbaCamera
 
@@ -13,7 +14,20 @@ void VMB_CALL VimbaCamera::frame_callback(
 
     if( VmbFrameStatusComplete == frame->receiveStatus )
     {
-        std::cout << "frame received !" << std::endl;
+        Image* new_image = new Image();
+
+        new_image->setTimestamp(frame->timestamp);
+
+        new_image->frame().create(640, 480, CV_32FC3);
+        new_image->frame() = 0.0;
+
+        // TODO : use semaphores for synchronisation with Camera::readImage().
+
+        if( camera->m_newest_image != nullptr )
+        {
+            delete camera->m_newest_image;
+        }
+        camera->m_newest_image = new_image;
     }
     else
     {
@@ -32,6 +46,7 @@ VimbaCamera::VimbaCamera(int id, const VmbCameraInfo_t& infos) : Camera(id)
     m_camera_permitted_access = infos.permittedAccess;
     m_interface_id = infos.interfaceIdString;
     m_is_open = false;
+    m_newest_image = nullptr;
 }
 
 VimbaCamera::~VimbaCamera()
@@ -149,8 +164,28 @@ void VimbaCamera::stop()
 
         m_frames.clear();
 
+        if( m_newest_image != nullptr )
+        {
+            delete m_newest_image;
+        }
+
         m_is_open = false;
     }
+}
+
+Image* VimbaCamera::readImage()
+{
+    Image* ret = nullptr;
+
+    if( m_is_open )
+    {
+        // TODO : use semaphore for synchronisation with frame callback.
+
+        ret = m_newest_image;
+        m_newest_image = nullptr;
+    }
+
+    return ret;
 }
 
 // CameraManager
