@@ -1,6 +1,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/features2d.hpp>
-//#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
 #include "DefaultSLAMEngine.h"
 #include "Image.h"
 
@@ -24,7 +24,7 @@ void DefaultSLAMEngine::processNextView(Image* image)
     std::vector<cv::KeyPoint> key_points;
     detector->detect(greylevel, key_points);
 
-    //cv::Ptr<cv::Feature2D> descriptor = cv::BriefDescriptorExtractor::create();
+    cv::Ptr<cv::Feature2D> descriptor = cv::xfeatures2d::BriefDescriptorExtractor::create();
 
     cv::Mat corners;
     cv::goodFeaturesToTrack(greylevel, corners, 500, 0.01, 20);

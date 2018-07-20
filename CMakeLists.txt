@@ -19,9 +19,6 @@ find_package(OSG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 #find_package(Aravis REQUIRED)
 #find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
-#find_package(PortAudio REQUIRED)
-#find_package(libsndfile REQUIRED)
-#find_package(soundio REQUIRED)
 #find_package(OpenMP REQUIRED)
 
 #add_subdirectory(src)
@@ -48,5 +45,5 @@ add_executable(
     src/SLAMThread.cpp
 )
 
-target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core opencv_imgproc opencv_features2d OpenSceneGraph Eigen3::Eigen)
+target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core opencv_imgproc opencv_features2d opencv_xfeatures2d OpenSceneGraph Eigen3::Eigen)
 
