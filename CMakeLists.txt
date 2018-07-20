@@ -44,7 +44,9 @@ add_executable(
     src/DefaultSLAMEngine.cpp
     src/ViewerWidget.h
     src/ViewerWidget.cpp
+    src/SLAMThread.h
+    src/SLAMThread.cpp
 )
 
-target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core OpenSceneGraph Eigen3::Eigen)
+target_link_libraries(slam PUBLIC Qt5::Widgets Vimba opencv_core opencv_imgproc opencv_features2d OpenSceneGraph Eigen3::Eigen)
 

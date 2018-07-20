@@ -21,7 +21,7 @@ void VMB_CALL VimbaCamera::frame_callback(
         cv::Mat& frame = new_image->frame();
         
         frame.create(640, 480, CV_32FC3);
-        frame = 0.0;
+        frame = cv::Scalar(0.0f, 0.0f, 0.0f);
 
         // TODO : fill the frame.
 
