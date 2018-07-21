@@ -1,0 +1,4 @@
+add_subdirectory(camera)
+add_subdirectory(slam)
+add_subdirectory(ui)
+add_subdirectory(app)
