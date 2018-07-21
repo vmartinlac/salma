@@ -30,6 +30,8 @@ add_executable(
     src/Camera.cpp
     src/VimbaCamera.h
     src/VimbaCamera.cpp
+    src/OpenCVCamera.h
+    src/OpenCVCamera.cpp
     src/Image.h
     src/Image.cpp
     src/Image.cpp

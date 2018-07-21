@@ -273,7 +273,7 @@ Camera* VimbaCameraManager::getCamera(int id)
     return m_cameras[id];
 }
 
-CameraManager* CameraManager::createDefaultCameraManager()
+CameraManager* CameraManager::createVimbaCameraManager()
 {
     return new VimbaCameraManager();
 }

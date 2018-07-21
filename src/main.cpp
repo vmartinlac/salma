@@ -21,7 +21,7 @@ int main(int num_args, char** args)
 
     ///////
 
-    CameraManager* camera_manager = CameraManager::createDefaultCameraManager();
+    CameraManager* camera_manager = CameraManager::createOpenCVCameraManager();
 
     camera_manager->initialize();
 

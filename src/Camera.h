@@ -38,7 +38,8 @@ public:
 
     virtual ~CameraManager();
 
-    static CameraManager* createDefaultCameraManager();
+    static CameraManager* createVimbaCameraManager();
+    static CameraManager* createOpenCVCameraManager();
 
     virtual bool initialize() = 0;
     virtual void finalize() = 0;
