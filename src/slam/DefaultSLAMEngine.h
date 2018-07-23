@@ -20,20 +20,7 @@ public:
 
 protected:
 
-    struct Landmark
-    {
-        Eigen::Vector3d position;
-        Eigen::Matrix3d sigma;
-    };
-
-    struct View
-    {
-        int num_key_points;
-        Eigen::Array<float, Eigen::Dynamic, 2> key_points_positions;
-    };
-
-protected:
-
-    std::vector<Landmark> m_map;
+    Image* m_prev_image;
+    cv::Mat m_prev_pose;
 };
 
