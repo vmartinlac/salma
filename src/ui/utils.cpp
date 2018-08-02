@@ -1,4 +1,5 @@
 #include <iostream>
+#include <QScrollArea>
 #include <QLabel>
 #include <QImage>
 #include <QVBoxLayout>
@@ -6,7 +7,9 @@
 #include <QColor>
 #include "utils.h"
 
-void imshow(cv::Mat& mat)
+namespace ui {
+
+void imshow(const cv::Mat& mat)
 {
     QImage image(mat.cols, mat.rows, QImage::Format_RGB888);
     for(int i=0; i<image.width(); i++)
@@ -57,14 +60,19 @@ void imshow(cv::Mat& mat)
     QLabel* l = new QLabel();
     l->setPixmap(QPixmap::fromImage(image));
 
+    QScrollArea* s = new QScrollArea();
+    s->setWidget(l);
+
     QVBoxLayout* lay = new QVBoxLayout();
-    lay->addWidget(l);
+    lay->addWidget(s);
 
     QDialog* dlg = new QDialog();
     dlg->setLayout(lay);
+    dlg->setWindowTitle("Image");
 
     dlg->exec();
 
     delete dlg;
 }
 
+}
