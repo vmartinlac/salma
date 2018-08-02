@@ -18,7 +18,7 @@ find_package(OpenCV REQUIRED)
 find_package(OSG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 #find_package(Aravis REQUIRED)
-#find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
+find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
 #find_package(OpenMP REQUIRED)
 
 add_subdirectory(src)
