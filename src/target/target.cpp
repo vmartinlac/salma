@@ -1,47 +1,57 @@
-#include "target.h"
+#include <algorithm>
 #include <iostream>
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <nanoflann.hpp>
+#include "target.h"
 #include "utils.h"
 
 namespace target {
 
-/*
-Adapt a std::vector<cv::KeyPoint> for usage by nanoflann.
-*/
-
-class KeyPointListAdapter
+bool Detector::filter_line(const cv::Point2f& A, const cv::Point2f& B)
 {
-public:
+    const double l = 10.0;
+    const double alpha = 0.1;
+    const double beta = 0.1;
 
-    KeyPointListAdapter(const std::vector<cv::KeyPoint>* list) :
-        m_key_points(list)
+    //////
+
+    int white_left = 0;
+    int white_right = 0;
+    int black_left = 0;
+    int black_right = 0;
+
+    cv::Vec2f AB = B - A;
+    const double norm_AB = cv::norm(AB);
+
+    cv::Vec2f t = AB / norm_AB;
+    cv::Vec2f n = cv::Vec2f(-t(1), t(0));
+
+    for(double s=0.0; s<=norm_AB; s+=1.0)
     {
-        ;
+        cv::Point2f M = cv::Vec2f(A) + s*t;
+
+        cv::Point2f P_left = cv::Vec2f(M) - l*n;
+        cv::Point2f P_right = cv::Vec2f(M) + l*n;
+
+        if( m_thresh.at<uint8_t>(P_left) ) white_left++;
+        else black_left++;
+
+        if( m_thresh.at<uint8_t>(P_right) ) white_right++;
+        else black_right++;
     }
 
-    inline size_t kdtree_get_point_count() const
-    {
-        return m_key_points->size();
-    }
+    const int total = white_left + black_left + white_right + black_right;
+    const float white_ratio = float(white_left+white_right) / float(total);
+    const float white_ratio_left = float(white_left) / float(white_left + black_left);
+    const float white_ratio_right = float(white_right) / float(white_right + black_right);
 
-    inline float kdtree_get_pt(size_t index, int dim) const
-    {
-        cv::Vec2f pt = m_key_points->operator[](index).pt;
-        return pt[dim];
-    }
+    const bool half_are_white = std::fabs(white_ratio - 0.5) < beta;
+    const bool left_is_white = ( white_ratio_left > 1.0-alpha && white_ratio_right < alpha );
+    const bool right_is_white = ( white_ratio_left < alpha && white_ratio_right > 1.0-alpha );
 
-    template<typename BBOX>
-    inline bool kdtree_get_bbox(BBOX& bb) const
-    {
-        return false;
-    }
-
-protected:
-
-    const std::vector<cv::KeyPoint>* m_key_points;
-};
+    return half_are_white && (left_is_white || right_is_white);
+}
 
 bool Detector::filter_keypoint(const cv::KeyPoint& kp)
 {
@@ -108,16 +118,6 @@ void Detector::filter_keypoints()
     std::cout << "Number of key points: " << m_keypoints.size() << std::endl;
 }
 
-/*
-struct Target
-{
-    cv::Point2f origin;
-    cv::Vec2f directions[3];
-    float score;
-};
-*/
-
-
 void Detector::run(const cv::Mat& image)
 {
     m_image = &image;
@@ -140,8 +140,8 @@ void Detector::run(const cv::Mat& image)
     std::cout << "Filtering key points..." << std::endl;
     filter_keypoints();
 
-    std::cout << "Constructing 8-nn..." << std::endl;
-    compute_neighborhoods();
+    std::cout << "Constructing kdtree..." << std::endl;
+    build_kdtree();
 
     std::cout << "Detecting target..." << std::endl;
     detect_target();
@@ -153,86 +153,78 @@ void Detector::run(const cv::Mat& image)
 
 void Detector::detect_target()
 {
-    bool go_on = false;
+    size_t idx = rand() % m_keypoints.size();
+    for(size_t idx=0; idx<m_keypoints.size(); idx++) {
 
-    while(go_on)
+    std::vector<size_t> neighbors;
+
+    find_k_nearest_neighbors(idx, 20, neighbors);
+
+    //cv::circle(*m_image, m_keypoints[idx].pt, 10, cv::Scalar(0,255,0), -1);
+
+    for(size_t i : neighbors)
     {
-        //size_t idx = rand() % m_keypoints.size();
-
-        ;
+        if(filter_line( m_keypoints[idx].pt, m_keypoints[i].pt ))
+        {
+            //cv::circle(*m_image, m_keypoints[i].pt, 10, cv::Scalar(0,0,255), -1);
+            cv::line(*m_image, m_keypoints[idx].pt, m_keypoints[i].pt, cv::Scalar(0,255,0), 5);
+        }
+    }
     }
 }
 
-void Detector::compute_neighborhoods()
+void Detector::build_kdtree()
 {
-    typedef nanoflann::KDTreeSingleIndexAdaptor<
-        nanoflann::L2_Simple_Adaptor<float, KeyPointListAdapter>,
-        KeyPointListAdapter,
-        2,
-        size_t> KDTree;
+    m_kpl_adapter.reset(new KeyPointListAdapter(&m_keypoints));
+    m_kdtree.reset(new KDTree(2, *m_kpl_adapter));
 
-    KeyPointListAdapter adaptor(&m_keypoints);
+    m_kdtree->buildIndex();
+}
 
-    KDTree kdtree(2, adaptor);
+void Detector::find_k_nearest_neighbors(size_t index, size_t k, std::vector<size_t>& neighbors)
+{
+    float point[2] = { m_keypoints[index].pt.x, m_keypoints[index].pt.y };
 
-    kdtree.buildIndex();
+    std::vector<float> distances(k+1);
 
-    m_neighbors.resize( m_keypoints.size() );
+    neighbors.resize(k+1);
 
-    for(size_t i=0; i<m_keypoints.size(); i++)
+    const size_t effective_size = m_kdtree->knnSearch(
+        point,
+        k+1,
+        &neighbors.front(),
+        &distances.front());
+
+    if( neighbors.size() != effective_size )
     {
-        size_t num_neighbors = 0;
-        size_t neighbors[9];
-        float distances[9];
+        neighbors.resize(effective_size);
+        distances.resize(effective_size);
+    }
 
-        const float point[2] = { m_keypoints[i].pt.x, m_keypoints[i].pt.y };
+    size_t i = 0;
 
-        num_neighbors = kdtree.knnSearch( point, 9, neighbors, distances );
-
-        if(num_neighbors == 9)
+    while(i < neighbors.size())
+    {
+        if(neighbors[i] == index)
         {
-            int j=0;
-            for(int k=0; j<8 && k<num_neighbors; k++)
-            {
-                if(i != neighbors[k])
-                {
-                    m_neighbors[i].neighbors[j] = neighbors[k];
-                    j++;
-                }
-            }
+            neighbors[i] = neighbors.back();
+            distances[i] = distances.back();
 
-            if(j == 8)
-            {
-                m_neighbors[i].valid = true;
-            }
-            else
-            {
-                m_neighbors[i].valid = false;
-            }
+            neighbors.pop_back();
+            distances.pop_back();
         }
         else
         {
-            m_neighbors[i].valid = false;
+            i++;
         }
     }
 
-    //
-    {
-        const int i = rand() % m_keypoints.size();
+    if( neighbors.size() > k ) throw std::runtime_error("error while computing knn");
 
-        if( m_neighbors[i].valid )
-        {
-            const cv::Point2f O = m_keypoints[i].pt;
-            for(int j=0; j<8; j++)
-            {
-                const cv::Point2f A = m_keypoints[m_neighbors[i].neighbors[j]].pt;
-
-                cv::line( *m_image, O, A, cv::Scalar(0,255,0), 3);
-            }
-        }
-    }
-    //
+    std::sort(
+        neighbors.begin(),
+        neighbors.end(),
+        [&distances] (size_t i, size_t j) { return distances[i] < distances[j]; });
 }
 
 }
-

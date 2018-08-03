@@ -4,6 +4,7 @@ add_library(
     STATIC
     target.h
     target.cpp
+    KeyPointListAdapter.h
 )
 
 target_link_libraries(target PUBLIC opencv_core opencv_imgproc opencv_features2d nanoflann::nanoflann)
