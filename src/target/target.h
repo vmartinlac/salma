@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <opencv2/core.hpp>
-#include <nanoflann.hpp>
 
 namespace target {
 
@@ -16,12 +15,6 @@ public:
 
 protected:
 
-    typedef nanoflann::KDTreeSingleIndexAdaptor<
-        nanoflann::L2_Simple_Adaptor<float, KeyPointListAdapter>,
-        KeyPointListAdapter,
-        2,
-        size_t> KDTree;
-
     struct Target
     {
         cv::Vec2f origin;
@@ -33,6 +26,20 @@ protected:
     void filter_keypoints();
     bool filter_keypoint(const cv::KeyPoint& kp);
     void detect_target();
+    void compute_neighborhoods();
+
+protected:
+
+    struct Neighborhood
+    {
+        Neighborhood()
+        {
+            valid = false;
+        }
+
+        bool valid;
+        size_t neighbors[8];
+    };
 
 protected:
 
@@ -40,7 +47,7 @@ protected:
     cv::Mat m_greyscale;
     cv::Mat m_thresh;
     std::vector<cv::KeyPoint> m_keypoints;
-    KDTree* m_kdtree;
+    std::vector<Neighborhood> m_neighbors;
 };
 
 }

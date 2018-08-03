@@ -2,6 +2,7 @@
 #include <iostream>
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
+#include <nanoflann.hpp>
 #include "utils.h"
 
 namespace target {
@@ -139,11 +140,8 @@ void Detector::run(const cv::Mat& image)
     std::cout << "Filtering key points..." << std::endl;
     filter_keypoints();
 
-    std::cout << "Constructing kd-tree..." << std::endl;
-    KeyPointListAdapter adaptor(&m_keypoints);
-    KDTree kdtree(2, adaptor);
-    kdtree.buildIndex();
-    m_kdtree = &kdtree;
+    std::cout << "Constructing 8-nn..." << std::endl;
+    compute_neighborhoods();
 
     std::cout << "Detecting target..." << std::endl;
     detect_target();
@@ -163,6 +161,77 @@ void Detector::detect_target()
 
         ;
     }
+}
+
+void Detector::compute_neighborhoods()
+{
+    typedef nanoflann::KDTreeSingleIndexAdaptor<
+        nanoflann::L2_Simple_Adaptor<float, KeyPointListAdapter>,
+        KeyPointListAdapter,
+        2,
+        size_t> KDTree;
+
+    KeyPointListAdapter adaptor(&m_keypoints);
+
+    KDTree kdtree(2, adaptor);
+
+    kdtree.buildIndex();
+
+    m_neighbors.resize( m_keypoints.size() );
+
+    for(size_t i=0; i<m_keypoints.size(); i++)
+    {
+        size_t num_neighbors = 0;
+        size_t neighbors[9];
+        float distances[9];
+
+        const float point[2] = { m_keypoints[i].pt.x, m_keypoints[i].pt.y };
+
+        num_neighbors = kdtree.knnSearch( point, 9, neighbors, distances );
+
+        if(num_neighbors == 9)
+        {
+            int j=0;
+            for(int k=0; j<8 && k<num_neighbors; k++)
+            {
+                if(i != neighbors[k])
+                {
+                    m_neighbors[i].neighbors[j] = neighbors[k];
+                    j++;
+                }
+            }
+
+            if(j == 8)
+            {
+                m_neighbors[i].valid = true;
+            }
+            else
+            {
+                m_neighbors[i].valid = false;
+            }
+        }
+        else
+        {
+            m_neighbors[i].valid = false;
+        }
+    }
+
+    //
+    {
+        const int i = rand() % m_keypoints.size();
+
+        if( m_neighbors[i].valid )
+        {
+            const cv::Point2f O = m_keypoints[i].pt;
+            for(int j=0; j<8; j++)
+            {
+                const cv::Point2f A = m_keypoints[m_neighbors[i].neighbors[j]].pt;
+
+                cv::line( *m_image, O, A, cv::Scalar(0,255,0), 3);
+            }
+        }
+    }
+    //
 }
 
 }
