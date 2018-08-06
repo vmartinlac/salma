@@ -77,7 +77,8 @@ int main(int num_args, char** args)
     image = cv::imread("/home/victor/developpement/slam/data/photographies_mire/a.jpg");
 
     target::Detector d;
-    d.run(image);
+    cv::Mat samples;
+    d.run(image, samples);
 
     return 0;
 }
