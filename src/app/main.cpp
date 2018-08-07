@@ -3,12 +3,12 @@
 #include <iostream>
 #include "Camera.h"
 #include "Image.h"
-//#include "SLAMEngine.h"
 #include <QThread>
 #include <Eigen/Eigen>
 #include "utils.h"
 #include "target.h"
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 /*
 
@@ -75,6 +75,9 @@ int main(int num_args, char** args)
 
     cv::Mat image;
     image = cv::imread("/home/victor/developpement/slam/data/photographies_mire/a.jpg");
+    std::cout << image.cols << "*" << image.rows << std::endl;
+    cv::resize(image, image, cv::Size(1024, 768));
+    //cv::resize(image, image, cv::Size(640, 480));
 
     target::Detector d;
     cv::Mat samples;

@@ -63,7 +63,7 @@ namespace target {
 
             int connected_component;
 
-            int coords2d[2];
+            int coords2d[2]; // this field is filled if and only if connected_component >= 0.
 
             //cv::Point3f location_in_space;
         };
@@ -119,6 +119,8 @@ namespace target {
         void compute_connected_components();
         int find_connected_component(int seed, int component);
         void orient_neighborhood(int idx, int pre, int post);
+        void extend_biggest_connected_component();
+        void find_folding_line();
 
     protected:
 
@@ -133,11 +135,11 @@ namespace target {
         const cv::Mat* m_image; // the original input image.
         cv::Mat m_greyscale; // the input image converted to greyscale.
         cv::Mat m_thresh; // thresholded input image where we can discriminate colors of chessboard.
-        cv::Mat m_debug_image; // output image for debugging purpose.
         std::vector<SamplePoint> m_points; // the sample points.
         PointListAdapter m_kpl_adapter; // the adapter which allows nanoflann to use our datastructure.
         std::unique_ptr<KDTree> m_kdtree; // the kdtree used for knn searches.
         std::vector<ConnectedComponent> m_connected_components;
+        int m_biggest_connected_component;
     };
 }
 

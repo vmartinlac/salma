@@ -5,9 +5,12 @@
 #include <iostream>
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <nanoflann.hpp>
 #include "target.h"
 #include "utils.h"
+
+#define TARGET_DETECTOR_DEBUG
 
 namespace target {
 
@@ -18,13 +21,21 @@ namespace target {
         std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
 
         m_image = &image;
-        m_debug_image = image.clone();
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::imwrite("10_original.png", *m_image);
+#endif
 
         std::cout << "Converting to greyscale..." << std::endl;
         cv::cvtColor(image, m_greyscale, CV_BGR2GRAY);
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::imwrite("20_greyscale.png", m_greyscale);
+#endif
 
         std::cout << "Thresholding..." << std::endl;
         cv::threshold(m_greyscale, m_thresh, 100, 255, cv::THRESH_BINARY_INV);
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::imwrite("30_threshold.png", m_thresh);
+#endif
 
         std::cout << "Detecting corners..." << std::endl;
         detect_corners();
@@ -41,31 +52,11 @@ namespace target {
         std::cout << "Computing connected components..." << std::endl;
         compute_connected_components();
 
-        /*
-        {
-            for(SamplePoint& pt : m_points)
-            {
-                if( pt.num_neighbors == 4 )
-                {
-                    cv::Vec2f delta[4];
+        std::cout << "Extending main connected component..." << std::endl;
+        extend_biggest_connected_component();
 
-                    for(int i=0; i<4; i++)
-                    {
-                        delta[i] = m_points[ pt.neighbors[i] ].keypoint.pt - pt.keypoint.pt;
-                    }
-
-                    const double scal1 = delta[0].dot(delta[2]) / ( cv::norm(delta[0])*cv::norm(delta[2]) );
-                    const double scal2 = delta[1].dot(delta[3]) / ( cv::norm(delta[1])*cv::norm(delta[3]) );
-                    const double threshold = cos(M_PI*0.9);
-
-                    if( scal1 > threshold || scal2 > threshold )
-                    {
-                        cv::circle(m_debug_image, pt.keypoint.pt, 8, cv::Scalar(0, 255, 0), -1);
-                    }
-                }
-            }
-        }
-        */
+        std::cout << "Finding folding line..." << std::endl;
+        find_folding_line();
 
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
 
@@ -74,7 +65,7 @@ namespace target {
         std::cout << "Computation time: " << dt << " ms" << std::endl;
         std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
 
-        ui::imshow(m_debug_image);
+        //ui::imshow(m_debug_image);
 
         return false;
     }
@@ -89,11 +80,19 @@ namespace target {
     {
         cv::Ptr<cv::GFTTDetector> detector = cv::GFTTDetector::create();
 
-        detector->setMinDistance(30.0);
+        detector->setMinDistance(15.0); // 30.0
         detector->setMaxFeatures(700);
 
         std::vector<cv::KeyPoint> keypoints;
         detector->detect(*m_image, keypoints);
+
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            cv::Mat debug;
+            cv::drawKeypoints(*m_image, keypoints, debug);
+            cv::imwrite("40_keypoints.png", debug);
+        }
+#endif
 
         m_points.clear();
 
@@ -104,15 +103,25 @@ namespace target {
                 m_points.emplace_back(kp);
             }
         }
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            const int radius = 4*m_image->cols/640;
+            cv::Mat debug = m_image->clone();
+            for( SamplePoint& pt : m_points )
+            {
+                cv::circle(debug, pt.keypoint.pt, radius, cv::Scalar(255, 0, 0), -1);
+            }
+            cv::imwrite("50_keypoints_post_filtering.png", debug);
+        }
+#endif
     }
 
     bool Detector::filter_keypoint(const cv::KeyPoint& kp)
     {
-        cv::Mat& image = m_thresh;
+        if( m_thresh.type() != CV_8U) throw std::runtime_error("bad type of image");
 
-        if( image.type() != CV_8U) throw std::runtime_error("bad type of image");
-
-        const float radius = 15.0;
+        //const float radius = 15.0;
+        const float radius = float(m_image->cols)*20.0/2560.0;
 
         const float dalpha = 1.5 / radius;
 
@@ -121,7 +130,10 @@ namespace target {
         int white = 0;
         int black = 0;
 
-        for(float alpha = 0.0; alpha<M_PI; alpha += dalpha)
+        bool inside = true;
+        const cv::Rect viewport( cv::Point2i(0,0), m_thresh.size() );
+
+        for(float alpha = 0.0; inside && alpha<M_PI; alpha += dalpha)
         {
             const float dx = radius*cos(alpha);
             const float dy = radius*sin(alpha);
@@ -129,26 +141,40 @@ namespace target {
             const cv::Point P1( kp.pt.x + dx, kp.pt.y + dy );
             const cv::Point P2( kp.pt.x - dx, kp.pt.y - dy );
 
-            const uint8_t val1 = image.at<uint8_t>(P1);
-            const uint8_t val2 = image.at<uint8_t>(P2);
-
-            if( val1 == val2 )
+            if( viewport.contains(P1) && viewport.contains(P2) )
             {
-                symm++;
+                const uint8_t val1 = m_thresh.at<uint8_t>(P1);
+                const uint8_t val2 = m_thresh.at<uint8_t>(P2);
+
+                if( val1 == val2 )
+                {
+                    symm++;
+                }
+                else
+                {
+                    antisymm++;
+                }
+
+                if( val1 ) white++; else black++;
+                if( val2 ) white++; else black++;
             }
             else
             {
-                antisymm++;
+                inside = false;
             }
-
-            if( val1 ) white++; else black++;
-            if( val2 ) white++; else black++;
         }
 
-        const float ratio1 = float(symm) / float(antisymm + symm);
-        const float ratio2 = float(white) / float(white + black);
+        if( inside )
+        {
+            const float ratio1 = float(symm) / float(antisymm + symm);
+            const float ratio2 = float(white) / float(white + black);
 
-        return ( ratio1 > 0.7 && 0.35 < ratio2 && ratio2 < 0.65 );
+            return ( ratio1 > 0.7 && 0.35 < ratio2 && ratio2 < 0.65 );
+        }
+        else
+        {
+            return false;
+        }
     }
 
     void Detector::detect_neighbors()
@@ -186,6 +212,7 @@ namespace target {
 
             if( m_points[idx].num_neighbors > 4 )
             {
+                std::cerr << "Some strangeness at " << __FILE__ << ":" << __LINE__ << std::endl;
                 m_points[idx].num_neighbors = 0;
             }
             else if( m_points[idx].num_neighbors == 4 )
@@ -194,10 +221,6 @@ namespace target {
                 {
                     m_points[idx].num_neighbors = 0;
                     std::cerr << "Some strangeness at " << __FILE__ << ":" << __LINE__ << std::endl;
-                }
-                else
-                {
-                    cv::circle(m_debug_image, m_points[idx].keypoint.pt, 5, cv::Scalar(255, 0, 0), -1);
                 }
             }
         }
@@ -246,9 +269,10 @@ namespace target {
 
     bool Detector::filter_line(const cv::Point2f& A, const cv::Point2f& B, KindOfLine& kind)
     {
-        const double l = 10.0;
-        const double alpha = 0.1;
-        const double beta = 0.1;
+        //const double l = 10.0;
+        const double l = float(m_image->cols)*15.0/2560.0;
+        const double alpha = 0.2;
+        const double beta = 0.2;
 
         //////
 
@@ -331,6 +355,7 @@ namespace target {
                 {
                     point.num_neighbors--;
                     point.neighbors[neigh_id] = point.neighbors[point.num_neighbors];
+                    point.neighbor_types[neigh_id] = point.neighbor_types[point.num_neighbors];
                 }
                 else
                 {
@@ -338,6 +363,27 @@ namespace target {
                 }
             }
         }
+
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            const int radius = 4*m_image->cols/640;
+            cv::Mat debug = m_image->clone();
+            for(SamplePoint& pt : m_points)
+            {
+                cv::circle(debug, pt.keypoint.pt, radius, cv::Scalar(0,255,0), -1);
+            }
+            for(SamplePoint& pt : m_points)
+            {
+                for(int neigh_id=0; neigh_id<pt.num_neighbors; neigh_id++)
+                {
+                    SamplePoint& other_pt = m_points[ pt.neighbors[neigh_id] ];
+
+                    cv::line(debug, pt.keypoint.pt, 0.5*(pt.keypoint.pt+other_pt.keypoint.pt), cv::Scalar(255,0,0), 2);
+                }
+            }
+            cv::imwrite("60_post_symmetrization.png", debug);
+        }
+#endif
     }
 
     void Detector::compute_connected_components()
@@ -351,6 +397,7 @@ namespace target {
 
         // compute connected components.
 
+        m_biggest_connected_component = -1;
         int num_connected_components = 0;
         m_connected_components.clear();
 
@@ -362,14 +409,14 @@ namespace target {
 
                 m_connected_components.emplace_back( idx, size );
 
+                if( num_connected_components == 0 || m_connected_components[m_biggest_connected_component].size < size )
+                {
+                    m_biggest_connected_component = num_connected_components;
+                }
+
                 num_connected_components++;
             }
         }
-
-        //
-        //std::cout << "Sizes of connected components are:" << std::endl;
-        //for( ConnectedComponent& c : m_connected_components ) std::cout << "_ " << c.size << std::endl;
-        //
 
         if( num_connected_components != m_connected_components.size() ) throw std::logic_error("internal error");
     }
@@ -403,7 +450,7 @@ namespace target {
 
             SamplePoint& point = m_points[idx];
 
-            //
+            /*
             {
                 std::string text = std::to_string(point.coords2d[0]) + " ; " + std::to_string(point.coords2d[1]);
                 cv::circle(m_debug_image, point.keypoint.pt, 4, col, -1);
@@ -414,7 +461,7 @@ namespace target {
                     cv::FONT_HERSHEY_PLAIN,
                     1.0, cv::Scalar(255,0,0), 2);
             }
-            //
+            */
 
             if( point.num_neighbors != 4 ) throw std::logic_error("internal error");
             if( point.connected_component != component ) throw std::logic_error("internal error");
@@ -449,16 +496,6 @@ namespace target {
 
                     if(go_on) throw std::logic_error("internal error");
                 }
-                /*
-                else if( m_points[idx_other].num_neighbors == 1 )
-                {
-                    if( m_points[idx_other].connected_component >= 0 ) throw std::logic_error("internal error");
-                    //
-                    cv::circle(m_debug_image, m_points[idx].keypoint.pt, 4, col, -1);
-                    //
-                    m_points[idx_other].connected_component = component;
-                }
-                */
             }
         }
 
@@ -508,6 +545,123 @@ namespace target {
             pt.neighbor_types[2] == pt.neighbor_types[3] )
         {
             throw std::runtime_error("internal error !");
+        }
+    }
+
+    void Detector::extend_biggest_connected_component()
+    {
+        const int dx[4] = {1, 0, -1, 0};
+        const int dy[4] = {0, 1, 0, -1};
+
+        if( m_biggest_connected_component >= 0 )
+        {
+            for(int idx=0; idx<m_points.size(); idx++)
+            {
+                SamplePoint& point = m_points[idx];
+
+                if( point.num_neighbors == 4 && point.connected_component == m_biggest_connected_component )
+                {
+                    for(int neigh_id=0; neigh_id<4; neigh_id++)
+                    {
+                        const int other_idx = point.neighbors[neigh_id];
+                        SamplePoint& other_point = m_points[other_idx];
+
+                        if( other_point.connected_component < 0 )
+                        {
+                            other_point.connected_component = m_biggest_connected_component;
+                            other_point.coords2d[0] = point.coords2d[0] + dx[neigh_id];
+                            other_point.coords2d[1] = point.coords2d[1] + dy[neigh_id];
+            /*
+            {
+                std::string text = std::to_string(other_point.coords2d[0]) + " ; " + std::to_string(other_point.coords2d[1]);
+                cv::circle(m_debug_image, other_point.keypoint.pt, 4, cv::Scalar(0,0,255), -1);
+                cv::putText(
+                    m_debug_image,
+                    text,
+                    other_point.keypoint.pt,
+                    cv::FONT_HERSHEY_PLAIN,
+                    1.0, cv::Scalar(255,0,0), 2);
+            }
+            */
+
+                        }
+                    }
+                }
+            }
+        }
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            cv::Mat debug = m_image->clone();
+
+            std::vector<cv::Scalar> colors(m_connected_components.size());
+
+            std::generate( colors.begin(), colors.end(), [] () { return cv::Scalar( rand()%255, rand()%255, rand()%255 ); } );
+
+            const int radius = 4*m_image->cols/640;
+
+            for( SamplePoint& pt : m_points )
+            {
+                if( pt.connected_component >= 0 )
+                {
+                    cv::circle(debug, pt.keypoint.pt, radius, colors[pt.connected_component], -1);
+                }
+            }
+
+            cv::imwrite("70_post_connected_components.png", debug);
+        }
+#endif
+    }
+
+    void Detector::find_folding_line()
+    {
+        std::vector<int> points; // points which belong to the folding line.
+
+        for(int idx=0; idx<m_points.size(); idx++)
+        {
+            SamplePoint& pt = m_points[idx];
+
+            if( pt.num_neighbors == 4 && pt.connected_component == m_biggest_connected_component )
+            {
+                cv::Vec2f delta[4];
+
+                for(int i=0; i<4; i++)
+                {
+                    delta[i] = m_points[ pt.neighbors[i] ].keypoint.pt - pt.keypoint.pt;
+                }
+
+                const double scal1 = delta[0].dot(delta[2]) / ( cv::norm(delta[0])*cv::norm(delta[2]) );
+                const double scal2 = delta[1].dot(delta[3]) / ( cv::norm(delta[1])*cv::norm(delta[3]) );
+                const double threshold = cos(M_PI*0.925);
+
+                if( scal1 > threshold || scal2 > threshold )
+                {
+                    points.push_back(idx);
+                }
+            }
+        }
+
+        if( points.size() >= 3 )
+        {
+            bool has_constant_x = true;
+            bool has_constant_y = true;
+            int constant_x = m_points[ points.front() ].coords2d[0];
+            int constant_y = m_points[ points.front() ].coords2d[1];
+
+            for( int idx : points )
+            {
+                if( has_constant_x && constant_x != m_points[idx].coords2d[0] )
+                {
+                    has_constant_x = false;
+                }
+                if( has_constant_y && constant_y != m_points[idx].coords2d[1] )
+                {
+                    has_constant_y = false;
+                }
+            }
+
+            if( has_constant_x && has_constant_y ) throw std::logic_error("internal error");
+            else if(has_constant_x) std::cout << "x = " << constant_x << std::endl;
+            else if(has_constant_y) std::cout << "y = " << constant_y << std::endl;
         }
     }
 }
