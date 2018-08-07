@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <queue>
 #include <algorithm>
 #include <iostream>
@@ -39,6 +40,32 @@ namespace target {
 
         std::cout << "Computing connected components..." << std::endl;
         compute_connected_components();
+
+        /*
+        {
+            for(SamplePoint& pt : m_points)
+            {
+                if( pt.num_neighbors == 4 )
+                {
+                    cv::Vec2f delta[4];
+
+                    for(int i=0; i<4; i++)
+                    {
+                        delta[i] = m_points[ pt.neighbors[i] ].keypoint.pt - pt.keypoint.pt;
+                    }
+
+                    const double scal1 = delta[0].dot(delta[2]) / ( cv::norm(delta[0])*cv::norm(delta[2]) );
+                    const double scal2 = delta[1].dot(delta[3]) / ( cv::norm(delta[1])*cv::norm(delta[3]) );
+                    const double threshold = cos(M_PI*0.9);
+
+                    if( scal1 > threshold || scal2 > threshold )
+                    {
+                        cv::circle(m_debug_image, pt.keypoint.pt, 8, cv::Scalar(0, 255, 0), -1);
+                    }
+                }
+            }
+        }
+        */
 
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
 
@@ -338,6 +365,11 @@ namespace target {
                 num_connected_components++;
             }
         }
+
+        //
+        //std::cout << "Sizes of connected components are:" << std::endl;
+        //for( ConnectedComponent& c : m_connected_components ) std::cout << "_ " << c.size << std::endl;
+        //
 
         if( num_connected_components != m_connected_components.size() ) throw std::logic_error("internal error");
     }
