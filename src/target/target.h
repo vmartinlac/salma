@@ -46,8 +46,15 @@ namespace target {
             {
                 num_neighbors = 0;
 
-                std::fill(neighbors, neighbors+4, -1);
-                std::fill(neighbor_types, neighbor_types+4, LINE_NONE);
+                neighbors[0] = -1;
+                neighbors[1] = -1;
+                neighbors[2] = -1;
+                neighbors[3] = -1;
+
+                neighbor_types[0] = LINE_NONE;
+                neighbor_types[1] = LINE_NONE;
+                neighbor_types[2] = LINE_NONE;
+                neighbor_types[3] = LINE_NONE;
 
                 connected_component = -1;
 
@@ -118,8 +125,8 @@ namespace target {
         void symmetrize();
         void compute_connected_components();
         int find_connected_component(int seed, int component);
-        void orient_neighborhood(int idx, int pre, int post);
-        void extend_biggest_connected_component();
+        void orient_myself(int idx); // requires point idx to have four neighbors.
+        void orient_my_neighbor(int idx, int neigh_id);
         void find_folding_line();
 
     protected:

@@ -52,9 +52,6 @@ namespace target {
         std::cout << "Computing connected components..." << std::endl;
         compute_connected_components();
 
-        std::cout << "Extending main connected component..." << std::endl;
-        extend_biggest_connected_component();
-
         std::cout << "Finding folding line..." << std::endl;
         find_folding_line();
 
@@ -419,6 +416,30 @@ namespace target {
         }
 
         if( num_connected_components != m_connected_components.size() ) throw std::logic_error("internal error");
+
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            cv::Mat debug = m_image->clone();
+
+            std::vector<cv::Scalar> colors(m_connected_components.size());
+
+            std::generate( colors.begin(), colors.end(), [] () { return cv::Scalar( rand()%255, rand()%255, rand()%255 ); } );
+
+            const int radius = 4*m_image->cols/640;
+
+            for( SamplePoint& pt : m_points )
+            {
+                if( pt.connected_component >= 0 )
+                {
+                    cv::circle(debug, pt.keypoint.pt, radius, colors[pt.connected_component], -1);
+                    std::string text = std::to_string(pt.coords2d[0]) + " ; " + std::to_string(pt.coords2d[1]);
+                    cv::putText( debug, text, pt.keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
+                }
+            }
+
+            cv::imwrite("70_post_connected_components.png", debug);
+        }
+#endif
     }
 
     int Detector::find_connected_component(int seed, int component)
@@ -429,19 +450,15 @@ namespace target {
         const int dx[4] = {1, 0, -1, 0};
         const int dy[4] = {0, 1, 0, -1};
 
+        orient_myself(seed);
         m_points[seed].connected_component = component;
         m_points[seed].coords2d[0] = 0;
         m_points[seed].coords2d[1] = 0;
-        orient_neighborhood(seed, 0, 0);
 
         std::queue<int> queue;
         queue.push(seed);
 
         int ret = 1;
-
-        //
-        cv::Scalar col( rand()%256, rand()%256, rand()%256 );
-        //
 
         while(queue.empty() == false)
         {
@@ -450,51 +467,28 @@ namespace target {
 
             SamplePoint& point = m_points[idx];
 
-            /*
-            {
-                std::string text = std::to_string(point.coords2d[0]) + " ; " + std::to_string(point.coords2d[1]);
-                cv::circle(m_debug_image, point.keypoint.pt, 4, col, -1);
-                cv::putText(
-                    m_debug_image,
-                    text,
-                    point.keypoint.pt,
-                    cv::FONT_HERSHEY_PLAIN,
-                    1.0, cv::Scalar(255,0,0), 2);
-            }
-            */
-
-            if( point.num_neighbors != 4 ) throw std::logic_error("internal error");
             if( point.connected_component != component ) throw std::logic_error("internal error");
 
             for( int neigh_id=0; neigh_id<4; neigh_id++ )
             {
                 const int other_idx = point.neighbors[neigh_id];
-                SamplePoint& other_point = m_points[other_idx];
 
-                if( other_point.connected_component != component && other_point.num_neighbors == 4 )
+                if( other_idx >= 0 )
                 {
-                    if( other_point.connected_component >= 0 ) throw std::logic_error("internal error");
+                    SamplePoint& other_point = m_points[other_idx];
 
-                    queue.push(other_idx);
-
-                    ret++;
-
-                    other_point.connected_component = component;
-
-                    other_point.coords2d[0] = point.coords2d[0] + dx[neigh_id];
-                    other_point.coords2d[1] = point.coords2d[1] + dy[neigh_id];
-
-                    bool go_on = true;
-                    for(int other_neigh_id=0; go_on && other_neigh_id<4; other_neigh_id++)
+                    if( other_point.connected_component != component )
                     {
-                        if( other_point.neighbors[other_neigh_id] == idx )
-                        {
-                            orient_neighborhood(other_idx, other_neigh_id, (neigh_id+2)%4);
-                            go_on = false;
-                        }
-                    }
+                        if( other_point.connected_component >= 0 ) throw std::logic_error("internal error");
 
-                    if(go_on) throw std::logic_error("internal error");
+                        orient_my_neighbor(idx, neigh_id);
+                        other_point.coords2d[0] = point.coords2d[0] + dx[neigh_id];
+                        other_point.coords2d[1] = point.coords2d[1] + dy[neigh_id];
+                        other_point.connected_component = component;
+
+                        queue.push(other_idx);
+                        ret++;
+                    }
                 }
             }
         }
@@ -502,8 +496,11 @@ namespace target {
         return ret;
     }
 
-    void Detector::orient_neighborhood(int idx, int pre, int post)
+    void Detector::orient_myself(int idx)
     {
+        const int pre = 0;
+        const int post = 0;
+
         SamplePoint& pt = m_points[idx];
 
         if( pre != post )
@@ -548,68 +545,115 @@ namespace target {
         }
     }
 
-    void Detector::extend_biggest_connected_component()
+    void Detector::orient_my_neighbor(int idx, int neigh_id)
     {
-        const int dx[4] = {1, 0, -1, 0};
-        const int dy[4] = {0, 1, 0, -1};
+        SamplePoint& pt = m_points[ m_points[idx].neighbors[neigh_id] ];
 
-        if( m_biggest_connected_component >= 0 )
+        const int plus1 = (neigh_id+1)%4;
+        const int plus2 = (neigh_id+2)%4;
+        const int plus3 = (neigh_id+3)%4;
+
+        // set the right neighbor at plus2.
+
+        bool go_on = true;
+        for(int i=0; go_on && i<4; i++)
         {
-            for(int idx=0; idx<m_points.size(); idx++)
+            if( pt.neighbors[i] == idx )
             {
-                SamplePoint& point = m_points[idx];
-
-                if( point.num_neighbors == 4 && point.connected_component == m_biggest_connected_component )
+                if( i != plus2 )
                 {
-                    for(int neigh_id=0; neigh_id<4; neigh_id++)
-                    {
-                        const int other_idx = point.neighbors[neigh_id];
-                        SamplePoint& other_point = m_points[other_idx];
-
-                        if( other_point.connected_component < 0 )
-                        {
-                            other_point.connected_component = m_biggest_connected_component;
-                            other_point.coords2d[0] = point.coords2d[0] + dx[neigh_id];
-                            other_point.coords2d[1] = point.coords2d[1] + dy[neigh_id];
-            /*
-            {
-                std::string text = std::to_string(other_point.coords2d[0]) + " ; " + std::to_string(other_point.coords2d[1]);
-                cv::circle(m_debug_image, other_point.keypoint.pt, 4, cv::Scalar(0,0,255), -1);
-                cv::putText(
-                    m_debug_image,
-                    text,
-                    other_point.keypoint.pt,
-                    cv::FONT_HERSHEY_PLAIN,
-                    1.0, cv::Scalar(255,0,0), 2);
+                    std::swap( pt.neighbors[i], pt.neighbors[plus2] );
+                    std::swap( pt.neighbor_types[i], pt.neighbor_types[plus2] );
+                }
+                go_on = false;
             }
-            */
+        }
 
-                        }
+        if( go_on ) throw std::logic_error("internal error");
+        if( pt.neighbors[plus2] != idx ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[plus2] == m_points[idx].neighbor_types[neigh_id] ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[plus2] == LINE_NONE ) throw std::logic_error("internal error");
+
+        // set the right neighbor at neigh_id.
+
+        {
+            int choice = -1;
+
+            for(int i=1; i<4; i++)
+            {
+                const int candidate = (plus2+i)%4;
+
+                if(choice < 0)
+                {
+                    if( pt.neighbor_types[candidate] == LINE_NONE || pt.neighbor_types[candidate] == pt.neighbor_types[plus2] )
+                    {
+                        choice = candidate;
+                    }
+                }
+                else if( pt.neighbor_types[choice] == LINE_NONE )
+                {
+                    if( pt.neighbor_types[candidate] == pt.neighbor_types[plus2] )
+                    {
+                        choice = candidate;
+                    }
+                }
+                else if( pt.neighbor_types[choice] == pt.neighbor_types[plus2] )
+                {
+                    if( pt.neighbor_types[candidate] == pt.neighbor_types[plus2] )
+                    {
+                        throw std::logic_error("internal error");
                     }
                 }
             }
-        }
-#ifdef TARGET_DETECTOR_DEBUG
-        {
-            cv::Mat debug = m_image->clone();
 
-            std::vector<cv::Scalar> colors(m_connected_components.size());
+            if(choice < 0) throw std::logic_error("internal error");
 
-            std::generate( colors.begin(), colors.end(), [] () { return cv::Scalar( rand()%255, rand()%255, rand()%255 ); } );
-
-            const int radius = 4*m_image->cols/640;
-
-            for( SamplePoint& pt : m_points )
+            if( neigh_id != choice )
             {
-                if( pt.connected_component >= 0 )
-                {
-                    cv::circle(debug, pt.keypoint.pt, radius, colors[pt.connected_component], -1);
-                }
+                std::swap( pt.neighbors[neigh_id], pt.neighbors[choice] );
+                std::swap( pt.neighbor_types[neigh_id], pt.neighbor_types[choice] );
+            }
+        }
+
+        // the the right plus1 and plus3.
+
+        {
+            cv::Point2f A = m_points[idx].keypoint.pt;
+            cv::Point2f B = pt.keypoint.pt;
+            cv::Vec2f AB = B - A;
+            cv::Vec2f N( -AB(1), AB(0) );
+
+            bool permute = false;
+
+            if( pt.neighbor_types[plus1] != LINE_NONE )
+            {
+                cv::Point2f C = m_points[ pt.neighbors[plus1] ].keypoint.pt;
+
+                const float dot_product = N.dot(C-B);
+                permute = (dot_product < 0.0);
+            }
+            else if( pt.neighbor_types[plus3] != LINE_NONE )
+            {
+                cv::Point2f C = m_points[ pt.neighbors[plus3] ].keypoint.pt;
+
+                const float dot_product = N.dot(C-B);
+                permute = (dot_product > 0.0);
             }
 
-            cv::imwrite("70_post_connected_components.png", debug);
+            if( permute )
+            {
+                std::swap( pt.neighbor_types[plus1], pt.neighbor_types[plus3] );
+                std::swap( pt.neighbors[plus1], pt.neighbors[plus3] );
+            }
         }
-#endif
+
+        // check that everything looks OK.
+
+        if( m_points[idx].neighbor_types[neigh_id] == LINE_NONE ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[plus2] == LINE_NONE || pt.neighbor_types[plus2] == m_points[idx].neighbor_types[neigh_id] ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[neigh_id] != LINE_NONE && pt.neighbor_types[neigh_id] != pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[plus1] == pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
+        if( pt.neighbor_types[plus3] == pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
     }
 
     void Detector::find_folding_line()
