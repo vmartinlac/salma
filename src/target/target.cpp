@@ -166,7 +166,9 @@ namespace target {
             const float ratio1 = float(symm) / float(antisymm + symm);
             const float ratio2 = float(white) / float(white + black);
 
-            return ( ratio1 > 0.7 && 0.35 < ratio2 && ratio2 < 0.65 );
+            const float alpha = 0.35;
+            const float beta = 0.7;
+            return ( ratio1 > beta && 0.5-alpha < ratio2 && ratio2 < 0.5+alpha );
         }
         else
         {
@@ -267,7 +269,7 @@ namespace target {
     bool Detector::filter_line(const cv::Point2f& A, const cv::Point2f& B, KindOfLine& kind)
     {
         //const double l = 10.0;
-        const double l = float(m_image->cols)*15.0/2560.0;
+        const double l = double(m_image->cols)*15.0/2560.0;
         const double alpha = 0.2;
         const double beta = 0.2;
 
@@ -323,40 +325,35 @@ namespace target {
     {
         for( int idx = 0; idx<m_points.size(); idx++ )
         {
-            SamplePoint& point = m_points[idx];
+            SamplePoint& pt = m_points[idx];
 
-            int neigh_id = 0;
-            
-            while( neigh_id < point.num_neighbors )
+            int i=0;
+            while(i<pt.num_neighbors)
             {
-                const int other_idx = point.neighbors[neigh_id];
-                SamplePoint& other_point = m_points[other_idx];
+                const int idx2 = pt.neighbors[i];
 
-                bool go_on = true;
-                for(int other_neigh_id = 0; go_on && other_neigh_id<other_point.num_neighbors; other_neigh_id++)
-                {
-                    if( other_point.neighbors[other_neigh_id] == idx )
-                    {
-                        if( other_point.neighbor_types[other_neigh_id] != point.neighbor_types[neigh_id] )
-                        {
-                            go_on = false;
-                        }
-                        else
-                        {
-                            std::cerr << "Some strangeness at " << __FILE__ << ":" << __LINE__ << std::endl;
-                        }
-                    }
-                }
+                if( idx2 < 0 ) throw std::logic_error("internal error");
+                if( pt.neighbor_types[i] == LINE_NONE) throw std::logic_error("internal error");
 
-                if(go_on)
+                const bool asymmetric =
+                    m_points[idx2].neighbors[0] != idx &&
+                    m_points[idx2].neighbors[1] != idx &&
+                    m_points[idx2].neighbors[2] != idx &&
+                    m_points[idx2].neighbors[3] != idx;
+
+                if( asymmetric )
                 {
-                    point.num_neighbors--;
-                    point.neighbors[neigh_id] = point.neighbors[point.num_neighbors];
-                    point.neighbor_types[neigh_id] = point.neighbor_types[point.num_neighbors];
+                    pt.num_neighbors--;
+
+                    pt.neighbors[i] = pt.neighbors[pt.num_neighbors];
+                    pt.neighbor_types[i] = pt.neighbor_types[pt.num_neighbors];
+
+                    pt.neighbors[pt.num_neighbors] = -1;
+                    pt.neighbor_types[pt.num_neighbors] = LINE_NONE;
                 }
                 else
                 {
-                    neigh_id++;
+                    i++;
                 }
             }
         }
@@ -385,6 +382,30 @@ namespace target {
 
     void Detector::compute_connected_components()
     {
+        /*
+        {
+            cv::Mat debug = m_image->clone();
+            for(SamplePoint& pt : m_points)
+            {
+                int tmp[3] = {0,0,0};
+                for(int i=0; i<4; i++)
+                {
+                    tmp[ pt.neighbor_types[i] ]++;
+                }
+                if(tmp[1] > 2 || tmp[2] > 2)
+                {
+                    std::cout << pt.neighbor_types[0] << std::endl;
+                    std::cout << pt.neighbor_types[1] << std::endl;
+                    std::cout << pt.neighbor_types[2] << std::endl;
+                    std::cout << pt.neighbor_types[3] << std::endl;
+                    std::cout << std::endl;
+                    cv::circle(debug, pt.keypoint.pt, 5, cv::Scalar(0,255,0), -1);
+                }
+                cv::imwrite("100_tmp.png", debug);
+            }
+        }
+        */
+
         // unmark all points.
 
         for( SamplePoint& pt : m_points )
@@ -664,20 +685,31 @@ namespace target {
         {
             SamplePoint& pt = m_points[idx];
 
-            if( pt.num_neighbors == 4 && pt.connected_component == m_biggest_connected_component )
+            if( pt.connected_component == m_biggest_connected_component )
             {
-                cv::Vec2f delta[4];
+                bool add = false;
 
-                for(int i=0; i<4; i++)
+                for(int i=0; i<2; i++)
                 {
-                    delta[i] = m_points[ pt.neighbors[i] ].keypoint.pt - pt.keypoint.pt;
+                    const int id_a = i;
+                    const int id_b = (i+2)%4;
+
+                    if( pt.neighbor_types[id_a] != LINE_NONE && pt.neighbor_types[id_b] != LINE_NONE )
+                    {
+                        const cv::Point2f delta_a = m_points[ pt.neighbors[id_a] ].keypoint.pt - pt.keypoint.pt;
+                        const cv::Point2f delta_b = m_points[ pt.neighbors[id_b] ].keypoint.pt - pt.keypoint.pt;
+
+                        const double dot_product = delta_a.dot(delta_b) / ( cv::norm(delta_a)*cv::norm(delta_b) );
+                        const double threshold = cos(M_PI*0.925);
+
+                        if( dot_product > threshold )
+                        {
+                            add = true;
+                        }
+                    }
                 }
 
-                const double scal1 = delta[0].dot(delta[2]) / ( cv::norm(delta[0])*cv::norm(delta[2]) );
-                const double scal2 = delta[1].dot(delta[3]) / ( cv::norm(delta[1])*cv::norm(delta[3]) );
-                const double threshold = cos(M_PI*0.925);
-
-                if( scal1 > threshold || scal2 > threshold )
+                if( add )
                 {
                     points.push_back(idx);
                 }

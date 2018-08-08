@@ -66,7 +66,7 @@ namespace target {
 
             int num_neighbors;
             int neighbors[4];
-            KindOfLine neighbor_types[4];
+            KindOfLine neighbor_types[4]; // neighbors[i] < 0 <=> neighbor_types[i] == LINE_NONE
 
             int connected_component;
 
