@@ -11,7 +11,6 @@
 #include <opencv2/imgproc.hpp>
 
 /*
-
 struct SLAMEngineParameters
 {
     Eigen::Matrix3d calibration_matrix;
@@ -73,15 +72,17 @@ int main(int num_args, char** args)
 {
     QApplication app(num_args, args);
 
+    const char* fname = (num_args == 2) ? args[1] : "/home/victor/developpement/slam/data/photographies_mire/a.jpg";
+
     cv::Mat image;
-    image = cv::imread("/home/victor/developpement/slam/data/photographies_mire/a.jpg");
+    image = cv::imread(fname);
     std::cout << image.cols << "*" << image.rows << std::endl;
-    cv::resize(image, image, cv::Size(1024, 768));
+    //cv::resize(image, image, cv::Size(1024, 768));
     //cv::resize(image, image, cv::Size(640, 480));
 
     target::Detector d;
     cv::Mat samples;
-    d.run(image, samples);
+    d.run(image, target::Detector::TWO_PLANES, 1.0, samples);
 
     return 0;
 }

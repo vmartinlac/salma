@@ -12,20 +12,25 @@ namespace target {
     {
     public:
 
+        enum KindOfTarget
+        {
+            ONE_PLANE=0,
+            TWO_PLANES=1
+        };
+
+    public:
+
         Detector();
 
         Detector(const Detector& o) = delete;
 
         void operator=(const Detector& o) = delete;
 
-        /*
-        \param[in] image input image.
-        \param[out] samples found. This is a CV_32F array with one row per sample and 5 columns which are image-x, image-y, space-x, space-y, space-z.
-        \return true if samples where found.
-        */
         bool run(
             const cv::Mat& image,
-            cv::Mat& samples);
+            KindOfTarget target,
+            float case_sidelength,
+            cv::Mat& samples );
 
     protected:
 
@@ -44,8 +49,6 @@ namespace target {
 
             void clear()
             {
-                num_neighbors = 0;
-
                 neighbors[0] = -1;
                 neighbors[1] = -1;
                 neighbors[2] = -1;
@@ -60,11 +63,22 @@ namespace target {
 
                 coords2d[0] = 0;
                 coords2d[1] = 0;
+
+                has_coords_3d = false;
+                coords_3d = cv::Point3f(0.0, 0.0, 0.0);
+            }
+
+            bool full_neighborhood()
+            {
+                return
+                    neighbors[0] >= 0 &&
+                    neighbors[1] >= 0 &&
+                    neighbors[2] >= 0 &&
+                    neighbors[3] >= 0 ;
             }
 
             cv::KeyPoint keypoint;
 
-            int num_neighbors;
             int neighbors[4];
             KindOfLine neighbor_types[4]; // neighbors[i] < 0 <=> neighbor_types[i] == LINE_NONE
 
@@ -72,7 +86,8 @@ namespace target {
 
             int coords2d[2]; // this field is filled if and only if connected_component >= 0.
 
-            //cv::Point3f location_in_space;
+            bool has_coords_3d;
+            cv::Point3f coords_3d;
         };
 
         class PointListAdapter
@@ -114,6 +129,15 @@ namespace target {
             int size;
         };
 
+        struct FoldingLine
+        {
+            bool found;
+
+            // transformation so that the folding line is the line defined by y == 0.
+            int rotation[2][2];
+            int translation[2];
+        };
+
     protected:
 
         void build_kdtree();
@@ -128,6 +152,8 @@ namespace target {
         void orient_myself(int idx); // requires point idx to have four neighbors.
         void orient_my_neighbor(int idx, int neigh_id);
         void find_folding_line();
+        bool store_results_two_planes(cv::Mat& samples);
+        bool store_results_one_plane(cv::Mat& samples);
 
     protected:
 
@@ -147,6 +173,9 @@ namespace target {
         std::unique_ptr<KDTree> m_kdtree; // the kdtree used for knn searches.
         std::vector<ConnectedComponent> m_connected_components;
         int m_biggest_connected_component;
+        FoldingLine m_folding_line;
+        KindOfTarget m_target;
+        float m_case_side_length;
     };
 }
 

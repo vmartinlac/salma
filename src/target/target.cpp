@@ -16,9 +16,12 @@ namespace target {
 
     Detector::Detector() : m_kpl_adapter(&m_points) { }
 
-    bool Detector::run(const cv::Mat& image, cv::Mat& samples)
+    bool Detector::run( const cv::Mat& image, KindOfTarget target, float case_side_length, cv::Mat& samples )
     {
         std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
+
+        m_target = target;
+        m_case_side_length = case_side_length;
 
         m_image = &image;
 #ifdef TARGET_DETECTOR_DEBUG
@@ -52,8 +55,69 @@ namespace target {
         std::cout << "Computing connected components..." << std::endl;
         compute_connected_components();
 
-        std::cout << "Finding folding line..." << std::endl;
-        find_folding_line();
+        bool ret = false;
+
+        if( target == TWO_PLANES )
+        {
+            std::cout << "Finding folding line..." << std::endl;
+            find_folding_line();
+
+            std::cout << "Storing results..." << std::endl;
+            store_results_two_planes(samples);
+        }
+        else
+        {
+            std::cout << "Storing results..." << std::endl;
+            store_results_one_plane(samples);
+        }
+
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            cv::Mat debug = m_image->clone();
+            for(SamplePoint& pt : m_points)
+            {
+                if( pt.has_coords_3d )
+                {
+                    cv::Scalar col;
+
+                    if( m_target == ONE_PLANE )
+                    {
+                        col = cv::Scalar(255,0,0);
+                    }
+                    else
+                    {
+                        const int y =
+                            m_folding_line.rotation[1][0]*pt.coords2d[0] +
+                            m_folding_line.rotation[1][1]*pt.coords2d[1] +
+                            m_folding_line.translation[1];
+
+                        if( y > 0 )
+                        {
+                            col = cv::Scalar(255,0,0);
+                        }
+                        else if( y < 0 )
+                        {
+                            col = cv::Scalar(0,255,0);
+                        }
+                        else
+                        {
+                            col = cv::Scalar(0,0,255);
+                        }
+                    }
+
+                    //cv::circle(debug, pt.keypoint.pt, radius, cv::Scalar(255, 0, 0), -1);
+
+                    std::string text =
+                        std::to_string((int)pt.coords_3d.x) + " ; " +
+                        std::to_string((int)pt.coords_3d.y) + " ; " +
+                        std::to_string((int)pt.coords_3d.z);
+
+                    cv::putText( debug, text, pt.keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, col, 2);
+                }
+            }
+            cv::imwrite("80_result.png", debug);
+        }
+#endif
 
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
 
@@ -62,9 +126,7 @@ namespace target {
         std::cout << "Computation time: " << dt << " ms" << std::endl;
         std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
 
-        //ui::imshow(m_debug_image);
-
-        return false;
+        return ret;
     }
 
     void Detector::build_kdtree()
@@ -77,8 +139,8 @@ namespace target {
     {
         cv::Ptr<cv::GFTTDetector> detector = cv::GFTTDetector::create();
 
-        detector->setMinDistance(15.0); // 30.0
-        detector->setMaxFeatures(700);
+        detector->setMinDistance(double(m_image->cols)*20.0/1024.0); // 30.0
+        detector->setMaxFeatures(800);
 
         std::vector<cv::KeyPoint> keypoints;
         detector->detect(*m_image, keypoints);
@@ -184,8 +246,7 @@ namespace target {
 
             find_k_nearest_neighbors(idx, 20, neighbors);
 
-            m_points[idx].num_neighbors = 0;
-
+            bool erase = false;
             int num_BW = 0;
             int num_WB = 0;
 
@@ -194,32 +255,48 @@ namespace target {
                 KindOfLine kind;
                 if( filter_line( m_points[idx].keypoint.pt, m_points[other_idx].keypoint.pt, kind ) && kind != LINE_NONE )
                 {
-                    const int neigh_id = m_points[idx].num_neighbors;
+                    int destination_idx = -1;
 
-                    m_points[idx].num_neighbors++;
-
-                    if( neigh_id < 4 )
+                    if( kind == LINE_BW && num_BW == 0 )
                     {
-                        m_points[idx].neighbors[neigh_id] = other_idx;
-                        m_points[idx].neighbor_types[neigh_id] = kind;
+                        destination_idx = 0;
+                        num_BW++;
+                    }
+                    else if( kind == LINE_BW && num_BW == 1 )
+                    {
+                        destination_idx = 2;
+                        num_BW++;
+                    }
+                    else if( kind == LINE_WB && num_WB == 0 )
+                    {
+                        destination_idx = 1;
+                        num_WB++;
+                    }
+                    else if( kind == LINE_WB && num_WB == 1 )
+                    {
+                        destination_idx = 3;
+                        num_WB++;
+                    }
+                    else
+                    {
+                        erase = true;
+                        destination_idx = -1;
                     }
 
-                    if( kind == LINE_WB ) num_WB++;
-                    else num_BW++;
+                    if( destination_idx >= 0 )
+                    {
+                        m_points[idx].neighbors[destination_idx] = other_idx;
+                        m_points[idx].neighbor_types[destination_idx] = kind;
+                    }
                 }
             }
 
-            if( m_points[idx].num_neighbors > 4 )
+            if(erase)
             {
-                std::cerr << "Some strangeness at " << __FILE__ << ":" << __LINE__ << std::endl;
-                m_points[idx].num_neighbors = 0;
-            }
-            else if( m_points[idx].num_neighbors == 4 )
-            {
-                if( num_BW != 2 || num_WB != 2 )
+                for(int i=0; i<4; i++)
                 {
-                    m_points[idx].num_neighbors = 0;
-                    std::cerr << "Some strangeness at " << __FILE__ << ":" << __LINE__ << std::endl;
+                    m_points[idx].neighbors[i] = -1;
+                    m_points[idx].neighbor_types[i] = LINE_NONE;
                 }
             }
         }
@@ -269,9 +346,9 @@ namespace target {
     bool Detector::filter_line(const cv::Point2f& A, const cv::Point2f& B, KindOfLine& kind)
     {
         //const double l = 10.0;
-        const double l = double(m_image->cols)*15.0/2560.0;
-        const double alpha = 0.2;
-        const double beta = 0.2;
+        const double l = double(m_image->cols)*10.0/2560.0;
+        const double alpha = 0.20;
+        const double beta = 0.20;
 
         //////
 
@@ -323,37 +400,71 @@ namespace target {
 
     void Detector::symmetrize()
     {
+
+        // if there is only one plane, make sure that opposite neighbors of A are symmetric wrt A
+
+        if( m_target == ONE_PLANE )
+        {
+            for(SamplePoint& pt : m_points)
+            {
+                for(int i=0; i<2; i++)
+                {
+                    const int id_a = i;
+                    const int id_b = (i+2)%4;
+
+                    bool remove = false;
+
+                    if( pt.neighbor_types[id_a] != LINE_NONE && pt.neighbor_types[id_b] != LINE_NONE )
+                    {
+                        const cv::Point2f delta_a = m_points[ pt.neighbors[id_a] ].keypoint.pt - pt.keypoint.pt;
+                        const cv::Point2f delta_b = m_points[ pt.neighbors[id_b] ].keypoint.pt - pt.keypoint.pt;
+
+                        const double dot_product = delta_a.dot(delta_b) / ( cv::norm(delta_a)*cv::norm(delta_b) );
+                        const double threshold = cos(M_PI*174.0/180.0);
+
+                        if( dot_product > threshold )
+                        {
+                            remove = true;
+                        }
+                    }
+
+                    if( remove )
+                    {
+                        pt.neighbor_types[id_a] = LINE_NONE;
+                        pt.neighbor_types[id_b] = LINE_NONE;
+                        pt.neighbors[id_a] = -1;
+                        pt.neighbors[id_b] = -1;
+                    }
+                }
+            }
+        }
+
+        // make the graph symmetric.
+
         for( int idx = 0; idx<m_points.size(); idx++ )
         {
             SamplePoint& pt = m_points[idx];
 
-            int i=0;
-            while(i<pt.num_neighbors)
+            for(int i=0; i<4; i++)
             {
                 const int idx2 = pt.neighbors[i];
 
-                if( idx2 < 0 ) throw std::logic_error("internal error");
-                if( pt.neighbor_types[i] == LINE_NONE) throw std::logic_error("internal error");
+                if( idx2 >= 0 && pt.neighbor_types[i] == LINE_NONE ) throw std::logic_error("internal error");
+                if( idx2 < 0 && pt.neighbor_types[i] != LINE_NONE ) throw std::logic_error("internal error");
 
-                const bool asymmetric =
-                    m_points[idx2].neighbors[0] != idx &&
-                    m_points[idx2].neighbors[1] != idx &&
-                    m_points[idx2].neighbors[2] != idx &&
-                    m_points[idx2].neighbors[3] != idx;
-
-                if( asymmetric )
+                if( idx2 >= 0 )
                 {
-                    pt.num_neighbors--;
+                    const bool asymmetric =
+                        m_points[idx2].neighbors[0] != idx &&
+                        m_points[idx2].neighbors[1] != idx &&
+                        m_points[idx2].neighbors[2] != idx &&
+                        m_points[idx2].neighbors[3] != idx;
 
-                    pt.neighbors[i] = pt.neighbors[pt.num_neighbors];
-                    pt.neighbor_types[i] = pt.neighbor_types[pt.num_neighbors];
-
-                    pt.neighbors[pt.num_neighbors] = -1;
-                    pt.neighbor_types[pt.num_neighbors] = LINE_NONE;
-                }
-                else
-                {
-                    i++;
+                    if( asymmetric )
+                    {
+                        pt.neighbors[i] = -1;
+                        pt.neighbor_types[i] = LINE_NONE;
+                    }
                 }
             }
         }
@@ -368,11 +479,16 @@ namespace target {
             }
             for(SamplePoint& pt : m_points)
             {
-                for(int neigh_id=0; neigh_id<pt.num_neighbors; neigh_id++)
+                for(int neigh_id=0; neigh_id<4; neigh_id++)
                 {
-                    SamplePoint& other_pt = m_points[ pt.neighbors[neigh_id] ];
+                    const int idx2 = pt.neighbors[neigh_id];
 
-                    cv::line(debug, pt.keypoint.pt, 0.5*(pt.keypoint.pt+other_pt.keypoint.pt), cv::Scalar(255,0,0), 2);
+                    if( idx2 >= 0 )
+                    {
+                        SamplePoint& other_pt = m_points[idx2];
+
+                        cv::line(debug, pt.keypoint.pt, 0.5*(pt.keypoint.pt+other_pt.keypoint.pt), cv::Scalar(255,0,0), 2);
+                    }
                 }
             }
             cv::imwrite("60_post_symmetrization.png", debug);
@@ -382,30 +498,6 @@ namespace target {
 
     void Detector::compute_connected_components()
     {
-        /*
-        {
-            cv::Mat debug = m_image->clone();
-            for(SamplePoint& pt : m_points)
-            {
-                int tmp[3] = {0,0,0};
-                for(int i=0; i<4; i++)
-                {
-                    tmp[ pt.neighbor_types[i] ]++;
-                }
-                if(tmp[1] > 2 || tmp[2] > 2)
-                {
-                    std::cout << pt.neighbor_types[0] << std::endl;
-                    std::cout << pt.neighbor_types[1] << std::endl;
-                    std::cout << pt.neighbor_types[2] << std::endl;
-                    std::cout << pt.neighbor_types[3] << std::endl;
-                    std::cout << std::endl;
-                    cv::circle(debug, pt.keypoint.pt, 5, cv::Scalar(0,255,0), -1);
-                }
-                cv::imwrite("100_tmp.png", debug);
-            }
-        }
-        */
-
         // unmark all points.
 
         for( SamplePoint& pt : m_points )
@@ -421,7 +513,7 @@ namespace target {
 
         for(int idx = 0; idx<m_points.size(); idx++)
         {
-            if( m_points[idx].num_neighbors == 4 && m_points[idx].connected_component < 0 )
+            if( m_points[idx].full_neighborhood() && m_points[idx].connected_component < 0 )
             {
                 const int size = find_connected_component(idx, num_connected_components);
 
@@ -466,7 +558,7 @@ namespace target {
     int Detector::find_connected_component(int seed, int component)
     {
         if( m_points[seed].connected_component >= 0 ) throw std::logic_error("internal error");
-        if( m_points[seed].num_neighbors != 4 ) throw std::logic_error("internal error");
+        if( m_points[seed].full_neighborhood() == false ) throw std::logic_error("internal error");
 
         const int dx[4] = {1, 0, -1, 0};
         const int dy[4] = {0, 1, 0, -1};
@@ -679,7 +771,9 @@ namespace target {
 
     void Detector::find_folding_line()
     {
-        std::vector<int> points; // points which belong to the folding line.
+        std::vector<int> points; // points which are folded.
+
+        bool folded[2] = { false, false };
 
         for(int idx=0; idx<m_points.size(); idx++)
         {
@@ -700,11 +794,12 @@ namespace target {
                         const cv::Point2f delta_b = m_points[ pt.neighbors[id_b] ].keypoint.pt - pt.keypoint.pt;
 
                         const double dot_product = delta_a.dot(delta_b) / ( cv::norm(delta_a)*cv::norm(delta_b) );
-                        const double threshold = cos(M_PI*0.925);
+                        const double threshold = cos(M_PI*170.0/180.0);
 
                         if( dot_product > threshold )
                         {
                             add = true;
+                            folded[i] = true;
                         }
                     }
                 }
@@ -716,12 +811,32 @@ namespace target {
             }
         }
 
-        if( points.size() >= 3 )
+        bool has_constant_x = false;
+        bool has_constant_y = false;
+        int constant_x = 0;
+        int constant_y = 0;
+
+        if( points.size() == 1 )
         {
-            bool has_constant_x = true;
-            bool has_constant_y = true;
-            int constant_x = m_points[ points.front() ].coords2d[0];
-            int constant_y = m_points[ points.front() ].coords2d[1];
+            if( folded[0] == folded[1] )
+            {
+                m_folding_line.found = false;
+            }
+            else
+            {
+                has_constant_x = folded[0];
+                has_constant_y = folded[1];
+                constant_x = m_points[points.front()].coords2d[0];
+                constant_y = m_points[points.front()].coords2d[1];
+                m_folding_line.found = true;
+            }
+        }
+        else if( points.size() >= 2 )
+        {
+            has_constant_x = true;
+            has_constant_y = true;
+            constant_x = m_points[points.front()].coords2d[0];
+            constant_y = m_points[points.front()].coords2d[1];
 
             for( int idx : points )
             {
@@ -735,9 +850,146 @@ namespace target {
                 }
             }
 
-            if( has_constant_x && has_constant_y ) throw std::logic_error("internal error");
-            else if(has_constant_x) std::cout << "x = " << constant_x << std::endl;
-            else if(has_constant_y) std::cout << "y = " << constant_y << std::endl;
+            if( has_constant_x && has_constant_y )
+            {
+                throw std::logic_error("internal error");
+            }
+
+            m_folding_line.found = (has_constant_x != has_constant_y);
+        }
+        else
+        {
+            m_folding_line.found = false;
+        }
+
+        if( m_folding_line.found )
+        {
+            if( has_constant_x == has_constant_y) throw std::logic_error("internal error");
+
+            if(has_constant_x)
+            {
+                std::cout << "Folding line is x = " << constant_x << std::endl;
+                m_folding_line.rotation[0][0] = 0;
+                m_folding_line.rotation[0][1] = 1;
+                m_folding_line.rotation[1][0] = 1;
+                m_folding_line.rotation[1][1] = 0;
+                m_folding_line.translation[0] = 0;
+                m_folding_line.translation[1] = -constant_x;
+            }
+            else
+            {
+                std::cout << "Folding line is y = " << constant_y << std::endl;
+                m_folding_line.rotation[0][0] = 1;
+                m_folding_line.rotation[0][1] = 0;
+                m_folding_line.rotation[1][0] = 0;
+                m_folding_line.rotation[1][1] = 1;
+                m_folding_line.translation[0] = 0;
+                m_folding_line.translation[1] = -constant_y;
+            }
+        }
+    }
+
+    bool Detector::store_results_two_planes(cv::Mat& samples)
+    {
+        bool ret = false;
+
+        if( m_folding_line.found && m_biggest_connected_component >= 0 )
+        {
+            int count = 0;
+            for( SamplePoint& pt : m_points )
+            {
+                pt.has_coords_3d = (pt.connected_component == m_biggest_connected_component);
+                if( pt.has_coords_3d )
+                {
+                    const int x =
+                        m_folding_line.rotation[0][0]*pt.coords2d[0] +
+                        m_folding_line.rotation[0][1]*pt.coords2d[1] +
+                        m_folding_line.translation[0];
+
+                    const int y =
+                        m_folding_line.rotation[1][0]*pt.coords2d[0] +
+                        m_folding_line.rotation[1][1]*pt.coords2d[1] +
+                        m_folding_line.translation[1];
+
+                    if( y >= 0 )
+                    {
+                        pt.coords_3d = cv::Point3f(
+                            m_case_side_length*float(x),
+                            m_case_side_length*float(y),
+                            0.0 );
+                    }
+                    else
+                    {
+                        pt.coords_3d = cv::Point3f(
+                            m_case_side_length*float(x),
+                            0.0,
+                            m_case_side_length*float(-y) );
+                    }
+
+                    count++;
+                }
+            }
+
+            samples.create( count, 5, CV_32F );
+
+            for(SamplePoint& pt : m_points)
+            {
+                if( pt.has_coords_3d )
+                {
+                    count--;
+
+                    if( count < 0 ) throw std::logic_error("internal error");
+
+                    samples.at<float>(count, 0) = pt.keypoint.pt.x;
+                    samples.at<float>(count, 1) = pt.keypoint.pt.y;
+                    samples.at<float>(count, 2) = pt.coords_3d.x;
+                    samples.at<float>(count, 3) = pt.coords_3d.y;
+                    samples.at<float>(count, 4) = pt.coords_3d.z;
+                }
+            }
+
+            ret = true;
+        }
+
+        return ret;
+    }
+
+    bool Detector::store_results_one_plane(cv::Mat& samples)
+    {
+        if( m_biggest_connected_component >= 0 )
+        {
+            int count = m_connected_components[m_biggest_connected_component].size;
+
+            samples.create(count, 5, CV_32F);
+
+            for(SamplePoint& pt : m_points)
+            {
+                if( pt.connected_component == m_biggest_connected_component )
+                {
+                    count--;
+
+                    if(count < 0) throw std::logic_error("internal error");
+
+                    pt.has_coords_3d = true;
+
+                    pt.coords_3d = cv::Point3f(
+                        m_case_side_length*float(pt.coords2d[0]),
+                        m_case_side_length*float(pt.coords2d[1]),
+                        0.0 );
+
+                    samples.at<float>(count, 0) = pt.keypoint.pt.x;
+                    samples.at<float>(count, 1) = pt.keypoint.pt.x;
+                    samples.at<float>(count, 2) = pt.coords_3d.x;
+                    samples.at<float>(count, 3) = pt.coords_3d.y;
+                    samples.at<float>(count, 4) = pt.coords_3d.z;
+                }
+            }
+
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 }
