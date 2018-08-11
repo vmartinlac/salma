@@ -180,29 +180,33 @@ namespace target {
     {
         if( m_thresh.type() != CV_8U) throw std::runtime_error("bad type of image");
 
-        //const float radius = 15.0;
         const float radius = float(m_image->cols)*20.0/2560.0;
 
-        const float dalpha = 1.5 / radius;
+        const float margin = 5.0;
 
-        int symm = 0;
-        int antisymm = 0;
-        int white = 0;
-        int black = 0;
+        const bool inside =
+            0.0 < kp.pt.x - radius - margin &&
+            kp.pt.x + radius + margin < float(m_thresh.cols-1) &&
+            0.0 < kp.pt.y - radius - margin &&
+            kp.pt.y + radius + margin < float(m_thresh.rows-1);
 
-        bool inside = true;
-        const cv::Rect viewport( cv::Point2i(0,0), m_thresh.size() );
-
-        for(float alpha = 0.0; inside && alpha<M_PI; alpha += dalpha)
+        if( inside )
         {
-            const float dx = radius*cos(alpha);
-            const float dy = radius*sin(alpha);
+            const float dalpha = 1.5 / radius;
 
-            const cv::Point P1( kp.pt.x + dx, kp.pt.y + dy );
-            const cv::Point P2( kp.pt.x - dx, kp.pt.y - dy );
+            int symm = 0;
+            int antisymm = 0;
+            int white = 0;
+            int black = 0;
 
-            if( viewport.contains(P1) && viewport.contains(P2) )
+            for(float alpha = 0.0; alpha<M_PI; alpha += dalpha)
             {
+                const float dx = radius*cosf(alpha);
+                const float dy = radius*sinf(alpha);
+
+                const cv::Point P1( kp.pt.x + dx, kp.pt.y + dy );
+                const cv::Point P2( kp.pt.x - dx, kp.pt.y - dy );
+
                 const uint8_t val1 = m_thresh.at<uint8_t>(P1);
                 const uint8_t val2 = m_thresh.at<uint8_t>(P2);
 
@@ -218,19 +222,13 @@ namespace target {
                 if( val1 ) white++; else black++;
                 if( val2 ) white++; else black++;
             }
-            else
-            {
-                inside = false;
-            }
-        }
 
-        if( inside )
-        {
             const float ratio1 = float(symm) / float(antisymm + symm);
             const float ratio2 = float(white) / float(white + black);
 
             const float alpha = 0.35;
             const float beta = 0.7;
+
             return ( ratio1 > beta && 0.5-alpha < ratio2 && ratio2 < 0.5+alpha );
         }
         else

@@ -104,7 +104,8 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
             translation.at<float>(1, 0),
             translation.at<float>(2, 0);
 
-        Eigen::Vector3d rodrigues <<
+        Eigen::Vector3d rodrigues;
+        rodrigues <<
             rodrigues_rotation.at<float>(0, 0),
             rodrigues_rotation.at<float>(1, 0),
             rodrigues_rotation.at<float>(2, 0);
@@ -113,7 +114,7 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
         const double cos_half_theta = cos(0.5*norm);
         const double sin_half_theta = sin(0.5*norm);
 
-        m_camera_state.rotation << 
+        m_camera_state.rotation.coeffs() << 
             rodrigues(0)*sin_half_theta/norm,
             rodrigues(1)*sin_half_theta/norm,
             rodrigues(2)*sin_half_theta/norm,
@@ -121,11 +122,51 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
 
         // create first landmarks.
 
-        // TODO
+        // TODO : beforehand, check that we have enough landmarks far enough from the borders of the image so that they have a patch.
+
+        m_landmarks.clear();
+
+        for(int i=0; i<samples.rows; i++)
+        {
+            Landmark lm;
+
+            lm.position <<
+                samples.at<float>(i, 2),
+                samples.at<float>(i, 3),
+                samples.at<float>(i, 4);
+
+            const bool ret = extractPatch(
+                image.refFrame(),
+                samples.at<float>(i, 0),
+                samples.at<float>(i, 1),
+                lm.patch);
+
+            if(ret)
+            {
+                m_landmarks.emplace_back(std::move(lm));
+            }
+        }
 
         // set mode to SLAM.
 
-        m_mode = MODE_SLAM;
+        if( m_landmarks.size() >= 8 )
+        {
+            const double sigma = 0.15*m_parameters.target_unit_length; // TODO: to clarify.
+
+            m_state_covariance.resize(
+                m_landmarks.size(),
+                m_landmarks.size() );
+
+            m_state_covariance.setZero();
+            m_state_covariance.diagonal().fill(sigma*sigma);
+
+            m_mode = MODE_SLAM;
+            std::cout << "Initialized ! Switching to SLAM mode." << std::endl;
+        }
+        else
+        {
+            m_landmarks.clear();
+        }
     }
 }
 
@@ -135,6 +176,18 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
 
 void DefaultSLAMEngine::processImageLost(Image& image)
 {
+}
+
+bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch)
+{
+    const int radius = m_parameters.patch_size/2;
+
+    const int X = (int) cvRound(x);
+    const int Y = (int) cvRound(y);
+
+    // TODO !
+
+    return false;
 }
 
 SLAMEngine* SLAMEngine::create(Camera* camera)
