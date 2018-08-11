@@ -6,32 +6,18 @@
 
 // VimbaCamera
 
-void VMB_CALL VimbaCamera::frame_callback(
-    const VmbHandle_t handle,
-    VmbFrame_t* frame)
+void VMB_CALL VimbaCamera::frame_callback( const VmbHandle_t handle, VmbFrame_t* frame )
 {
-    VimbaCamera* camera = static_cast<VimbaCamera*>(frame->context[0]);
-
     if( VmbFrameStatusComplete == frame->receiveStatus )
     {
-        Image* new_image = new Image();
-
-        new_image->setTimestamp(frame->timestamp);
-
-        cv::Mat& frame = new_image->frame();
-        
-        frame.create(640, 480, CV_32FC3);
-        frame = cv::Scalar(0.0f, 0.0f, 0.0f);
-
-        // TODO : fill the frame.
+        VimbaCamera* camera = static_cast<VimbaCamera*>(frame->context[0]);
 
         camera->m_mutex.lock();
 
-        if( camera->m_newest_image != nullptr )
-        {
-            delete camera->m_newest_image;
-        }
-        camera->m_newest_image = new_image;
+        camera->m_newest_image.setValid(true);
+        camera->m_newest_image.setTimestamp(frame->timestamp);
+        camera->m_newest_image.refFrame().create( cv::Size( frame->width, frame->height ), CV_8UC3 );
+        camera->m_newest_image.refFrame() = cv::Scalar(0.0f, 0.0f, 0.0f); // TODO : fill the frame.
 
         camera->m_mutex.unlock();
     }
@@ -52,14 +38,13 @@ VimbaCamera::VimbaCamera(int id, const VmbCameraInfo_t& infos) : Camera(id)
     m_camera_permitted_access = infos.permittedAccess;
     m_interface_id = infos.interfaceIdString;
     m_is_open = false;
-    m_newest_image = nullptr;
 }
 
 VimbaCamera::~VimbaCamera()
 {
     if( m_is_open )
     {
-        stop();
+        close();
     }
 }
 
@@ -68,7 +53,7 @@ std::string VimbaCamera::getHumanName()
     return m_camera_name;
 }
 
-bool VimbaCamera::start()
+bool VimbaCamera::open()
 {
     VmbError_t err = VmbErrorSuccess;
     VmbInt64_t payload_size = 0;
@@ -137,7 +122,7 @@ bool VimbaCamera::start()
         }
     }
 
-    // for the time being, we make sure that an error will be remarked.
+    // for the time being, we make sure that an error will be remarked. TODO
 
     if(ok == false)
     {
@@ -147,7 +132,7 @@ bool VimbaCamera::start()
     return ok;
 }
 
-void VimbaCamera::stop()
+void VimbaCamera::close()
 {
     if( m_is_open )
     {
@@ -170,30 +155,26 @@ void VimbaCamera::stop()
 
         m_frames.clear();
 
-        if( m_newest_image != nullptr )
-        {
-            delete m_newest_image;
-        }
-
         m_is_open = false;
     }
 }
 
-Image* VimbaCamera::readImage()
+bool VimbaCamera::read(Image& image)
 {
-    Image* ret = nullptr;
-
     if( m_is_open )
     {
         m_mutex.lock();
 
-        ret = m_newest_image;
-        m_newest_image = nullptr;
+        image = std::move(m_newest_image);
 
         m_mutex.unlock();
-    }
 
-    return ret;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // CameraManager
@@ -260,7 +241,14 @@ void VimbaCameraManager::finalize()
 
 Camera* VimbaCameraManager::getDefaultCamera()
 {
-    return m_cameras[0];
+    if( m_cameras.empty() )
+    {
+        return nullptr;
+    }
+    else
+    {
+        return m_cameras.front();
+    }
 }
 
 int VimbaCameraManager::getNumCameras()

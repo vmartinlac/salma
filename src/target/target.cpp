@@ -8,13 +8,14 @@
 #include <opencv2/imgcodecs.hpp>
 #include <nanoflann.hpp>
 #include "target.h"
-#include "utils.h"
 
 #define TARGET_DETECTOR_DEBUG
 
 namespace target {
 
-    Detector::Detector() : m_kpl_adapter(&m_points) { }
+    Detector::Detector() : m_kpl_adapter(&m_points)
+    {
+    }
 
     bool Detector::run( const cv::Mat& image, KindOfTarget target, float case_side_length, cv::Mat& samples )
     {
@@ -978,7 +979,7 @@ namespace target {
                         0.0 );
 
                     samples.at<float>(count, 0) = pt.keypoint.pt.x;
-                    samples.at<float>(count, 1) = pt.keypoint.pt.x;
+                    samples.at<float>(count, 1) = pt.keypoint.pt.y;
                     samples.at<float>(count, 2) = pt.coords_3d.x;
                     samples.at<float>(count, 3) = pt.coords_3d.y;
                     samples.at<float>(count, 4) = pt.coords_3d.z;

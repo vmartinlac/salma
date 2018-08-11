@@ -14,7 +14,7 @@ OpenCVCamera::OpenCVCamera(int id) : Camera(id)
 
 OpenCVCamera::~OpenCVCamera()
 {
-    stop();
+    close();
 }
 
 std::string OpenCVCamera::getHumanName()
@@ -22,7 +22,7 @@ std::string OpenCVCamera::getHumanName()
     return "OpenCV camera " + std::to_string(getId());
 }
 
-bool OpenCVCamera::start()
+bool OpenCVCamera::open()
 {
     if( m_video.isOpened() )
     {
@@ -36,7 +36,7 @@ bool OpenCVCamera::start()
     }
 }
 
-void OpenCVCamera::stop()
+void OpenCVCamera::close()
 {
     if( m_video.isOpened() )
     {
@@ -44,23 +44,22 @@ void OpenCVCamera::stop()
     }
 }
 
-Image* OpenCVCamera::readImage()
+bool OpenCVCamera::read(Image& image)
 {
-    Image* ret = new Image();
-
     m_video.grab();
-    m_video >> ret->frame();
+    m_video >> image.refFrame();
 
     const auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - m_t0 ).count();
-    ret->setTimestamp( elapsed_time );
+    image.setTimestamp( elapsed_time );
+    image.setValid(true);
 
-    return ret;
+    return true;
 }
 
 
 bool OpenCVCameraManager::initialize()
 {
-    ;
+    return true;
 }
 
 void OpenCVCameraManager::finalize()

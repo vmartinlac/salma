@@ -16,11 +16,11 @@ public:
 
     std::string getHumanName() override;
 
-    bool start() override;
+    bool open() override;
 
-    void stop() override;
+    void close() override;
 
-    Image* readImage() override;
+    bool read(Image& image) override;
 
 protected:
 

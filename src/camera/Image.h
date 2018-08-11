@@ -7,22 +7,52 @@ class Image
 
 public:
 
-    int width();
+    Image();
+    Image(const Image& o) = default;
+    Image(Image&& o);
 
-    int height();
+    Image& operator=(const Image& o) = default;
+    void operator=(Image&& o);
+
+    bool isValid() { return m_valid; }
+    void setValid(bool v) { m_valid = v; }
 
     double timestamp();
-
     void setTimestamp(double t);
 
-    cv::Mat& frame();
+    int width();
+    int height();
+
+    cv::Mat& refFrame();
 
 protected:
 
-    cv::Mat m_mat;
-
+    bool m_valid;
     double m_timestamp;
+    cv::Mat m_mat;
 };
+
+inline Image::Image(Image&& o)
+{
+    operator=(std::move(o));
+}
+
+inline void Image::operator=(Image&& o)
+{
+    m_valid = o.m_valid;
+    m_timestamp = o.m_timestamp;
+    m_mat = std::move(o.m_mat);
+
+    o.m_valid = false;
+    o.m_timestamp = 0;
+    o.m_mat.release();
+}
+
+inline Image::Image()
+{
+    m_valid = false;
+    m_timestamp = 0;
+}
 
 inline void Image::setTimestamp(double t)
 {
@@ -39,7 +69,7 @@ inline int Image::height()
     return m_mat.rows;
 }
 
-inline cv::Mat& Image::frame() 
+inline cv::Mat& Image::refFrame() 
 {
     return m_mat;
 }

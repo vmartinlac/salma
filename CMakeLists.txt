@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-find_package(Qt5 COMPONENTS OpenGL Core Widgets Gui PrintSupport Test Multimedia REQUIRED)
+find_package(Qt5 COMPONENTS OpenGL Core Widgets Gui PrintSupport Test REQUIRED)
 find_package(Vimba REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)

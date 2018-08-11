@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Camera.h"
 #include <VimbaC/Include/VimbaC.h>
 #include <string>
 #include <mutex>
 #include <vector>
+#include "Camera.h"
+#include "Image.h"
 
 // VimbaCamera
 
@@ -18,11 +19,11 @@ public:
 
     std::string getHumanName() override;
 
-    bool start() override;
+    bool open() override;
 
-    void stop() override;
+    void close() override;
 
-    Image* readImage() override;
+    bool read(Image& image) override;
 
 protected:
 
@@ -41,7 +42,7 @@ protected:
     VmbHandle_t m_handle;
     std::vector<VmbFrame_t> m_frames;
     std::mutex m_mutex;
-    Image* m_newest_image;
+    Image m_newest_image;
 };
 
 // CameraManager

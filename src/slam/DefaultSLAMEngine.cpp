@@ -1,79 +1,144 @@
-#include <opencv2/imgproc.hpp>
-#include <opencv2/video.hpp>
-#include <opencv2/features2d.hpp>
+#include <opencv2/calib3d.hpp>
 #include "DefaultSLAMEngine.h"
-#include "Image.h"
+#include "target.h"
 
-SLAMEngine* SLAMEngine::createDefaultSLAMEngine()
+DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera) :
+    m_camera(camera)
 {
-    return new DefaultSLAMEngine();
 }
 
-void DefaultSLAMEngine::initialize()
+void DefaultSLAMEngine::retrieveParameters()
 {
-    m_prev_pose.create(4, 4, CV_32FC1);
-    //m_prev_pose
+    throw; // TODO
+    //m_parameters.calibration_matrix.setZero(); // TODO
+    //m_parameters.distortion_coefficients.setZero(); // TODO
+    m_parameters.patch_size = 11;
+    m_parameters.target_unit_length = 1.0;
+    m_parameters.num_depth_hypotheses = 100;
+}
 
-    if( m_prev_image != nullptr )
+void DefaultSLAMEngine::run()
+{
+    m_mode = MODE_INITIALIZATION;
+
+    retrieveParameters();
+
+    if( m_camera == nullptr ) throw std::runtime_error("Internal error");
+
+    m_camera_state.translation.setZero();
+    m_camera_state.rotation.setIdentity();
+    m_landmarks.clear();
+    m_state_covariance.resize(0, 0);
+    m_candidate_landmarks.clear();
+
+    m_camera->open();
+
+    while( isInterruptionRequested() == false )
     {
-        delete m_prev_image;
+        Image image;
+        m_camera->read(image);
+
+        if(image.isValid())
+        {
+            switch(m_mode)
+            {
+            case MODE_INITIALIZATION:
+                processImageInitializing(image);
+                break;
+            case MODE_SLAM:
+                processImageSLAM(image);
+                break;
+            case MODE_LOST:
+            default:
+                processImageLost(image);
+                break;
+            }
+        }
+        else
+        {
+            QThread::yieldCurrentThread();
+        }
     }
-    m_prev_image = nullptr;
+
+    m_camera->close();
 }
 
-void DefaultSLAMEngine::processNextView(Image* image)
+void DefaultSLAMEngine::processImageInitializing(Image& image)
 {
-    /*
-    cv::Ptr<cv::Feature2D> detector = cv::GFTTDetector::create(600, 0.01, 10);
+    bool ok;
+    target::Detector d;
+    cv::Mat samples;
+    cv::Mat rodrigues_rotation;
+    cv::Mat translation;
 
-    std::vector<cv::KeyPoint> key_points;
-    detector->detect(greylevel, key_points);
+    ok = d.run(
+        image.refFrame(),
+        target::Detector::ONE_PLANE,
+        m_parameters.target_unit_length,
+        samples);
 
-    cv::Ptr<cv::Feature2D> descriptor = cv::xfeatures2d::BriefDescriptorExtractor::create();
-    */
-
-    // convert both previous and current image to greylevel.
-    // (we could save the greylevel to avoid recomputation).
-
-    cv::Mat prev_greylevel;
-    cv::cvtColor(m_prev_image->frame(), prev_greylevel, cv::COLOR_RGB2GRAY);
-
-    cv::Mat curr_greylevel;
-    cv::cvtColor(image->frame(), curr_greylevel, cv::COLOR_RGB2GRAY);
-
-    // compute GFTT.
-
-    cv::Mat prev_corners;
-    cv::goodFeaturesToTrack(prev_greylevel, prev_corners, 500, 0.01, 20);
-    cv::cornerSubPix(prev_greylevel, prev_corners, cv::Size(8, 8), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::MAX_ITER, 100, 1.0e-5));
-
-    // compute sparse optical flow.
-
-    cv::Mat curr_corners;
-    cv::Mat lkstatus;
-    cv::Mat lkerr;
-    cv::calcOpticalFlowPyrLK(prev_greylevel, curr_greylevel, prev_corners, curr_corners, lkstatus, lkerr);
-
-    // compute ego-motion.
-
-    // TODO
-}
-
-DefaultSLAMEngine::DefaultSLAMEngine()
-{
-    m_prev_image = nullptr;
-    m_prev_pose.create(4, 4, CV_32FC1);
-}
-
-DefaultSLAMEngine::~DefaultSLAMEngine()
-{
-    if( m_prev_image != nullptr )
+    if( ok )
     {
-        delete m_prev_image;
+        ok = ( samples.rows >= 4*4 && samples.cols == 5 );
+    }
+
+    if( ok )
+    {
+        ok = cv::solvePnP(
+            samples( cv::Range::all(), cv::Range(2, 5) ),
+            samples( cv::Range::all(), cv::Range(0, 2) ),
+            m_parameters.calibration_matrix,
+            m_parameters.distortion_coefficients,
+            rodrigues_rotation,
+            translation,
+            false,
+            cv::SOLVEPNP_ITERATIVE );
+    }
+
+    if( ok )
+    {
+        // copy camera pose data.
+
+        m_camera_state.translation <<
+            translation.at<float>(0, 0),
+            translation.at<float>(1, 0),
+            translation.at<float>(2, 0);
+
+        Eigen::Vector3d rodrigues <<
+            rodrigues_rotation.at<float>(0, 0),
+            rodrigues_rotation.at<float>(1, 0),
+            rodrigues_rotation.at<float>(2, 0);
+
+        const double norm = rodrigues.norm();
+        const double cos_half_theta = cos(0.5*norm);
+        const double sin_half_theta = sin(0.5*norm);
+
+        m_camera_state.rotation << 
+            rodrigues(0)*sin_half_theta/norm,
+            rodrigues(1)*sin_half_theta/norm,
+            rodrigues(2)*sin_half_theta/norm,
+            cos_half_theta ;
+
+        // create first landmarks.
+
+        // TODO
+
+        // set mode to SLAM.
+
+        m_mode = MODE_SLAM;
     }
 }
 
-std::string DefaultSLAMEngine::name()
+void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
-    return "SLAM engine";
 }
+
+void DefaultSLAMEngine::processImageLost(Image& image)
+{
+}
+
+SLAMEngine* SLAMEngine::create(Camera* camera)
+{
+    return new DefaultSLAMEngine(camera);
+}
+
