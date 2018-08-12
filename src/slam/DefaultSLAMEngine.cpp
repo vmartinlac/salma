@@ -1,3 +1,4 @@
+#include <iostream>
 #include <opencv2/calib3d.hpp>
 #include "DefaultSLAMEngine.h"
 #include "target.h"
@@ -154,11 +155,11 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
             const double sigma = 0.15*m_parameters.target_unit_length; // TODO: to clarify.
 
             m_state_covariance.resize(
-                m_landmarks.size(),
-                m_landmarks.size() );
+                12 + m_landmarks.size(),
+                12 + m_landmarks.size() );
 
             m_state_covariance.setZero();
-            m_state_covariance.diagonal().fill(sigma*sigma);
+            m_state_covariance.diagonal().fill(sigma*sigma); // TODO
 
             m_mode = MODE_SLAM;
             std::cout << "Initialized ! Switching to SLAM mode." << std::endl;
@@ -172,6 +173,7 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
 
 void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
+    ;
 }
 
 void DefaultSLAMEngine::processImageLost(Image& image)
@@ -185,9 +187,15 @@ bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float x, float y, cv::Mat& 
     const int X = (int) cvRound(x);
     const int Y = (int) cvRound(y);
 
-    // TODO !
-
-    return false;
+    if( 0 < X-radius && X+radius < image.cols && 0 < Y-radius && Y+radius < image.rows)
+    {
+        patch = image(cv::Range(Y-radius, Y+radius+1), cv::Range(X-radius, X+radius+1));
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 SLAMEngine* SLAMEngine::create(Camera* camera)

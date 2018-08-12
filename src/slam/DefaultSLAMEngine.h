@@ -28,7 +28,8 @@ protected:
     {
         Eigen::Vector3d translation;
         Eigen::Quaterniond rotation;
-
+        Eigen::Vector3d linear_momentum;
+        Eigen::Vector3d angular_momentum;
     };
 
     struct Parameters
