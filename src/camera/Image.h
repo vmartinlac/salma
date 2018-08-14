@@ -17,7 +17,7 @@ public:
     bool isValid() { return m_valid; }
     void setValid(bool v) { m_valid = v; }
 
-    double timestamp();
+    double getTimestamp();
     void setTimestamp(double t);
 
     int width();
@@ -74,7 +74,7 @@ inline cv::Mat& Image::refFrame()
     return m_mat;
 }
 
-inline double Image::timestamp()
+inline double Image::getTimestamp()
 {
     return m_timestamp;
 }

@@ -1,5 +1,5 @@
-#include <iostream>
 #include <opencv2/calib3d.hpp>
+#include <QDebug>
 #include "DefaultSLAMEngine.h"
 #include "target.h"
 
@@ -20,17 +20,18 @@ void DefaultSLAMEngine::retrieveParameters()
 
 void DefaultSLAMEngine::run()
 {
-    m_mode = MODE_INITIALIZATION;
+    m_mode = MODE_INIT;
 
     retrieveParameters();
 
     if( m_camera == nullptr ) throw std::runtime_error("Internal error");
 
-    m_camera_state.translation.setZero();
-    m_camera_state.rotation.setIdentity();
+    m_camera_state.position.setZero();
+    m_camera_state.attitude.setIdentity();
     m_landmarks.clear();
     m_state_covariance.resize(0, 0);
     m_candidate_landmarks.clear();
+    m_time_last_frame = 0.0;
 
     m_camera->open();
 
@@ -43,17 +44,19 @@ void DefaultSLAMEngine::run()
         {
             switch(m_mode)
             {
-            case MODE_INITIALIZATION:
-                processImageInitializing(image);
+            case MODE_INIT:
+                processImageInit(image);
                 break;
             case MODE_SLAM:
                 processImageSLAM(image);
                 break;
-            case MODE_LOST:
+            case MODE_DEAD:
             default:
-                processImageLost(image);
+                processImageDead(image);
                 break;
             }
+
+            m_time_last_frame = image.getTimestamp();
         }
         else
         {
@@ -64,7 +67,7 @@ void DefaultSLAMEngine::run()
     m_camera->close();
 }
 
-void DefaultSLAMEngine::processImageInitializing(Image& image)
+void DefaultSLAMEngine::processImageInit(Image& image)
 {
     bool ok;
     target::Detector d;
@@ -100,7 +103,7 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
     {
         // copy camera pose data.
 
-        m_camera_state.translation <<
+        m_camera_state.position <<
             translation.at<float>(0, 0),
             translation.at<float>(1, 0),
             translation.at<float>(2, 0);
@@ -115,7 +118,7 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
         const double cos_half_theta = cos(0.5*norm);
         const double sin_half_theta = sin(0.5*norm);
 
-        m_camera_state.rotation.coeffs() << 
+        m_camera_state.attitude.coeffs() << 
             rodrigues(0)*sin_half_theta/norm,
             rodrigues(1)*sin_half_theta/norm,
             rodrigues(2)*sin_half_theta/norm,
@@ -162,7 +165,8 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
             m_state_covariance.diagonal().fill(sigma*sigma); // TODO
 
             m_mode = MODE_SLAM;
-            std::cout << "Initialized ! Switching to SLAM mode." << std::endl;
+            qInfo() << "Successful initialization.";
+            qInfo() << "Switching to SLAM mode.";
         }
         else
         {
@@ -173,10 +177,71 @@ void DefaultSLAMEngine::processImageInitializing(Image& image)
 
 void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
-    ;
+    const double dt = image.getTimestamp() - m_time_last_frame;
+    const int num_landmarks = m_landmarks.size();
+    const int dim = 13 + 3*num_landmarks;
+
+    // prediction.
+
+    Eigen::VectorXd pred_mu;
+    Eigen::MatrixXd pred_sigma;
+
+    {
+        Eigen::Quaterniond omega;
+        omega.w() = 0.0;
+        omega.vec() = m_camera_state.angular_velocity;
+
+        Eigen::Quaterniond pred_attitude;
+        pred_attitude = m_camera_state.attitude.coeffs() + 0.5*dt* ( omega*m_camera_state.attitude ).coeffs();
+        pred_attitude.normalize();
+
+        pred_mu.resize(dim);
+
+        pred_mu.segment<3>(0) = m_camera_state.position + dt*m_camera_state.linear_velocity;
+        pred_mu.segment<4>(3) = pred_attitude.coeffs();
+        pred_mu.segment<3>(7) = m_camera_state.linear_velocity;
+        pred_mu.segment<3>(10) = m_camera_state.angular_velocity;
+
+        for(int i=0; i<num_landmarks; i++)
+        {
+            pred_mu.segment<3>(13+3*i) = m_landmarks[i].position;
+        }
+    }
+
+    {
+        Eigen::VectorXi reservation(dim);
+        reservation.fill(1.0);
+        reservation.head<7>() << 2, 2, 2, 7, 7, 7, 7;
+
+        // J est la jacobienne de la fonction de transition vers le nouvel état.
+        Eigen::SparseMatrix<double> J(dim, dim);
+        J.reserve(reservation);
+
+        J.insert(0,0) = 1.0;
+        J.insert(0,7) = dt;
+        J.insert(1,1) = 1.0;
+        J.insert(1,8) = dt;
+        J.insert(2,2) = 1.0;
+        J.insert(2,9) = dt;
+
+        // TODO: finir de remplir J.
+
+        J.makeCompressed();
+
+        // Q est la matrice de covariance du bruit sur la prédiction du nouvel état.
+        Eigen::SparseMatrix<double> Q(dim, dim);
+
+        // TODO: fill matrix Q.
+
+        Q.makeCompressed();
+
+        pred_sigma = J * m_state_covariance * J.transpose() + Q;
+    }
+
+    // Compute observations.
 }
 
-void DefaultSLAMEngine::processImageLost(Image& image)
+void DefaultSLAMEngine::processImageDead(Image& image)
 {
 }
 
@@ -187,15 +252,18 @@ bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float x, float y, cv::Mat& 
     const int X = (int) cvRound(x);
     const int Y = (int) cvRound(y);
 
-    if( 0 < X-radius && X+radius < image.cols && 0 < Y-radius && Y+radius < image.rows)
+    bool ret = false;
+
+    if( 0 <= X-radius && X+radius < image.cols && 0 <= Y-radius && Y+radius < image.rows)
     {
-        patch = image(cv::Range(Y-radius, Y+radius+1), cv::Range(X-radius, X+radius+1));
-        return true;
+        patch = image(
+            cv::Range(Y-radius, Y+radius+1),
+            cv::Range(X-radius, X+radius+1) );
+
+        ret = true;
     }
-    else
-    {
-        return false;
-    }
+
+    return ret;
 }
 
 SLAMEngine* SLAMEngine::create(Camera* camera)

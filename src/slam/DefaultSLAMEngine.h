@@ -19,17 +19,17 @@ protected:
 
     enum Mode
     {
-        MODE_INITIALIZATION,
+        MODE_INIT,
         MODE_SLAM,
-        MODE_LOST
+        MODE_DEAD
     };
 
     struct CameraState
     {
-        Eigen::Vector3d translation;
-        Eigen::Quaterniond rotation;
-        Eigen::Vector3d linear_momentum;
-        Eigen::Vector3d angular_momentum;
+        Eigen::Vector3d position;
+        Eigen::Quaterniond attitude;
+        Eigen::Vector3d linear_velocity;
+        Eigen::Vector3d angular_velocity;
     };
 
     struct Parameters
@@ -59,9 +59,9 @@ protected:
 
     bool extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch);
     void retrieveParameters();
-    void processImageInitializing(Image& image);
+    void processImageInit(Image& image);
     void processImageSLAM(Image& image);
-    void processImageLost(Image& image);
+    void processImageDead(Image& image);
 
 protected:
 
@@ -69,6 +69,7 @@ protected:
     Parameters m_parameters;
     Camera* m_camera;
     CameraState m_camera_state;
+    double m_time_last_frame;
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;
     std::vector<CandidateLandmark> m_candidate_landmarks;
