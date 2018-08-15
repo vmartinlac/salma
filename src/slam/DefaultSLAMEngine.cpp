@@ -67,6 +67,7 @@ void DefaultSLAMEngine::run()
     m_state_covariance.resize(0, 0);
     m_candidate_landmarks.clear();
     m_time_last_frame = 0.0;
+    bool first = true;
 
     m_camera->open();
 
@@ -77,18 +78,27 @@ void DefaultSLAMEngine::run()
 
         if(image.isValid())
         {
-            switch(m_mode)
+            if( first )
             {
-            case MODE_INIT:
-                processImageInit(image);
-                break;
-            case MODE_SLAM:
-                processImageSLAM(image);
-                break;
-            case MODE_DEAD:
-            default:
-                processImageDead(image);
-                break;
+                const int margin = m_parameters.patch_size/2;
+                m_viewport = cv::Rect( cv::Point2f( margin, margin), cv::Size( image.width()-2*margin, image.height()-2*margin ) );
+                first = false;
+            }
+            else
+            {
+                switch(m_mode)
+                {
+                case MODE_INIT:
+                    processImageInit(image);
+                    break;
+                case MODE_SLAM:
+                    processImageSLAM(image);
+                    break;
+                case MODE_DEAD:
+                default:
+                    processImageDead(image);
+                    break;
+                }
             }
 
             m_time_last_frame = image.getTimestamp();
@@ -180,6 +190,8 @@ void DefaultSLAMEngine::processImageInit(Image& image)
                 samples.at<float>(i, 1),
                 lm.patch);
 
+            lm.num_detection_failures = 0;
+
             if(ret)
             {
                 m_landmarks.emplace_back(std::move(lm));
@@ -212,216 +224,446 @@ void DefaultSLAMEngine::processImageInit(Image& image)
 
 void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
-    // BEGIN TMP
-    /*
-    {
-        std::cout << "state:" << std::endl;
-        std::cout << m_camera_state.position.transpose() << std::endl;
-        std::cout << m_camera_state.attitude.coeffs().transpose() << std::endl;
-        std::cout << m_camera_state.linear_velocity.transpose() << std::endl;
-        std::cout << m_camera_state.angular_velocity.transpose() << std::endl;
-        std::cout << m_state_covariance << std::endl;
-        std::cout << std::endl;
-    }
-    */
-    // END TMP
+    Eigen::VectorXd state_mu;
+    Eigen::MatrixXd state_sigma;
 
     const double dt = image.getTimestamp() - m_time_last_frame;
+
+    EKFPredict(dt, state_mu, state_sigma);
+    EKFUpdate(image, state_mu, state_sigma);
+    saveState(state_mu, state_sigma);
+}
+
+void DefaultSLAMEngine::EKFPredict(double dt, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+{
+    // retrieve constants and current state.
+
     const int num_landmarks = m_landmarks.size();
     const int dim = 13 + 3*num_landmarks;
 
-    // prediction.
+    const double x1 = m_camera_state.position.x();
+    const double x2 = m_camera_state.position.y();
+    const double x3 = m_camera_state.position.z();
 
-    Eigen::VectorXd pred_mu;
-    Eigen::MatrixXd pred_sigma;
+    const double a0 = m_camera_state.attitude.w();
+    const double a1 = m_camera_state.attitude.x();
+    const double a2 = m_camera_state.attitude.y();
+    const double a3 = m_camera_state.attitude.z();
 
+    const double v1 = m_camera_state.linear_velocity.x();
+    const double v2 = m_camera_state.linear_velocity.y();
+    const double v3 = m_camera_state.linear_velocity.z();
+
+    double w1 = m_camera_state.angular_velocity.x();
+    double w2 = m_camera_state.angular_velocity.y();
+    double w3 = m_camera_state.angular_velocity.z();
+
+    double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
+    double axis1;
+    double axis2;
+    double axis3;
+    const double theta = 0.5*norm_w*dt;
+    const double cos_theta = std::cos(theta);
+    const double sin_theta = std::sin(theta);
+    double sin_theta_over_norm_w;
+
+    if( norm_w < 1.0e-10 )
     {
-        const double x1 = m_camera_state.position.x();
-        const double x2 = m_camera_state.position.y();
-        const double x3 = m_camera_state.position.z();
+        norm_w = 0.0;
+        axis1 = 1.0;
+        axis2 = 0.0;
+        axis3 = 0.0;
+        sin_theta_over_norm_w = 0.0;
+    }
+    else
+    {
+        axis1 = w1/norm_w;
+        axis2 = w2/norm_w;
+        axis3 = w3/norm_w;
+        sin_theta_over_norm_w = sin_theta / norm_w;
+    }
 
-        const double a0 = m_camera_state.attitude.w();
-        const double a1 = m_camera_state.attitude.x();
-        const double a2 = m_camera_state.attitude.y();
-        const double a3 = m_camera_state.attitude.z();
+    const double r0 = cos_theta;
+    const double r1 = sin_theta * axis1;
+    const double r2 = sin_theta * axis2;
+    const double r3 = sin_theta * axis3;
 
-        const double v1 = m_camera_state.linear_velocity.x();
-        const double v2 = m_camera_state.linear_velocity.y();
-        const double v3 = m_camera_state.linear_velocity.z();
+    // fills pred_mu vector.
 
-        double w1 = m_camera_state.angular_velocity.x();
-        double w2 = m_camera_state.angular_velocity.y();
-        double w3 = m_camera_state.angular_velocity.z();
+    pred_mu.resize(dim);
 
-        double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
-        double axis1;
-        double axis2;
-        double axis3;
-        const double theta = 0.5*norm_w*dt;
-        const double cos_theta = std::cos(theta);
-        const double sin_theta = std::sin(theta);
-        double sin_theta_over_norm_w;
+    pred_mu.head<13>() <<
+        x1 + dt*v1,
+        x2 + dt*v2,
+        x3 + dt*v3,
+        a0*r0 - a1*r1 - a2*r2 - a3*r3,
+        a0*r1 + r0*a1 + (a2*r3 - a3*r2),
+        a0*r2 + r0*a2 + (a3*r1 - a1*r3),
+        a0*r3 + r0*a3 + (a1*r2 - a2*r1),
+        v1,
+        v2,
+        v3,
+        w1,
+        w2,
+        w3;
 
-        if( norm_w < 1.0e-10 )
+    for(int i=0; i<num_landmarks; i++)
+    {
+        pred_mu.segment<3>(13+3*i) = m_landmarks[i].position;
+    }
+
+    // J is the jacobian of the function which gives new state from current state.
+
+    Eigen::SparseMatrix<double> J(dim, dim);
+    J.reserve(40 + 3*num_landmarks);
+
+    // position.
+
+    J.insert(0,0) = 1.0;
+    J.insert(0,7) = dt;
+    J.insert(1,1) = 1.0;
+    J.insert(1,8) = dt;
+    J.insert(2,2) = 1.0;
+    J.insert(2,9) = dt;
+
+    // attitude.
+
+    // Generated automatically by python script system2.py.
+    // BEGIN
+    J.insert(3,3) = r0;
+    J.insert(3,4) = -r1;
+    J.insert(3,5) = -r2;
+    J.insert(3,6) = -r3;
+    J.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    J.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    J.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    J.insert(4,3) = r1;
+    J.insert(4,4) = r0;
+    J.insert(4,5) = r3;
+    J.insert(4,6) = -r2;
+    J.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    J.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    J.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    J.insert(5,3) = r2;
+    J.insert(5,4) = -r3;
+    J.insert(5,5) = r0;
+    J.insert(5,6) = r1;
+    J.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
+    J.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    J.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    J.insert(6,3) = r3;
+    J.insert(6,4) = r2;
+    J.insert(6,5) = -r1;
+    J.insert(6,6) = r0;
+    J.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
+    J.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
+    J.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
+    // END
+
+    // linear velocity.
+
+    J.insert(7, 7) = 1.0;
+    J.insert(8, 8) = 1.0;
+    J.insert(9, 9) = 1.0;
+
+    // angular velocity.
+
+    J.insert(10, 10) = 1.0;
+    J.insert(11, 11) = 1.0;
+    J.insert(12, 12) = 1.0;
+
+    for(int i=0; i<num_landmarks; i++)
+    {
+        J.insert(13+3*i+0, 13+3*i+0) = 1.0;
+        J.insert(13+3*i+1, 13+3*i+1) = 1.0;
+        J.insert(13+3*i+2, 13+3*i+2) = 1.0;
+    }
+
+    J.makeCompressed();
+
+    // TODO: setup these constants correctly.
+    const double sigma_v = 0.0; //dt*0.1;
+    const double sigma_w = 0.0;
+
+    Eigen::SparseMatrix<double> Q(dim, dim);
+    Q.reserve(6);
+    Q.insert(7,7) = sigma_v;
+    Q.insert(8,8) = sigma_v;
+    Q.insert(9,9) = sigma_v;
+    Q.insert(10,10) = sigma_w;
+    Q.insert(11,11) = sigma_w;
+    Q.insert(12,12) = sigma_w;
+
+    Q.makeCompressed();
+
+    pred_sigma = J * (m_state_covariance + Q) * J.transpose();
+}
+
+void DefaultSLAMEngine::EKFUpdate(Image& image, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+{
+    const int num_landmarks = m_landmarks.size();
+    const int dim = 13 + 3*num_landmarks;
+
+    std::vector<bool> found(num_landmarks);
+
+    Eigen::VectorXd residuals(2*num_landmarks);
+
+    Eigen::SparseMatrix<double> J(2*num_landmarks, dim);
+    J.reserve(20*num_landmarks);
+
+    int num_found = 0;
+
+    // retrieve of compute some constants.
+
+    const double x1 = pred_mu(0);
+    const double x2 = pred_mu(1);
+    const double x3 = pred_mu(2);
+
+    const double a0 = pred_mu(3);
+    const double a1 = pred_mu(4);
+    const double a2 = pred_mu(5);
+    const double a3 = pred_mu(6);
+
+    // rotation matrix from camera frame to world frame.
+    const double R11 = 1.0 - 2.0*(a2*a2 + a3*a3);
+    const double R12 = 2.0*(a1*a2 - a3*a0);
+    const double R13 = 2.0*(a1*a3 + a2*a0);
+    const double R21 = R12;
+    const double R22 = 1.0 - 2.0*(a1*a1 + a3*a3);
+    const double R23 = 2.0*(a2*a3 - a1*a0);
+    const double R31 = R13;
+    const double R32 = R23;
+    const double R33 = 1.0 - 2.0*(a1*a1 + a2*a2);
+
+    const double c1 = m_parameters.calibration_matrix.at<float>(0,2);
+    const double c2 = m_parameters.calibration_matrix.at<float>(1,2);
+
+    const double f1 = m_parameters.calibration_matrix.at<float>(0,0);
+    const double f2 = m_parameters.calibration_matrix.at<float>(1,1);
+
+    // compute find landmarks, compute residuals and jacobian.
+
+    for(int i=0; i<num_landmarks; i++)
+    {
+        Landmark& lm = m_landmarks[i];
+
+        const double y1 = lm.position.x();
+        const double y2 = lm.position.y();
+        const double y3 = lm.position.z();
+
+        const double d1 = y1 - x1;
+        const double d2 = y2 - x2;
+        const double d3 = y3 - x3;
+
+        const double ycam1 = R11*d1 + R21*d2 + R31*d3;
+        const double ycam2 = R12*d1 + R22*d2 + R32*d3;
+        const double ycam3 = R13*d1 + R23*d2 + R33*d3;
+
+        double u1 = 0.0;
+        double u2 = 0.0;
+
+        double found_u1 = 0.0;
+        double found_u2 = 0.0;
+
+        bool ok = true;
+
+        if( ok)
         {
-            norm_w = 0.0;
-            axis1 = 1.0;
-            axis2 = 0.0;
-            axis3 = 0.0;
-            sin_theta_over_norm_w = 0.0;
+            ok = ( ycam3 > m_parameters.min_distance_to_camera );
+        }
+
+        if( ok )
+        {
+            u1 = c1 + f1 * ycam1/ycam3;
+            u2 = c2 + f2 * ycam2/ycam3;
+            ok = m_parameters.image_viewport.contains(cv::Point2f(u1, u2));
+        }
+
+        if( ok )
+        {
+            // Generated by python script measurement.py
+            // BEGIN
+            J.insert(2*i+0, 0) = f1*R13*ycam1/(ycam3*ycam3) + f1*(-R11)/ycam3;
+            J.insert(2*i+0, 1) = f1*R23*ycam1/(ycam3*ycam3) + f1*(-R12)/ycam3;
+            J.insert(2*i+0, 2) = f1*(-R13)/ycam3 + f1*R33*ycam1/(ycam3*ycam3);
+            J.insert(2*i+0, 3) = f1*(2*a1*d2 - 2*a2*d1)*ycam1/(ycam3*ycam3) + f1*(2*a2*d3 - 2*a3*d2)/ycam3;
+            J.insert(2*i+0, 4) = f1*(2*a2*d2 + 2*a3*d3)/ycam3 + f1*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam1/(ycam3*ycam3);
+            J.insert(2*i+0, 5) = f1*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam1/(ycam3*ycam3) + f1*(2*a0*d3 + 2*a1*d2 - 4*a2*d1)/ycam3;
+            J.insert(2*i+0, 6) = f1*(-2*a1*d1 - 2*a2*d2)*ycam1/(ycam3*ycam3) + f1*(-2*a0*d2 + 2*a1*d3 - 4*a3*d1)/ycam3;
+            J.insert(2*i+0, 13+3*i+0) = f1*(-R13)*ycam1/(ycam3*ycam3) + f1*R11/ycam3;
+            J.insert(2*i+0, 13+3*i+1) = f1*(-R23)*ycam1/(ycam3*ycam3) + f1*R12/ycam3;
+            J.insert(2*i+0, 13+3*i+2) = f1*R13/ycam3 + f1*(-R33)*ycam1/(ycam3*ycam3);
+            J.insert(2*i+1, 0) = f2*R13*ycam2/(ycam3*ycam3) + f2*(-R12)/ycam3;
+            J.insert(2*i+1, 1) = f2*R23*ycam2/(ycam3*ycam3) + f2*(2*a1*a1 + 2*a3*a3 - 1)/ycam3;
+            J.insert(2*i+1, 2) = f2*(-R23)/ycam3 + f2*R33*ycam2/(ycam3*ycam3);
+            J.insert(2*i+1, 3) = f2*(2*a1*d2 - 2*a2*d1)*ycam2/(ycam3*ycam3) + f2*(-2*a1*d3 - 2*a3*d1)/ycam3;
+            J.insert(2*i+1, 4) = f2*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam2/(ycam3*ycam3) + f2*(-2*a0*d3 - 4*a1*d2 + 2*a2*d1)/ycam3;
+            J.insert(2*i+1, 5) = f2*(2*a1*d1 + 2*a3*d3)/ycam3 + f2*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam2/(ycam3*ycam3);
+            J.insert(2*i+1, 6) = f2*(-2*a1*d1 - 2*a2*d2)*ycam2/(ycam3*ycam3) + f2*(-2*a0*d1 + 2*a2*d3 - 4*a3*d2)/ycam3;
+            J.insert(2*i+1, 13+3*i+0) = f2*(-R13)*ycam2/(ycam3*ycam3) + f2*R12/ycam3;
+            J.insert(2*i+1, 13+3*i+1) = f2*(-R23)*ycam2/(ycam3*ycam3) + f2*R22/ycam3;
+            J.insert(2*i+1, 13+3*i+2) = f2*R23/ycam3 + f2*(-R33)*ycam2/(ycam3*ycam3);
+            // END
+
+            Eigen::Matrix2d covariance = J.block(2*i,0,2,dim) * pred_sigma * J.block(2*i,0,2,dim).transpose();
+
+            const double box_radius_1 = std::sqrt( covariance(0,0) );
+            const double box_radius_2 = std::sqrt( covariance(1,1) );
+
+            ok = findPatch(
+                image.refFrame(),
+                m_landmarks[i].patch,
+                u1, u2,
+                box_radius_1, box_radius_2,
+                found_u1, found_u2);
+        }
+
+        if(ok)
+        {
+            residuals(2*i+0) = found_u1 - u1;
+            residuals(2*i+1) = found_u2 - u2;
+            num_found++;
         }
         else
         {
-            axis1 = w1/norm_w;
-            axis2 = w2/norm_w;
-            axis3 = w3/norm_w;
-            sin_theta_over_norm_w = sin_theta / norm_w;
+            residuals(2*i+0) = 0.0;
+            residuals(2*i+1) = 0.0;
         }
 
-        const double r0 = cos_theta;
-        const double r1 = sin_theta * axis1;
-        const double r2 = sin_theta * axis2;
-        const double r3 = sin_theta * axis3;
-
-        // fills pred_mu vector.
-
-        pred_mu.resize(dim);
-
-        pred_mu.head<13>() <<
-            x1 + dt*v1,
-            x2 + dt*v2,
-            x3 + dt*v3,
-            a0*r0 - a1*r1 - a2*r2 - a3*r3,
-            a0*r1 + r0*a1 + (a2*r3 - a3*r2),
-            a0*r2 + r0*a2 + (a3*r1 - a1*r3),
-            a0*r3 + r0*a3 + (a1*r2 - a2*r1),
-            v1,
-            v2,
-            v3,
-            w1,
-            w2,
-            w3;
-
-        for(int i=0; i<num_landmarks; i++)
-        {
-            pred_mu.segment<3>(13+3*i) = m_landmarks[i].position;
-        }
-
-        // J est la jacobienne de la fonction de transition vers le nouvel état.
-
-        Eigen::SparseMatrix<double> J(dim, dim);
-        J.reserve(2*3+7*4+1*6+1*num_landmarks*3);
-
-        // position.
-
-        J.insert(0,0) = 1.0;
-        J.insert(0,7) = dt;
-        J.insert(1,1) = 1.0;
-        J.insert(1,8) = dt;
-        J.insert(2,2) = 1.0;
-        J.insert(2,9) = dt;
-
-        // attitude.
-
-        // Generated automatically by python script system2.py.
-        // BEGIN
-        J.insert(3,3) = r0;
-        J.insert(3,4) = -r1;
-        J.insert(3,5) = -r2;
-        J.insert(3,6) = -r3;
-        J.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
-        J.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
-        J.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
-        J.insert(4,3) = r1;
-        J.insert(4,4) = r0;
-        J.insert(4,5) = r3;
-        J.insert(4,6) = -r2;
-        J.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
-        J.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
-        J.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
-        J.insert(5,3) = r2;
-        J.insert(5,4) = -r3;
-        J.insert(5,5) = r0;
-        J.insert(5,6) = r1;
-        J.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
-        J.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
-        J.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
-        J.insert(6,3) = r3;
-        J.insert(6,4) = r2;
-        J.insert(6,5) = -r1;
-        J.insert(6,6) = r0;
-        J.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
-        J.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
-        J.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
-        // END
-
-        // linear velocity.
-
-        J.insert(7, 7) = 1.0;
-        J.insert(8, 8) = 1.0;
-        J.insert(9, 9) = 1.0;
-
-        // angular velocity.
-
-        J.insert(10, 10) = 1.0;
-        J.insert(11, 11) = 1.0;
-        J.insert(12, 12) = 1.0;
-
-        for(int i=0; i<num_landmarks; i++)
-        {
-            J.insert(13+3*i+0, 13+3*i+0) = 1.0;
-            J.insert(13+3*i+1, 13+3*i+1) = 1.0;
-            J.insert(13+3*i+2, 13+3*i+2) = 1.0;
-        }
-
-        J.makeCompressed();
-
-        //Eigen::MatrixXd tmp = J;
-        //std::cout << "J = " << std::endl << tmp << std::endl;
-
-        const double sigma_v = 0.0; //dt*0.1;
-        const double sigma_w = 0.0;
-
-        Eigen::SparseMatrix<double> Q(dim, dim);
-        Q.reserve(6);
-        Q.insert(7,7) = sigma_v;
-        Q.insert(8,8) = sigma_v;
-        Q.insert(9,9) = sigma_v;
-        Q.insert(10,10) = sigma_w;
-        Q.insert(11,11) = sigma_w;
-        Q.insert(12,12) = sigma_w;
-
-        Q.makeCompressed();
-
-        pred_sigma = J * (m_state_covariance + Q) * J.transpose();
+        found[i] = ok;
     }
 
-    // Compute observations.
+    if(num_found > 0)
+    {
+        // compute a matrix to extract out residuals corresponding to found landmarks.
+
+        Eigen::SparseMatrix<double> proj(2*num_found, 2*num_landmarks);
+        proj.reserve(4*num_found);
+
+        int j = 0;
+        for(int i=0; j<num_found && i<num_landmarks; i++)
+        {
+            if(found[i])
+            {
+                proj.insert(2*j+0, 2*i+0) = 1.0;
+                proj.insert(2*j+1, 2*i+1) = 1.0;
+                j++;
+            }
+        }
+
+        Eigen::SparseMatrix<double> noise(2*num_found, 2*num_found);
+        noise.reserve(2*num_found);
+        noise.diagonal().fill(6.0); // TODO: define this constant somewhere else.
+
+        auto projected_J = proj * J;
+        auto projected_residuals = proj * residuals;
+
+        Eigen::MatrixXd S = projected_J * pred_sigma * projected_J.transpose() + noise;
+
+        Eigen::FullPivLU< Eigen::MatrixXd > solver;
+        solver.compute( S );
+
+        Eigen::VectorXd new_mu = pred_mu + pred_sigma * projected_J.transpose() * solver.solve( projected_residuals );
+        Eigen::MatrixXd new_sigma = pred_sigma - pred_sigma * projected_J.transpose() * solver.solve( projected_J * pred_sigma );
+
+        pred_mu.swap(new_mu);
+        pred_sigma.swap(new_sigma);
+    }
+}
+
+void DefaultSLAMEngine::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
+{
+    m_camera_state.position = mu.segment<3>(0);
+    m_camera_state.attitude.w() = mu(3);
+    m_camera_state.attitude.vec() = mu.segment<3>(4);
+    m_camera_state.linear_velocity = mu.segment<3>(7);
+    m_camera_state.angular_velocity = mu.segment<3>(10);
+
+    const int num_landmarks = m_landmarks.size();
+
+    for(int i=0; i<num_landmarks; i++)
+    {
+        m_landmarks[i].position = mu.segment<3>(13+3*i);
+    }
+
+    m_state_covariance.swap(sigma);
 }
 
 void DefaultSLAMEngine::processImageDead(Image& image)
 {
 }
 
-bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch)
+bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float u, float v, cv::Mat& patch)
 {
     const int radius = m_parameters.patch_size/2;
 
-    const int X = (int) cvRound(x);
-    const int Y = (int) cvRound(y);
+    const int U = (int) cvRound(u);
+    const int V = (int) cvRound(v);
 
     bool ret = false;
 
-    if( 0 <= X-radius && X+radius < image.cols && 0 <= Y-radius && Y+radius < image.rows)
+    //if( 0 <= U-radius && U+radius < image.cols && 0 <= V-radius && V+radius < image.rows)
+    if( m_viewport.contains( cv::Point2i(U,V) ) )
     {
         patch = image(
-            cv::Range(Y-radius, Y+radius+1),
-            cv::Range(X-radius, X+radius+1) );
+            cv::Range(V-radius, V+radius+1),
+            cv::Range(U-radius, U+radius+1) );
 
         ret = true;
     }
 
     return ret;
+}
+
+bool DefaultSLAMEngine::findPatch(
+    const cv::Mat& image,
+    const cv::Mat& patch,
+    double box_center_u,
+    double box_center_v,
+    double box_radius_u,
+    double box_radius_v,
+    double& found_u,
+    double& found_v)
+{
+    int u_from = std::floor( box_center_u - box_radius_u );
+    int v_from = std::floor( box_center_v - box_radius_v );
+    int u_to = std::ceil( box_center_u + box_radius_u );
+    int v_to = std::ceil( box_center_v + box_radius_v );
+
+    if( m_viewport.contains( cv::Point2i(u_from, v_from) ) && m_viewport.contains( cv::Point2i(u_to, v_to) ) )
+    {
+        // extract area we will compute Shi-Tomasi onto.
+        cv::Mat area = image( cv::Range(v_from, v_to+1), cv::Range(u_from, u_to+1) );
+
+        // detect corners.
+        cv::Mat corners;
+        cv::goodFeaturesToTrack(area, corners, 30, 0.01, 2); // TODO: this is quick'n dirty ! Ultimately, we will detect corners only once in a preprocessing step.
+
+        // find matching corner.
+        bool found = false;
+
+        for(int i=0; found == false && i<corners.rows; i++)
+        {
+            cv::Mat candidate;
+            if( extractPatch(area, corners.at<float>(i, 0), corners.at<float>(i, 1), candidate) )
+            {
+                const double dist = cv::norm(candidate, patch, cv::NORM_L2) / double( m_parameters.patch_size*m_parameters.patch_size );
+                const double threshold = 12.0; // TODO: this is quick'n dirty ! Define this constant in a clean way.
+                if( dist < threshold )
+                {
+                    found_u = corners.at<float>(i, 0);
+                    found_v = corners.at<float>(i, 1);
+                    found = true;
+                }
+            }
+        }
+
+        return found;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 SLAMEngine* SLAMEngine::create(Camera* camera)
