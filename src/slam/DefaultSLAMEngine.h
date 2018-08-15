@@ -57,11 +57,13 @@ protected:
 
 protected:
 
-    bool extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch);
     void retrieveParameters();
+
     void processImageInit(Image& image);
     void processImageSLAM(Image& image);
     void processImageDead(Image& image);
+
+    bool extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch);
 
 protected:
 
