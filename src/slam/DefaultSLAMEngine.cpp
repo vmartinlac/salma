@@ -1,4 +1,5 @@
 #include <opencv2/calib3d.hpp>
+#include <iostream>
 #include <QDebug>
 #include "DefaultSLAMEngine.h"
 #include "target.h"
@@ -20,6 +21,38 @@ void DefaultSLAMEngine::retrieveParameters()
 
 void DefaultSLAMEngine::run()
 {
+    /*
+    {
+        const double sx = 0.0;
+        const double sv = 0.0;
+        const double sw = 0.0; //M_PI*0.02/1.0;
+        const double sx2 = sx*sx;
+        const double sv2 = sv*sv;
+        const double sw2 = sw*sw;
+        m_camera_state.position.setZero();
+        m_camera_state.attitude.setIdentity();
+        m_camera_state.linear_velocity.setZero();
+        //m_camera_state.linear_velocity << 1.0, 0.0, 0.0;
+        m_camera_state.angular_velocity << 0.0, 0.0, M_PI*0.5;
+        //m_camera_state.angular_velocity.setZero();
+        m_landmarks.clear();
+        m_state_covariance.resize(13, 13);
+        m_state_covariance.setZero();
+        m_state_covariance.diagonal() << sx2, sx2, sx2, 0.0, 0.0, 0.0, 0.0, sv2, sv2, sv2, sw2, sw2, sw2;
+        m_candidate_landmarks.clear();
+        m_time_last_frame = 0.0;
+        Image img;
+        img.setTimestamp(1.0);
+        std::cout << "===============" << std::endl;
+        processImageSLAM(img);
+        std::cout << "===============" << std::endl;
+        processImageSLAM(img);
+        std::cout << "===============" << std::endl;
+        processImageSLAM(img);
+        abort();
+    }
+    */
+
     m_mode = MODE_INIT;
 
     retrieveParameters();
@@ -28,6 +61,8 @@ void DefaultSLAMEngine::run()
 
     m_camera_state.position.setZero();
     m_camera_state.attitude.setIdentity();
+    m_camera_state.linear_velocity.setZero();
+    m_camera_state.angular_velocity.setZero();
     m_landmarks.clear();
     m_state_covariance.resize(0, 0);
     m_candidate_landmarks.clear();
@@ -177,6 +212,20 @@ void DefaultSLAMEngine::processImageInit(Image& image)
 
 void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
+    // BEGIN TMP
+    /*
+    {
+        std::cout << "state:" << std::endl;
+        std::cout << m_camera_state.position.transpose() << std::endl;
+        std::cout << m_camera_state.attitude.coeffs().transpose() << std::endl;
+        std::cout << m_camera_state.linear_velocity.transpose() << std::endl;
+        std::cout << m_camera_state.angular_velocity.transpose() << std::endl;
+        std::cout << m_state_covariance << std::endl;
+        std::cout << std::endl;
+    }
+    */
+    // END TMP
+
     const double dt = image.getTimestamp() - m_time_last_frame;
     const int num_landmarks = m_landmarks.size();
     const int dim = 13 + 3*num_landmarks;
@@ -200,18 +249,34 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
         const double v2 = m_camera_state.linear_velocity.y();
         const double v3 = m_camera_state.linear_velocity.z();
 
-        const double w1 = m_camera_state.angular_velocity.x();
-        const double w2 = m_camera_state.angular_velocity.y();
-        const double w3 = m_camera_state.angular_velocity.z();
+        double w1 = m_camera_state.angular_velocity.x();
+        double w2 = m_camera_state.angular_velocity.y();
+        double w3 = m_camera_state.angular_velocity.z();
 
-        const double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
-        const double axis1 = w1/norm_w;
-        const double axis2 = w2/norm_w;
-        const double axis3 = w3/norm_w;
-
+        double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
+        double axis1;
+        double axis2;
+        double axis3;
         const double theta = 0.5*norm_w*dt;
         const double cos_theta = std::cos(theta);
         const double sin_theta = std::sin(theta);
+        double sin_theta_over_norm_w;
+
+        if( norm_w < 1.0e-10 )
+        {
+            norm_w = 0.0;
+            axis1 = 1.0;
+            axis2 = 0.0;
+            axis3 = 0.0;
+            sin_theta_over_norm_w = 0.0;
+        }
+        else
+        {
+            axis1 = w1/norm_w;
+            axis2 = w2/norm_w;
+            axis3 = w3/norm_w;
+            sin_theta_over_norm_w = sin_theta / norm_w;
+        }
 
         const double r0 = cos_theta;
         const double r1 = sin_theta * axis1;
@@ -226,7 +291,7 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
             x1 + dt*v1,
             x2 + dt*v2,
             x3 + dt*v3,
-            a0*r0 + a1*r1 + a2*r2 + a3*r3,
+            a0*r0 - a1*r1 - a2*r2 - a3*r3,
             a0*r1 + r0*a1 + (a2*r3 - a3*r2),
             a0*r2 + r0*a2 + (a3*r1 - a1*r3),
             a0*r3 + r0*a3 + (a1*r2 - a2*r1),
@@ -258,145 +323,37 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
 
         // attitude.
 
-        J.insert(3, 3) = r0;
-        J.insert(3, 4) = r1;
-        J.insert(3, 5) = r2;
-        J.insert(3, 6) = r3;
-
-        J.insert(3, 10) =
-            - 0.5*a0*dt*r1
-            + a1*sin_theta/norm_w
-            + 0.5*a1*dt*axis1*axis1*cos_theta
-            - a1*axis1*axis1*sin_theta/norm_w
-            + 0.5*a2*dt*axis2*axis2*cos_theta
-            - a2*axis1*axis2*sin_theta/norm_w
-            + 0.5*a3*dt*axis1*axis3*cos_theta
-            - a3*axis1*axis3*sin_theta/norm_w;
-
-        J.insert(3, 11) =
-            -0.5*a0*dt*r2
-            + a2*sin_theta/norm_w
-            + 0.5*a1*dt*axis1*axis2*cos_theta
-            - a1*axis1*axis2*sin_theta/norm_w
-            + 0.5*a2*dt*axis2*axis2*cos_theta
-            - a2*axis2*axis2*sin_theta/norm_w
-            + 0.5*a3*dt*axis2*axis3*cos_theta
-            - a3*axis2*axis3*sin_theta/norm_w;
-
-        J.insert(3, 12) =
-            -0.5*a0*dt*r3
-            + a3*sin_theta/norm_w
-            + 0.5*a1*dt*axis1*axis3*cos_theta
-            - a1*axis1*axis3*sin_theta/norm_w
-            + 0.5*a2*dt*axis2*axis3*cos_theta
-            - a2*axis2*axis3*sin_theta/norm_w
-            + 0.5*a3*dt*axis3*axis3*cos_theta
-            - a3*axis3*axis3*sin_theta/norm_w;
-
-        J.insert(4, 3) = r1;
-        J.insert(4, 4) = r0;
-        J.insert(4, 5) = r3;
-        J.insert(4, 6) = -r2;
-
-        J.insert(4, 10) =
-            0.5*a0*dt*axis1*axis1*cos_theta
-            - a0*axis1*axis1*sin_theta/norm_w
-            + a0*sin_theta/norm_w
-            - 0.5*a1*dt*axis1*sin_theta
-            + 0.5*a2*dt*axis1*axis3*cos_theta
-            - a2*axis1*axis3*sin_theta/norm_w
-            - 0.5*a3*dt*axis1*axis2*cos_theta
-            + a3*axis1*axis2*sin_theta/norm_w;
-
-        J.insert(4, 11) =
-            0.5*a0*dt*axis1*axis2*cos_theta
-            - a0*axis1*axis2*sin_theta/norm_w
-            - 0.5*a1*dt*w2*norm_w*sin_theta
-            + 0.5*a2*dt*axis2*axis3*cos_theta
-            - a2*axis2*axis3*sin_theta/norm_w
-            - 0.5*a3*dt*axis2*axis2*cos_theta
-            + a3*axis2*axis2*sin_theta/norm_w
-            - a3*norm_w*sin_theta;
-
-        J.insert(4, 12) =
-            0.5*a0*dt*axis1*axis3*cos_theta
-            - a0*axis1*axis3*sin_theta/norm_w
-            - 0.5*a1*dt*w3*norm_w*sin_theta
-            + 0.5*a2*dt*axis3*axis3*cos_theta
-            - a2*axis3*axis3*sin_theta/norm_w
-            + a2*norm_w*sin_theta
-            - 0.5*a3*dt*axis2*axis3*cos_theta
-            + a3*axis2*axis3*sin_theta/norm_w;
-
-        J.insert(5, 3) = r2;
-        J.insert(5, 4) = -r3;
-        J.insert(5, 5) = r0;
-        J.insert(5, 6) = r1;
-        
-        J.insert(5, 10) =
-            0.5*a0*dt*axis1*axis2*cos_theta
-            - a0*axis1*axis2*sin_theta/norm_w
-            - 0.5*a1*dt*axis1*axis3*cos_theta
-            + a1*axis1*axis3*sin_theta/norm_w
-            - 0.5*a2*dt*w1*norm_w*sin_theta
-            + 0.5*a3*dt*axis1*axis1*cos_theta
-            - a3*axis1*axis1*sin_theta/norm_w
-            + a3*norm_w*sin_theta;
-        
-        J.insert(5, 11) =
-            0.5*a0*dt*axis2*axis2*cos_theta
-            - a0*axis2*axis2*sin_theta/norm_w
-            + a0*norm_w*sin_theta
-            - 0.5*a1*dt*axis2*axis3*cos_theta
-            + a1*axis2*axis3*sin_theta/norm_w
-            - 0.5*a2*dt*w2*norm_w*sin_theta
-            + 0.5*a3*dt*axis1*axis2*cos_theta
-            - a3*axis1*axis2*sin_theta/norm_w;
-        
-        J.insert(5, 12) =
-            0.5*a0*dt*axis2*axis3*cos_theta
-            - a0*axis2*axis3*sin_theta/norm_w
-            - 0.5*a1*dt*axis3*axis3*cos_theta
-            + a1*axis3*axis3*sin_theta/norm_w
-            - a1*norm_w*sin_theta
-            - 0.5*a2*dt*w3*norm_w*sin_theta
-            + 0.5*a3*dt*axis1*axis3*cos_theta
-            - a3*axis1*axis3*sin_theta/norm_w;
-
-        J.insert(6, 3) = r3;
-        J.insert(6, 4) = r2;
-        J.insert(6, 5) = -r1;
-        J.insert(6, 6) = r0;
-
-        J.insert(6, 10) =
-            0.5*a0*dt*axis1*axis3*cos_theta
-            - a0*axis1*axis3*sin_theta/norm_w
-            + 0.5*a1*dt*axis1*axis2*cos_theta
-            - a1*axis1*axis2*sin_theta/norm_w
-            - 0.5*a2*dt*axis1*axis1*cos_theta
-            + a2*axis1*axis1*sin_theta/norm_w
-            - a2*norm_w*sin_theta
-            - 0.5*a3*dt*w1*norm_w*sin_theta;
-
-        J.insert(6, 11) =
-            0.5*a0*dt*axis2*axis3*cos_theta
-            - a0*axis2*axis3*sin_theta/norm_w
-            + 0.5*a1*dt*axis2*axis2*cos_theta
-            - a1*axis2*axis2*sin_theta/norm_w
-            + a1*norm_w*sin_theta
-            - 0.5*a2*dt*axis1*axis2*cos_theta
-            + a2*axis1*axis2*sin_theta/norm_w
-            - 0.5*a3*dt*w2*norm_w*sin_theta;
-
-        J.insert(6, 12) =
-            0.5*a0*dt*axis3*axis3*cos_theta
-            - a0*axis3*axis3*sin_theta/norm_w
-            + a0*norm_w*sin_theta
-            + 0.5*a1*dt*axis2*axis3*cos_theta
-            - a1*axis2*axis3*sin_theta/norm_w
-            - 0.5*a2*dt*axis1*axis3*cos_theta
-            + a2*axis1*axis3*sin_theta/norm_w
-            - 0.5*a3*dt*w3*norm_w*sin_theta;
+        // Generated automatically by python script system2.py.
+        // BEGIN
+        J.insert(3,3) = r0;
+        J.insert(3,4) = -r1;
+        J.insert(3,5) = -r2;
+        J.insert(3,6) = -r3;
+        J.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+        J.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+        J.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+        J.insert(4,3) = r1;
+        J.insert(4,4) = r0;
+        J.insert(4,5) = r3;
+        J.insert(4,6) = -r2;
+        J.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+        J.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+        J.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+        J.insert(5,3) = r2;
+        J.insert(5,4) = -r3;
+        J.insert(5,5) = r0;
+        J.insert(5,6) = r1;
+        J.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
+        J.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+        J.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+        J.insert(6,3) = r3;
+        J.insert(6,4) = r2;
+        J.insert(6,5) = -r1;
+        J.insert(6,6) = r0;
+        J.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
+        J.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
+        J.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
+        // END
 
         // linear velocity.
 
@@ -419,21 +376,20 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
 
         J.makeCompressed();
 
-        const double sigma_vx = 0.0;
-        const double sigma_vy = 0.0;
-        const double sigma_vz = 0.0;
-        const double sigma_wx = 0.0;
-        const double sigma_wy = 0.0;
-        const double sigma_wz = 0.0;
+        //Eigen::MatrixXd tmp = J;
+        //std::cout << "J = " << std::endl << tmp << std::endl;
+
+        const double sigma_v = 0.0; //dt*0.1;
+        const double sigma_w = 0.0;
 
         Eigen::SparseMatrix<double> Q(dim, dim);
         Q.reserve(6);
-        Q.insert(7,7) = sigma_vx;
-        Q.insert(8,8) = sigma_vy;
-        Q.insert(9,9) = sigma_vz;
-        Q.insert(10,10) = sigma_wx;
-        Q.insert(11,11) = sigma_wy;
-        Q.insert(12,12) = sigma_wz;
+        Q.insert(7,7) = sigma_v;
+        Q.insert(8,8) = sigma_v;
+        Q.insert(9,9) = sigma_v;
+        Q.insert(10,10) = sigma_w;
+        Q.insert(11,11) = sigma_w;
+        Q.insert(12,12) = sigma_w;
 
         Q.makeCompressed();
 
@@ -441,15 +397,6 @@ void DefaultSLAMEngine::processImageSLAM(Image& image)
     }
 
     // Compute observations.
-
-    // tmp
-    m_camera_state.position = pred_mu.segment<3>(0);
-    m_camera_state.attitude.w() = pred_mu(3);
-    m_camera_state.attitude.vec() = pred_mu.segment<3>(4);
-    m_camera_state.attitude.normalize();
-    m_camera_state.linear_velocity = pred_mu.segment<3>(7);
-    m_camera_state.angular_velocity = pred_mu.segment<3>(10);
-    m_state_covariance.swap(pred_sigma);
 }
 
 void DefaultSLAMEngine::processImageDead(Image& image)
