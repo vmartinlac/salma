@@ -1,16 +1,16 @@
-TODO
-====
+Objectif
+========
+
+Produit final :
+* moteur SLAM _Realtime simultaneous localisation and mapping with a single camera_ (Davidson).
+* interface graphique Qt + Openscenegraph permettant interagir avec le moteur SLAM et de visualiser la scène.
 
 Matériel :
 * une caméra
 * une mire
 
-Produit final :
-* moteur SLAM "Realtime simultaneous localisation and mapping with a single camera" (Davidson).
-* interface graphique Qt + Openscenegraph permettant interagir avec le moteur SLAM et de visualiser la scène.
-
-Dependencies
-============
+Dépendances
+===========
 
 * Qt5
 * openscenegraph
