@@ -5,5 +5,5 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(demo PUBLIC Qt5::Widgets camera ui slam target Boost::boost)
+target_link_libraries(demo PUBLIC Qt5::Widgets camera ui slam target)
 
