@@ -31,6 +31,7 @@ int main(int num_args, char** args)
     const int ret = app.exec();
 
     delete win;
+    delete slam;
 
     // release camera manager.
     camera_manager->finalize();

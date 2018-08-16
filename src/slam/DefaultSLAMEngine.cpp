@@ -4,8 +4,9 @@
 #include "DefaultSLAMEngine.h"
 #include "target.h"
 
-DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera) :
-    m_camera(camera)
+DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera, QObject* parent) :
+    m_camera(camera),
+    SLAMEngine(parent)
 {
 }
 
@@ -80,8 +81,8 @@ void DefaultSLAMEngine::run()
         {
             if( first )
             {
-                const int margin = m_parameters.patch_size/2;
-                m_viewport = cv::Rect( cv::Point2f( margin, margin), cv::Size( image.width()-2*margin, image.height()-2*margin ) );
+                // drop first frame.
+                // TODO: decide whether we find some usage for it or not.
                 first = false;
             }
             else
@@ -190,7 +191,9 @@ void DefaultSLAMEngine::processImageInit(Image& image)
                 samples.at<float>(i, 1),
                 lm.patch);
 
-            lm.num_detection_failures = 0;
+            lm.num_failed_detections = 0;
+            lm.num_successful_detections = 1;
+            lm.last_successful_detection_time = image.getTimestamp();
 
             if(ret)
             {
@@ -224,10 +227,14 @@ void DefaultSLAMEngine::processImageInit(Image& image)
 
 void DefaultSLAMEngine::processImageSLAM(Image& image)
 {
-    Eigen::VectorXd state_mu;
-    Eigen::MatrixXd state_sigma;
+    cv::goodFeaturesToTrack(
+        image.refFrame(),
+        m_corners, 30, 0.01, 2);
 
     const double dt = image.getTimestamp() - m_time_last_frame;
+
+    Eigen::VectorXd state_mu;
+    Eigen::MatrixXd state_sigma;
 
     EKFPredict(dt, state_mu, state_sigma);
     EKFUpdate(image, state_mu, state_sigma);
@@ -476,7 +483,7 @@ void DefaultSLAMEngine::EKFUpdate(Image& image, Eigen::VectorXd& pred_mu, Eigen:
         {
             u1 = c1 + f1 * ycam1/ycam3;
             u2 = c2 + f2 * ycam2/ycam3;
-            ok = m_parameters.image_viewport.contains(cv::Point2f(u1, u2));
+            // TODO : check that u1 and u2 lies on the image in order to spare some wasteful computations.
         }
 
         if( ok )
@@ -593,7 +600,7 @@ void DefaultSLAMEngine::processImageDead(Image& image)
 {
 }
 
-bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float u, float v, cv::Mat& patch)
+bool DefaultSLAMEngine::extractPatch(const cv::Mat& image, float u, float v, cv::Mat& patch)
 {
     const int radius = m_parameters.patch_size/2;
 
@@ -602,8 +609,11 @@ bool DefaultSLAMEngine::extractPatch(cv::Mat& image, float u, float v, cv::Mat& 
 
     bool ret = false;
 
-    //if( 0 <= U-radius && U+radius < image.cols && 0 <= V-radius && V+radius < image.rows)
-    if( m_viewport.contains( cv::Point2i(U,V) ) )
+    cv::Rect viewport(
+        cv::Point2f( radius+1, radius+1 ),
+        cv::Size( image.cols-m_parameters.patch_size-1, image.rows-m_parameters.patch_size-1 ) );
+
+    if( viewport.contains( cv::Point2i(U,V) ) )
     {
         patch = image(
             cv::Range(V-radius, V+radius+1),
@@ -625,45 +635,42 @@ bool DefaultSLAMEngine::findPatch(
     double& found_u,
     double& found_v)
 {
-    int u_from = std::floor( box_center_u - box_radius_u );
-    int v_from = std::floor( box_center_v - box_radius_v );
-    int u_to = std::ceil( box_center_u + box_radius_u );
-    int v_to = std::ceil( box_center_v + box_radius_v );
+    cv::Rect area( cv::Point2i( box_center_u - box_radius_u ), cv::Size( 2*box_radius_u, 2*box_radius_v) );
 
-    if( m_viewport.contains( cv::Point2i(u_from, v_from) ) && m_viewport.contains( cv::Point2i(u_to, v_to) ) )
+    bool found = false;
+
+    cv::Mat candidate;
+
+    for(std::vector<cv::Point2i>::iterator it=m_corners.begin(); found == false && it!=m_corners.end(); it++)
     {
-        // extract area we will compute Shi-Tomasi onto.
-        cv::Mat area = image( cv::Range(v_from, v_to+1), cv::Range(u_from, u_to+1) );
-
-        // detect corners.
-        cv::Mat corners;
-        cv::goodFeaturesToTrack(area, corners, 30, 0.01, 2); // TODO: this is quick'n dirty ! Ultimately, we will detect corners only once in a preprocessing step.
-
-        // find matching corner.
-        bool found = false;
-
-        for(int i=0; found == false && i<corners.rows; i++)
+        if( area.contains(*it) && extractPatch(image, it->x, it->y, candidate) )
         {
-            cv::Mat candidate;
-            if( extractPatch(area, corners.at<float>(i, 0), corners.at<float>(i, 1), candidate) )
+            if( comparePatches(candidate, patch) )
             {
-                const double dist = cv::norm(candidate, patch, cv::NORM_L2) / double( m_parameters.patch_size*m_parameters.patch_size );
-                const double threshold = 12.0; // TODO: this is quick'n dirty ! Define this constant in a clean way.
-                if( dist < threshold )
-                {
-                    found_u = corners.at<float>(i, 0);
-                    found_v = corners.at<float>(i, 1);
-                    found = true;
-                }
+                found_u = it->x;
+                found_v = it->y;
+                found = true;
             }
         }
+    }
 
-        return found;
-    }
-    else
+    return found;
+}
+
+bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
+{
+    if(
+        P1.rows != m_parameters.patch_size || P1.cols != m_parameters.patch_size ||
+        P2.rows != m_parameters.patch_size || P2.cols != m_parameters.patch_size )
     {
-        return false;
+        throw std::runtime_error("internal error");
     }
+
+    const int N = m_parameters.patch_size * m_parameters.patch_size;
+
+    const double dist = cv::norm(P1, P2, cv::NORM_L2) / double(N);
+
+    return dist < 12.0; // TODO: define this constant somewhere else.
 }
 
 SLAMEngine* SLAMEngine::create(Camera* camera)

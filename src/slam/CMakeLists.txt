@@ -6,6 +6,10 @@ add_library(
     SLAMEngine.cpp
     DefaultSLAMEngine.h
     DefaultSLAMEngine.cpp
+    SLAMParameters.h
+    SLAMParameters.cpp
+    SLAMOutput.h
+    SLAMOutput.cpp
 )
 
 target_link_libraries(

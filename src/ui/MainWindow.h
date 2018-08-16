@@ -1,8 +1,12 @@
 #pragma once
 
+#include <QTabWidget>
 #include <QLabel>
 #include <QMainWindow>
 #include "SLAMEngine.h"
+#include "SLAMParameters.h"
+#include "VideoWidget.h"
+#include "StatsWidget.h"
 
 class ViewerWidget;
 
@@ -23,11 +27,16 @@ protected slots:
     void stop_slam();
     void slam_started();
     void slam_stopped();
+    void ask_slam_parameters();
 
 protected:
 
     QAction* m_a_start;
     QAction* m_a_stop;
+    QAction* m_a_parameters;
     SLAMEngine* m_slam;
     ViewerWidget* m_viewer;
+    VideoWidget* m_video;
+    StatsWidget* m_stats;
+    SLAMParameters m_slam_parameters;
 };

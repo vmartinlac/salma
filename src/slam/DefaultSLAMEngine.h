@@ -12,7 +12,7 @@ class DefaultSLAMEngine : public SLAMEngine
 {
 public:
 
-    DefaultSLAMEngine(Camera* camera);
+    DefaultSLAMEngine(Camera* camera, QObject* parent=nullptr);
 
     virtual void run();
 
@@ -41,14 +41,15 @@ protected:
         int patch_size;
         int num_depth_hypotheses;
         double min_distance_to_camera;
-        cv::Rect image_viewport;
     };
 
     struct Landmark
     {
         Eigen::Vector3d position;
         cv::Mat patch;
-        int num_detection_failures;
+        int num_failed_detections;
+        int num_successful_detections;
+        double last_successful_detection_time;
     };
 
     struct CandidateLandmark
@@ -56,7 +57,7 @@ protected:
         cv::Mat patch;
         Eigen::Vector3d origin;
         Eigen::Vector3d direction;
-        std::vector<float> depth_hypotheses;
+        std::vector<double> depth_hypotheses;
     };
 
 protected:
@@ -67,7 +68,7 @@ protected:
     void processImageSLAM(Image& image);
     void processImageDead(Image& image);
 
-    bool extractPatch(cv::Mat& image, float x, float y, cv::Mat& patch);
+    bool extractPatch(const cv::Mat& image, float x, float y, cv::Mat& patch);
     bool findPatch(
         const cv::Mat& image,
         const cv::Mat& patch,
@@ -77,6 +78,7 @@ protected:
         double box_radius_v,
         double& found_u,
         double& found_v);
+    bool comparePatches(const cv::Mat& P1, const cv::Mat& P2);
 
     void EKFPredict(double dt, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
     void EKFUpdate(Image& image, Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
@@ -92,6 +94,6 @@ protected:
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;
     std::vector<CandidateLandmark> m_candidate_landmarks;
-    cv::Rect m_viewport;
+    std::vector<cv::Point2i> m_corners;
 };
 
