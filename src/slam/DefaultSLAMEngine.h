@@ -33,16 +33,6 @@ protected:
         Eigen::Vector3d angular_velocity;
     };
 
-    struct Parameters
-    {
-        cv::Mat calibration_matrix;
-        cv::Mat distortion_coefficients;
-        double target_unit_length;
-        int patch_size;
-        int num_depth_hypotheses;
-        double min_distance_to_camera;
-    };
-
     struct Landmark
     {
         Eigen::Vector3d position;
@@ -62,15 +52,12 @@ protected:
 
 protected:
 
-    void retrieveParameters();
+    void processImageInit();
+    void processImageSLAM();
+    void processImageDead();
 
-    void processImageInit(Image& image);
-    void processImageSLAM(Image& image);
-    void processImageDead(Image& image);
-
-    bool extractPatch(const cv::Mat& image, float x, float y, cv::Mat& patch);
+    bool extractPatch(float x, float y, cv::Mat& patch);
     bool findPatch(
-        const cv::Mat& image,
         const cv::Mat& patch,
         double box_center_u,
         double box_center_v,
@@ -80,20 +67,20 @@ protected:
         double& found_v);
     bool comparePatches(const cv::Mat& P1, const cv::Mat& P2);
 
-    void EKFPredict(double dt, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
-    void EKFUpdate(Image& image, Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
+    void EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
+    void EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
     void saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
 
 protected:
 
     Mode m_mode;
-    Parameters m_parameters;
     Camera* m_camera;
     CameraState m_camera_state;
-    double m_time_last_frame;
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;
     std::vector<CandidateLandmark> m_candidate_landmarks;
-    std::vector<cv::Point2i> m_corners;
+    Image m_current_image;
+    std::vector<cv::Point2i> m_current_corners;
+    double m_time_last_frame;
 };
 

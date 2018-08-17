@@ -10,53 +10,9 @@ DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera, QObject* parent) :
 {
 }
 
-void DefaultSLAMEngine::retrieveParameters()
-{
-    throw; // TODO
-    //m_parameters.calibration_matrix.setZero(); // TODO
-    //m_parameters.distortion_coefficients.setZero(); // TODO
-    m_parameters.patch_size = 11;
-    m_parameters.target_unit_length = 1.0;
-    m_parameters.num_depth_hypotheses = 100;
-}
-
 void DefaultSLAMEngine::run()
 {
-    /*
-    {
-        const double sx = 0.0;
-        const double sv = 0.0;
-        const double sw = 0.0; //M_PI*0.02/1.0;
-        const double sx2 = sx*sx;
-        const double sv2 = sv*sv;
-        const double sw2 = sw*sw;
-        m_camera_state.position.setZero();
-        m_camera_state.attitude.setIdentity();
-        m_camera_state.linear_velocity.setZero();
-        //m_camera_state.linear_velocity << 1.0, 0.0, 0.0;
-        m_camera_state.angular_velocity << 0.0, 0.0, M_PI*0.5;
-        //m_camera_state.angular_velocity.setZero();
-        m_landmarks.clear();
-        m_state_covariance.resize(13, 13);
-        m_state_covariance.setZero();
-        m_state_covariance.diagonal() << sx2, sx2, sx2, 0.0, 0.0, 0.0, 0.0, sv2, sv2, sv2, sw2, sw2, sw2;
-        m_candidate_landmarks.clear();
-        m_time_last_frame = 0.0;
-        Image img;
-        img.setTimestamp(1.0);
-        std::cout << "===============" << std::endl;
-        processImageSLAM(img);
-        std::cout << "===============" << std::endl;
-        processImageSLAM(img);
-        std::cout << "===============" << std::endl;
-        processImageSLAM(img);
-        abort();
-    }
-    */
-
     m_mode = MODE_INIT;
-
-    retrieveParameters();
 
     if( m_camera == nullptr ) throw std::runtime_error("Internal error");
 
@@ -74,15 +30,12 @@ void DefaultSLAMEngine::run()
 
     while( isInterruptionRequested() == false )
     {
-        Image image;
-        m_camera->read(image);
+        m_camera->read(m_current_image);
 
-        if(image.isValid())
+        if(m_current_image.isValid())
         {
-            if( first )
+            if(first)
             {
-                // drop first frame.
-                // TODO: decide whether we find some usage for it or not.
                 first = false;
             }
             else
@@ -90,19 +43,19 @@ void DefaultSLAMEngine::run()
                 switch(m_mode)
                 {
                 case MODE_INIT:
-                    processImageInit(image);
+                    processImageInit();
                     break;
                 case MODE_SLAM:
-                    processImageSLAM(image);
+                    processImageSLAM();
                     break;
                 case MODE_DEAD:
                 default:
-                    processImageDead(image);
+                    processImageDead();
                     break;
                 }
             }
 
-            m_time_last_frame = image.getTimestamp();
+            m_time_last_frame = m_current_image.getTimestamp();
         }
         else
         {
@@ -113,7 +66,7 @@ void DefaultSLAMEngine::run()
     m_camera->close();
 }
 
-void DefaultSLAMEngine::processImageInit(Image& image)
+void DefaultSLAMEngine::processImageInit()
 {
     bool ok;
     target::Detector d;
@@ -122,9 +75,9 @@ void DefaultSLAMEngine::processImageInit(Image& image)
     cv::Mat translation;
 
     ok = d.run(
-        image.refFrame(),
+        m_current_image.refFrame(),
         target::Detector::ONE_PLANE,
-        m_parameters.target_unit_length,
+        m_parameters.calibration_target_scale,
         samples);
 
     if( ok )
@@ -186,14 +139,13 @@ void DefaultSLAMEngine::processImageInit(Image& image)
                 samples.at<float>(i, 4);
 
             const bool ret = extractPatch(
-                image.refFrame(),
                 samples.at<float>(i, 0),
                 samples.at<float>(i, 1),
                 lm.patch);
 
             lm.num_failed_detections = 0;
             lm.num_successful_detections = 1;
-            lm.last_successful_detection_time = image.getTimestamp();
+            lm.last_successful_detection_time = m_current_image.getTimestamp();
 
             if(ret)
             {
@@ -205,7 +157,7 @@ void DefaultSLAMEngine::processImageInit(Image& image)
 
         if( m_landmarks.size() >= 8 )
         {
-            const double sigma = 0.15*m_parameters.target_unit_length; // TODO: to clarify.
+            const double sigma = 0.15*m_parameters.calibration_target_scale; // TODO: to clarify.
 
             m_state_covariance.resize(
                 12 + m_landmarks.size(),
@@ -225,24 +177,24 @@ void DefaultSLAMEngine::processImageInit(Image& image)
     }
 }
 
-void DefaultSLAMEngine::processImageSLAM(Image& image)
+void DefaultSLAMEngine::processImageSLAM()
 {
     cv::goodFeaturesToTrack(
-        image.refFrame(),
-        m_corners, 30, 0.01, 2);
-
-    const double dt = image.getTimestamp() - m_time_last_frame;
+        m_current_image.refFrame(),
+        m_current_corners, 30, 0.01, 2);
 
     Eigen::VectorXd state_mu;
     Eigen::MatrixXd state_sigma;
 
-    EKFPredict(dt, state_mu, state_sigma);
-    EKFUpdate(image, state_mu, state_sigma);
+    EKFPredict(state_mu, state_sigma);
+    EKFUpdate(state_mu, state_sigma);
     saveState(state_mu, state_sigma);
 }
 
-void DefaultSLAMEngine::EKFPredict(double dt, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
+    const double dt = m_current_image.getTimestamp() - m_time_last_frame;
+
     // retrieve constants and current state.
 
     const int num_landmarks = m_landmarks.size();
@@ -406,8 +358,10 @@ void DefaultSLAMEngine::EKFPredict(double dt, Eigen::VectorXd& pred_mu, Eigen::M
     pred_sigma = J * (m_state_covariance + Q) * J.transpose();
 }
 
-void DefaultSLAMEngine::EKFUpdate(Image& image, Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
+    const Image& image = m_current_image;
+
     const int num_landmarks = m_landmarks.size();
     const int dim = 13 + 3*num_landmarks;
 
@@ -518,7 +472,6 @@ void DefaultSLAMEngine::EKFUpdate(Image& image, Eigen::VectorXd& pred_mu, Eigen:
             const double box_radius_2 = std::sqrt( covariance(1,1) );
 
             ok = findPatch(
-                image.refFrame(),
                 m_landmarks[i].patch,
                 u1, u2,
                 box_radius_1, box_radius_2,
@@ -596,12 +549,14 @@ void DefaultSLAMEngine::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
     m_state_covariance.swap(sigma);
 }
 
-void DefaultSLAMEngine::processImageDead(Image& image)
+void DefaultSLAMEngine::processImageDead()
 {
 }
 
-bool DefaultSLAMEngine::extractPatch(const cv::Mat& image, float u, float v, cv::Mat& patch)
+bool DefaultSLAMEngine::extractPatch(float u, float v, cv::Mat& patch)
 {
+    const cv::Mat& image = m_current_image.refFrame();
+
     const int radius = m_parameters.patch_size/2;
 
     const int U = (int) cvRound(u);
@@ -626,7 +581,6 @@ bool DefaultSLAMEngine::extractPatch(const cv::Mat& image, float u, float v, cv:
 }
 
 bool DefaultSLAMEngine::findPatch(
-    const cv::Mat& image,
     const cv::Mat& patch,
     double box_center_u,
     double box_center_v,
@@ -635,15 +589,17 @@ bool DefaultSLAMEngine::findPatch(
     double& found_u,
     double& found_v)
 {
+    const cv::Mat& image = m_current_image.refFrame();
+
     cv::Rect area( cv::Point2i( box_center_u - box_radius_u ), cv::Size( 2*box_radius_u, 2*box_radius_v) );
 
     bool found = false;
 
     cv::Mat candidate;
 
-    for(std::vector<cv::Point2i>::iterator it=m_corners.begin(); found == false && it!=m_corners.end(); it++)
+    for(std::vector<cv::Point2i>::iterator it=m_current_corners.begin(); found == false && it!=m_current_corners.end(); it++)
     {
-        if( area.contains(*it) && extractPatch(image, it->x, it->y, candidate) )
+        if( area.contains(*it) && extractPatch(it->x, it->y, candidate) )
         {
             if( comparePatches(candidate, patch) )
             {

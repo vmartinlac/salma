@@ -49,6 +49,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     setCentralWidget(outer_splitter);
     setWindowTitle("SLAM Demo");
     resize(800, 600);
+
+    m_slam_parameters.loadFromDefaultParameterFile();
 }
 
 void MainWindow::ask_slam_parameters()

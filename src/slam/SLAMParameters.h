@@ -10,11 +10,13 @@ public:
 
     cv::Mat calibration_matrix;
     cv::Mat distortion_coefficients;
-    double calibration_target_scale;
+    double calibration_target_scale; // the length of the side of a case of the calibration target.
     int patch_size;
-    int num_depth_hypotheses;
     double min_distance_to_camera;
-    cv::Rect image_viewport;
+
+    int num_depth_hypotheses;
+    double min_depth_hypothesis;
+    double max_depth_hypothesis;
 
     SLAMParameters();
     bool loadFromJson(const QJsonDocument& doc);

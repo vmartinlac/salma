@@ -26,13 +26,3 @@ protected:
     SLAMParameters m_parameters;
 };
 
-inline void SLAMEngine::setParameters(const SLAMParameters& params)
-{
-    m_parameters = params;
-}
-
-inline SLAMOutput* SLAMEngine::getOutput()
-{
-    return m_output;
-}
-

@@ -34,7 +34,7 @@ protected:
 
 inline Image::Image(Image&& o)
 {
-    operator=(std::move(o));
+    operator=(std::move(o)); // TODO: move or forward ?
 }
 
 inline void Image::operator=(Image&& o)

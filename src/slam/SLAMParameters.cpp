@@ -76,7 +76,6 @@ void SLAMParameters::reset()
     patch_size = 12;
     num_depth_hypotheses = 100;
     min_distance_to_camera = 0.0;
-    image_viewport = cv::Rect( cv::Point2i(0,0), cv::Size(0,0) );
 }
 
 SLAMParameters::SLAMParameters()
