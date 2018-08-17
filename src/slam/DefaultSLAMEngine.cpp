@@ -12,21 +12,40 @@ DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera, QObject* parent) :
 
 void DefaultSLAMEngine::run()
 {
-    m_mode = MODE_INIT;
+    // start-up
+    {
+        if( m_camera == nullptr ) throw std::runtime_error("Internal error");
 
-    if( m_camera == nullptr ) throw std::runtime_error("Internal error");
+        cv::Mat_<float> K(3,3);
+        K <<
+            m_parameters.fx, 0.0, m_parameters.cx,
+            0.0, m_parameters.fy, m_parameters.cy,
+            0.0, 0.0, 1.0;
 
-    m_camera_state.position.setZero();
-    m_camera_state.attitude.setIdentity();
-    m_camera_state.linear_velocity.setZero();
-    m_camera_state.angular_velocity.setZero();
-    m_landmarks.clear();
-    m_state_covariance.resize(0, 0);
-    m_candidate_landmarks.clear();
-    m_time_last_frame = 0.0;
-    bool first = true;
+        cv::Mat_<float> lens_distortion(5, 1);
+        lens_distortion <<
+            m_parameters.distortion_k1,
+            m_parameters.distortion_k2,
+            m_parameters.distortion_p1,
+            m_parameters.distortion_p2,
+            m_parameters.distortion_k3;
+
+        m_mode = MODE_INIT;
+        m_calibration_matrix = K;
+        m_distortion_coefficients = lens_distortion;
+        m_camera_state.position.setZero();
+        m_camera_state.attitude.setIdentity();
+        m_camera_state.linear_velocity.setZero();
+        m_camera_state.angular_velocity.setZero();
+        m_landmarks.clear();
+        m_state_covariance.resize(0, 0);
+        m_candidate_landmarks.clear();
+        m_time_last_frame = 0.0;
+    }
 
     m_camera->open();
+
+    bool first = true;
 
     while( isInterruptionRequested() == false )
     {
@@ -90,8 +109,8 @@ void DefaultSLAMEngine::processImageInit()
         ok = cv::solvePnP(
             samples( cv::Range::all(), cv::Range(2, 5) ),
             samples( cv::Range::all(), cv::Range(0, 2) ),
-            m_parameters.calibration_matrix,
-            m_parameters.distortion_coefficients,
+            m_calibration_matrix,
+            m_distortion_coefficients,
             rodrigues_rotation,
             translation,
             false,
@@ -139,8 +158,7 @@ void DefaultSLAMEngine::processImageInit()
                 samples.at<float>(i, 4);
 
             const bool ret = extractPatch(
-                samples.at<float>(i, 0),
-                samples.at<float>(i, 1),
+                cv::Point2i( samples.at<float>(i, 0), samples.at<float>(i, 1) ),
                 lm.patch);
 
             lm.num_failed_detections = 0;
@@ -189,6 +207,8 @@ void DefaultSLAMEngine::processImageSLAM()
     EKFPredict(state_mu, state_sigma);
     EKFUpdate(state_mu, state_sigma);
     saveState(state_mu, state_sigma);
+
+    ;
 }
 
 void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
@@ -396,11 +416,11 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
     const double R32 = R23;
     const double R33 = 1.0 - 2.0*(a1*a1 + a2*a2);
 
-    const double c1 = m_parameters.calibration_matrix.at<float>(0,2);
-    const double c2 = m_parameters.calibration_matrix.at<float>(1,2);
+    const double c1 = m_calibration_matrix.at<float>(0,2);
+    const double c2 = m_calibration_matrix.at<float>(1,2);
 
-    const double f1 = m_parameters.calibration_matrix.at<float>(0,0);
-    const double f2 = m_parameters.calibration_matrix.at<float>(1,1);
+    const double f1 = m_calibration_matrix.at<float>(0,0);
+    const double f2 = m_calibration_matrix.at<float>(1,1);
 
     // compute find landmarks, compute residuals and jacobian.
 
@@ -423,8 +443,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         double u1 = 0.0;
         double u2 = 0.0;
 
-        double found_u1 = 0.0;
-        double found_u2 = 0.0;
+        cv::Point2i found_point(0,0);
 
         bool ok = true;
 
@@ -473,15 +492,14 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
             ok = findPatch(
                 m_landmarks[i].patch,
-                u1, u2,
-                box_radius_1, box_radius_2,
-                found_u1, found_u2);
+                cv::Rect( u1-box_radius_1, u2-box_radius_2, 2*box_radius_1, 2*box_radius_2 ),
+                found_point );
         }
 
         if(ok)
         {
-            residuals(2*i+0) = found_u1 - u1;
-            residuals(2*i+1) = found_u2 - u2;
+            residuals(2*i+0) = found_point.x - u1;
+            residuals(2*i+1) = found_point.y - u2;
             num_found++;
         }
         else
@@ -553,27 +571,20 @@ void DefaultSLAMEngine::processImageDead()
 {
 }
 
-bool DefaultSLAMEngine::extractPatch(float u, float v, cv::Mat& patch)
+bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)
 {
-    const cv::Mat& image = m_current_image.refFrame();
+    const cv::Mat& frame = m_current_image.refFrame();
 
     const int radius = m_parameters.patch_size/2;
 
-    const int U = (int) cvRound(u);
-    const int V = (int) cvRound(v);
+    cv::Rect image_rect( cv::Point2i(0, 0), frame.size() );
+    cv::Rect patch_rect( cv::Point2i( point.x-radius, point.y-radius), cv::Size( m_parameters.patch_size, m_parameters.patch_size ) );
 
     bool ret = false;
 
-    cv::Rect viewport(
-        cv::Point2f( radius+1, radius+1 ),
-        cv::Size( image.cols-m_parameters.patch_size-1, image.rows-m_parameters.patch_size-1 ) );
-
-    if( viewport.contains( cv::Point2i(U,V) ) )
+    if( (image_rect & patch_rect) == image_rect )
     {
-        patch = image(
-            cv::Range(V-radius, V+radius+1),
-            cv::Range(U-radius, U+radius+1) );
-
+        patch = frame(patch_rect);
         ret = true;
     }
 
@@ -582,16 +593,10 @@ bool DefaultSLAMEngine::extractPatch(float u, float v, cv::Mat& patch)
 
 bool DefaultSLAMEngine::findPatch(
     const cv::Mat& patch,
-    double box_center_u,
-    double box_center_v,
-    double box_radius_u,
-    double box_radius_v,
-    double& found_u,
-    double& found_v)
+    const cv::Rect& area,
+    cv::Point2i& result)
 {
     const cv::Mat& image = m_current_image.refFrame();
-
-    cv::Rect area( cv::Point2i( box_center_u - box_radius_u ), cv::Size( 2*box_radius_u, 2*box_radius_v) );
 
     bool found = false;
 
@@ -599,12 +604,11 @@ bool DefaultSLAMEngine::findPatch(
 
     for(std::vector<cv::Point2i>::iterator it=m_current_corners.begin(); found == false && it!=m_current_corners.end(); it++)
     {
-        if( area.contains(*it) && extractPatch(it->x, it->y, candidate) )
+        if( area.contains(*it) && extractPatch( *it, candidate) )
         {
             if( comparePatches(candidate, patch) )
             {
-                found_u = it->x;
-                found_v = it->y;
+                result = *it;
                 found = true;
             }
         }

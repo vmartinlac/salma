@@ -17,6 +17,7 @@ VideoWidget::VideoWidget(SLAMOutput* slam, QWidget* parent) :
     l->setPixmap(QPixmap::fromImage(image));
 
     QScrollArea* s = new QScrollArea();
+    s->setAlignment(Qt::AlignCenter);
     s->setWidget(l);
 
     QVBoxLayout* lay = new QVBoxLayout();

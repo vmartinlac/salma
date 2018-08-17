@@ -30,6 +30,8 @@ namespace target {
             const cv::Mat& image,
             KindOfTarget target,
             float case_sidelength,
+            // TODO: replace the ugly cv::Mat with the vector below.
+            // std::vector< std::pair<cv::Point2f, cv::Point3f> >& result);
             cv::Mat& samples );
 
     protected:

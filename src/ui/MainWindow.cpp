@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QKeySequence>
 #include <QSplitter>
 #include <QLabel>
 #include <QMessageBox>
@@ -27,6 +28,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     connect(m_slam, SIGNAL(started()), this, SLOT(slam_started()));
     connect(m_slam, SIGNAL(finished()), this, SLOT(slam_stopped()));
 
+    m_a_parameters->setShortcut(QKeySequence("Ctrl+P"));
+
     slam_stopped();
 
     m_viewer = new ViewerWidget();
@@ -50,12 +53,17 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     setWindowTitle("SLAM Demo");
     resize(800, 600);
 
-    m_slam_parameters.loadFromDefaultParameterFile();
+    m_slam_parameters.loadFromSettings();
 }
 
 void MainWindow::ask_slam_parameters()
 {
-    SLAMParametersDialog::ask(this, m_slam_parameters);
+    const bool ret = SLAMParametersDialog::ask(this, m_slam_parameters);
+
+    if( ret )
+    {
+        m_slam_parameters.saveToSettings();
+    }
 }
 
 void MainWindow::about()
@@ -68,6 +76,8 @@ void MainWindow::start_slam()
     if( m_slam->isRunning() == false )
     {
         m_a_parameters->setEnabled(false);
+
+        m_slam->setParameters(m_slam_parameters);
         m_slam->start();
     }
 }

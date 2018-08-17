@@ -47,7 +47,6 @@ protected:
         cv::Mat patch;
         Eigen::Vector3d origin;
         Eigen::Vector3d direction;
-        std::vector<double> depth_hypotheses;
     };
 
 protected:
@@ -56,15 +55,11 @@ protected:
     void processImageSLAM();
     void processImageDead();
 
-    bool extractPatch(float x, float y, cv::Mat& patch);
+    bool extractPatch( const cv::Point2i& point, cv::Mat& patch );
     bool findPatch(
         const cv::Mat& patch,
-        double box_center_u,
-        double box_center_v,
-        double box_radius_u,
-        double box_radius_v,
-        double& found_u,
-        double& found_v);
+        const cv::Rect& area,
+        cv::Point2i& found_coords );
     bool comparePatches(const cv::Mat& P1, const cv::Mat& P2);
 
     void EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
@@ -75,6 +70,8 @@ protected:
 
     Mode m_mode;
     Camera* m_camera;
+    cv::Mat m_calibration_matrix;
+    cv::Mat m_distortion_coefficients;
     CameraState m_camera_state;
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;

@@ -22,13 +22,21 @@ public:
 
 public:
 
+    // string describing what the slam engine is doing.
     QString mode;
+
+    // output debug image (basically the image from the camera annotated by the engine).
     cv::Mat image;
 
+    // camera state.
     Eigen::Vector3d position;
     Eigen::Quaterniond attitude;
     Eigen::Vector3d linear_velocity;
     Eigen::Vector3d angular_velocity;
+
+    // landmarks.
+
+    // candidate landmarks.
 
 signals:
 
