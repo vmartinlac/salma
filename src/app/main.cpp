@@ -19,15 +19,14 @@ int main(int num_args, char** args)
     camera_manager->initialize();
 
     Camera* camera = camera_manager->getDefaultCamera();
+    std::cout << "Camera is " << camera->getHumanName() << std::endl;
 
     if( camera == nullptr )
     {
-        /*
         std::cerr << "No camera available !" << std::endl;
         camera_manager->finalize();
         delete camera_manager;
         exit(0);
-        */
     }
 
     // create slam engine.
@@ -42,6 +41,9 @@ int main(int num_args, char** args)
     // exec the app.
 
     const int ret = app.exec();
+
+    slam->requestInterruption();
+    slam->wait();
 
     // clean up.
 

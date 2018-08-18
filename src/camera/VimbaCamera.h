@@ -43,6 +43,7 @@ protected:
     std::vector<VmbFrame_t> m_frames;
     std::mutex m_mutex;
     Image m_newest_image;
+    VmbInt64_t m_tick_frequency;
 };
 
 // CameraManager

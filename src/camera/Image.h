@@ -8,11 +8,11 @@ class Image
 public:
 
     Image();
-    Image(const Image& o) = default;
-    Image(Image&& o);
 
-    Image& operator=(const Image& o) = default;
-    void operator=(Image&& o);
+    Image(const Image&) = delete;
+    Image& operator=(const Image&) = delete;
+
+    void moveTo(Image& other);
 
     bool isValid() { return m_valid; }
     void setValid(bool v) { m_valid = v; }
@@ -32,20 +32,16 @@ protected:
     cv::Mat m_mat;
 };
 
-inline Image::Image(Image&& o)
-{
-    operator=(std::move(o)); // TODO: move or forward ?
-}
 
-inline void Image::operator=(Image&& o)
+inline void Image::moveTo(Image& o)
 {
-    m_valid = o.m_valid;
-    m_timestamp = o.m_timestamp;
-    m_mat = std::move(o.m_mat);
+    o.m_valid = m_valid;
+    o.m_timestamp = m_timestamp;
+    o.m_mat = std::move(m_mat);
 
-    o.m_valid = false;
-    o.m_timestamp = 0;
-    o.m_mat.release();
+    m_valid = false;
+    m_timestamp = 0;
+    m_mat.release();
 }
 
 inline Image::Image()

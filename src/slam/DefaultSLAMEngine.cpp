@@ -30,7 +30,8 @@ void DefaultSLAMEngine::run()
             m_parameters.distortion_p2,
             m_parameters.distortion_k3;
 
-        m_mode = MODE_INIT;
+        m_mode = MODE_DEAD;
+        //m_mode = MODE_INIT;
         m_calibration_matrix = K;
         m_distortion_coefficients = lens_distortion;
         m_camera_state.position.setZero();
@@ -78,7 +79,8 @@ void DefaultSLAMEngine::run()
         }
         else
         {
-            QThread::yieldCurrentThread();
+            QThread::msleep(5);
+            //QThread::yieldCurrentThread();
         }
     }
 
@@ -208,7 +210,7 @@ void DefaultSLAMEngine::processImageSLAM()
     EKFUpdate(state_mu, state_sigma);
     saveState(state_mu, state_sigma);
 
-    ;
+    // TODO: manage candidate landmarks.
 }
 
 void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
@@ -569,6 +571,12 @@ void DefaultSLAMEngine::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
 
 void DefaultSLAMEngine::processImageDead()
 {
+    m_mode = MODE_DEAD;
+    m_output->beginWrite();
+    m_output->image = m_current_image.refFrame().clone();
+    m_output->endWrite();
+    m_output->updated();
+    std::cout << m_current_image.getTimestamp() << std::endl;
 }
 
 bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)

@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QApplication>
 #include <QKeySequence>
 #include <QSplitter>
 #include <QLabel>
@@ -19,6 +20,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
 
     QAction* a_about = tb->addAction("About");
 
+    QAction* a_quit = tb->addAction("Quit");
+
     connect(m_a_parameters, SIGNAL(triggered()), this, SLOT(ask_slam_parameters()));
 
     connect(m_a_start, SIGNAL(triggered()), this, SLOT(start_slam()));
@@ -28,7 +31,12 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     connect(m_slam, SIGNAL(started()), this, SLOT(slam_started()));
     connect(m_slam, SIGNAL(finished()), this, SLOT(slam_stopped()));
 
+    connect(a_quit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
+
+    m_a_start->setShortcut(QKeySequence("Ctrl+R"));
+    m_a_stop->setShortcut(QKeySequence("Ctrl+S"));
     m_a_parameters->setShortcut(QKeySequence("Ctrl+P"));
+    a_quit->setShortcut(QKeySequence("Ctrl+Q"));
 
     slam_stopped();
 
