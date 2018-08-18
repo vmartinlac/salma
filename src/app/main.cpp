@@ -15,7 +15,8 @@ int main(int num_args, char** args)
 
     // initialize camera manager and retrieve default camera.
 
-    CameraManager* camera_manager = CameraManager::createVimbaCameraManager();
+    CameraManager* camera_manager = CameraManager::createPseudoCameraManager();
+    //CameraManager* camera_manager = CameraManager::createVimbaCameraManager();
     camera_manager->initialize();
 
     Camera* camera = camera_manager->getDefaultCamera();

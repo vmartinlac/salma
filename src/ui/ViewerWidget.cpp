@@ -13,7 +13,8 @@
 
 #include "ViewerWidget.h"
 
-ViewerWidget::ViewerWidget(QWidget* parent) :
+ViewerWidget::ViewerWidget(SLAMOutput* slam, QWidget* parent) :
+    m_slam(slam),
     QOpenGLWidget(parent)
 {
     osg::ref_ptr<osg::Node> data = new osg::Group();
@@ -32,6 +33,8 @@ ViewerWidget::ViewerWidget(QWidget* parent) :
     setFocusPolicy(Qt::StrongFocus);
     setMinimumSize(100, 100);
     _updateTimer = startTimer(30);
+
+    connect(slam, SIGNAL(updated()), this, SLOT(refresh()));
 }
 
 void ViewerWidget::timerEvent(QTimerEvent* ev)
@@ -144,5 +147,11 @@ void ViewerWidget::resizeGL(int width, int height)
 
    cameras.front()->setViewport( 0, 0, this->width(), this->height() );
    */
+}
+
+void ViewerWidget::refresh()
+{
+    m_slam->beginRead();
+    m_slam->endRead();
 }
 

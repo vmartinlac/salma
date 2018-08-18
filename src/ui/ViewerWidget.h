@@ -4,6 +4,7 @@
 #include <QOpenGLWidget>
 #include <osgViewer/Viewer>
 #include <osgViewer/GraphicsWindow>
+#include "SLAMOutput.h"
 
 class QMouseEvent;
 
@@ -13,7 +14,7 @@ class ViewerWidget : public QOpenGLWidget
 
 public:
 
-    ViewerWidget(QWidget* parent=nullptr);
+    ViewerWidget(SLAMOutput* slam, QWidget* parent=nullptr);
 
 protected:
 
@@ -27,8 +28,13 @@ protected:
     void timerEvent(QTimerEvent* event) override;
     void initializeGL() override;
 
+protected slots:
+
+    void refresh();
+
 protected:
 
+    SLAMOutput* m_slam;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
     osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> _window;
     int _updateTimer;

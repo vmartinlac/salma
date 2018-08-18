@@ -20,6 +20,8 @@ public:
     void beginWrite();
     void endWrite();
 
+    void clear();
+
 public:
 
     // string describing what the slam engine is doing.

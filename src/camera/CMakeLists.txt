@@ -8,6 +8,8 @@ add_library(
     VimbaCamera.cpp
     OpenCVCamera.h
     OpenCVCamera.cpp
+    PseudoCamera.h
+    PseudoCamera.cpp
     Image.h
     Image.cpp
 )

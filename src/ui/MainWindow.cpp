@@ -40,7 +40,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
 
     slam_stopped();
 
-    m_viewer = new ViewerWidget();
+    m_viewer = new ViewerWidget( m_slam->getOutput() );
     m_stats = new StatsWidget( m_slam->getOutput() );
     m_video = new VideoWidget( m_slam->getOutput() );
 
@@ -50,7 +50,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     outer_splitter->setOrientation(Qt::Horizontal);
     outer_splitter->setChildrenCollapsible(false);
     inner_splitter->setOrientation(Qt::Vertical);
-    outer_splitter->setChildrenCollapsible(false);
+    inner_splitter->setChildrenCollapsible(false);
 
     outer_splitter->addWidget(m_viewer);
     outer_splitter->addWidget(inner_splitter);
