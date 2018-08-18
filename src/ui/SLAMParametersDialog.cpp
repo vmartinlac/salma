@@ -179,22 +179,24 @@ bool SLAMParametersDialog::ask(QWidget* parent, SLAMParameters& parameters)
 
 void SLAMParametersDialog::storeToUI(const SLAMParameters& parameters)
 {
-    m_cx->setText( QString::number(parameters.cx) );
-    m_cy->setText( QString::number(parameters.cy) );
-    m_fx->setText( QString::number(parameters.fx) );
-    m_fy->setText( QString::number(parameters.fy) );
-    m_distortion_k1->setText( QString::number(parameters.distortion_k1) );
-    m_distortion_k2->setText( QString::number(parameters.distortion_k2) );
-    m_distortion_k3->setText( QString::number(parameters.distortion_k3) );
-    m_distortion_p1->setText( QString::number(parameters.distortion_p1) );
-    m_distortion_p2->setText( QString::number(parameters.distortion_p2) );
-    m_calibration_target_scale->setText( QString::number(parameters.calibration_target_scale) );
-    m_patch_size->setText( QString::number(parameters.patch_size) );
-    m_min_distance_to_camera->setText( QString::number(parameters.min_distance_to_camera) );
-    m_max_landmark_candidates->setText( QString::number(parameters.max_landmark_candidates) );
-    m_num_depth_hypotheses->setText( QString::number(parameters.num_depth_hypotheses) );
-    m_min_depth_hypothesis->setText( QString::number(parameters.min_depth_hypothesis) );
-    m_max_depth_hypothesis->setText( QString::number(parameters.max_depth_hypothesis) );
+    const int precision = 15;
+
+    m_cx->setText( QString::number(parameters.cx, 'g', precision) );
+    m_cy->setText( QString::number(parameters.cy, 'g', precision) );
+    m_fx->setText( QString::number(parameters.fx, 'g', precision) );
+    m_fy->setText( QString::number(parameters.fy, 'g', precision) );
+    m_distortion_k1->setText( QString::number(parameters.distortion_k1, 'g', precision) );
+    m_distortion_k2->setText( QString::number(parameters.distortion_k2, 'g', precision) );
+    m_distortion_k3->setText( QString::number(parameters.distortion_k3, 'g', precision) );
+    m_distortion_p1->setText( QString::number(parameters.distortion_p1, 'g', precision) );
+    m_distortion_p2->setText( QString::number(parameters.distortion_p2, 'g', precision) );
+    m_calibration_target_scale->setText( QString::number(parameters.calibration_target_scale, 'g', precision) );
+    m_patch_size->setText( QString::number(parameters.patch_size, 'g', precision) );
+    m_min_distance_to_camera->setText( QString::number(parameters.min_distance_to_camera, 'g', precision) );
+    m_max_landmark_candidates->setText( QString::number(parameters.max_landmark_candidates, 'g', precision) );
+    m_num_depth_hypotheses->setText( QString::number(parameters.num_depth_hypotheses, 'g', precision) );
+    m_min_depth_hypothesis->setText( QString::number(parameters.min_depth_hypothesis, 'g', precision) );
+    m_max_depth_hypothesis->setText( QString::number(parameters.max_depth_hypothesis, 'g', precision) );
 }
 
 void SLAMParametersDialog::storeFromUI(SLAMParameters& parameters)

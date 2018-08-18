@@ -19,7 +19,6 @@ int main(int num_args, char** args)
     camera_manager->initialize();
 
     Camera* camera = camera_manager->getDefaultCamera();
-    std::cout << "Camera is " << camera->getHumanName() << std::endl;
 
     if( camera == nullptr )
     {
@@ -28,6 +27,8 @@ int main(int num_args, char** args)
         delete camera_manager;
         exit(0);
     }
+
+    std::cout << "Camera is " << camera->getHumanName() << std::endl;
 
     // create slam engine.
 
