@@ -28,15 +28,19 @@ protected slots:
     void slam_started();
     void slam_stopped();
     void ask_slam_parameters();
+    void ask_video_input();
 
 protected:
 
     QAction* m_a_start;
     QAction* m_a_stop;
     QAction* m_a_parameters;
+    QAction* m_a_video;
     SLAMEngine* m_slam;
     ViewerWidget* m_viewer;
     VideoWidget* m_video;
     StatsWidget* m_stats;
     SLAMParameters m_slam_parameters;
+    //std::unique_ptr<CameraManager> m_camera_manager;
+    //Camera* m_camera;
 };

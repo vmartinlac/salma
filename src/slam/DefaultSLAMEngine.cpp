@@ -94,11 +94,23 @@ void DefaultSLAMEngine::processImageInit()
     cv::Mat samples;
     cv::Mat rodrigues_rotation;
     cv::Mat translation;
+    target::KindOfTarget kind_of_target;
+    
+    switch(m_parameters.initialization_target_kind)
+    {
+    case SLAMParameters::INITIALIZATION_TARGET_TWO_PLANE:
+        kind_of_target = target::TWO_PLANES;
+        break;
+    case SLAMParameters::INITIALIZATION_TARGET_ONE_PLANE:
+    default:
+        kind_of_target = target::ONE_PLANE;
+        break;
+    }
 
     ok = d.run(
         m_current_image.refFrame(),
-        target::Detector::ONE_PLANE,
-        m_parameters.calibration_target_scale,
+        kind_of_target,
+        m_parameters.initialization_target_scale,
         samples);
 
     if( ok )
@@ -177,7 +189,7 @@ void DefaultSLAMEngine::processImageInit()
 
         if( m_landmarks.size() >= 8 )
         {
-            const double sigma = 0.15*m_parameters.calibration_target_scale; // TODO: to clarify.
+            const double sigma = 0.15*m_parameters.initialization_target_scale; // TODO: to clarify.
 
             m_state_covariance.resize(
                 12 + m_landmarks.size(),

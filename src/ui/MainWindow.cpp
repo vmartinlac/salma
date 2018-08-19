@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QIcon>
 #include <QApplication>
 #include <QKeySequence>
 #include <QSplitter>
@@ -6,23 +7,27 @@
 #include <QMessageBox>
 #include "ViewerWidget.h"
 #include "MainWindow.h"
-#include "SLAMParametersDialog.h"
+#include "ParametersDialog.h"
+#include "VideoInputDialog.h"
 
 MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     QMainWindow(parent),
     m_slam(slam)
 {
     QToolBar* tb = addToolBar("Toolbar");
+    tb->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+
     m_a_start = tb->addAction("Start");
     m_a_stop = tb->addAction("Stop");
-
+    tb->addSeparator();
+    m_a_video = tb->addAction("Video");
     m_a_parameters = tb->addAction("Parameters");
-
+    tb->addSeparator();
     QAction* a_about = tb->addAction("About");
-
     QAction* a_quit = tb->addAction("Quit");
 
     connect(m_a_parameters, SIGNAL(triggered()), this, SLOT(ask_slam_parameters()));
+    connect(m_a_video, SIGNAL(triggered()), this, SLOT(ask_video_input()));
 
     connect(m_a_start, SIGNAL(triggered()), this, SLOT(start_slam()));
     connect(m_a_stop, SIGNAL(triggered()), this, SLOT(stop_slam()));
@@ -36,7 +41,15 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     m_a_start->setShortcut(QKeySequence("Ctrl+R"));
     m_a_stop->setShortcut(QKeySequence("Ctrl+S"));
     m_a_parameters->setShortcut(QKeySequence("Ctrl+P"));
+    m_a_video->setShortcut(QKeySequence("Ctrl+V"));
     a_quit->setShortcut(QKeySequence("Ctrl+Q"));
+
+    m_a_start->setIcon(QIcon::fromTheme("media-playback-start"));
+    m_a_stop->setIcon(QIcon::fromTheme("media-playback-stop"));
+    a_about->setIcon(QIcon::fromTheme("help-about"));
+    a_quit->setIcon(QIcon::fromTheme("application-exit"));
+    m_a_parameters->setIcon(QIcon::fromTheme("document-properties"));
+    m_a_video->setIcon(QIcon::fromTheme("camera-video"));
 
     slam_stopped();
 
@@ -66,7 +79,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
 
 void MainWindow::ask_slam_parameters()
 {
-    const bool ret = SLAMParametersDialog::ask(this, m_slam_parameters);
+    const bool ret = ParametersDialog::ask(this, m_slam_parameters);
 
     if( ret )
     {
@@ -114,5 +127,12 @@ void MainWindow::slam_stopped()
     m_a_stop->setEnabled(false);
     m_a_parameters->setEnabled(true);
     //m_a_stop->setVisible(false);
+}
+
+void MainWindow::ask_video_input()
+{
+    VideoInputDialog* dlg = new VideoInputDialog(this);
+    dlg->exec();
+    delete dlg;
 }
 

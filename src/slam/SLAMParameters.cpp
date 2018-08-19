@@ -23,7 +23,8 @@ bool SLAMParameters::loadFromJson(const QJsonDocument& doc)
         distortion_k3 = obj["distortion_k3"].toDouble(distortion_k3);
         distortion_p1 = obj["distortion_p1"].toDouble(distortion_p1);
         distortion_p2 = obj["distortion_p2"].toDouble(distortion_p2);
-        calibration_target_scale = obj["calibration_target_scale"].toDouble(calibration_target_scale);
+        initialization_target_scale = obj["initialization_target_scale"].toDouble(initialization_target_scale);
+        initialization_target_kind = obj["initialization_target_kind"].toInt(initialization_target_kind);
         patch_size = obj["patch_size"].toInt(patch_size);
         min_distance_to_camera = obj["min_distance_to_camera"].toDouble(min_distance_to_camera);
         max_landmark_candidates = obj["max_landmark_candidates"].toInt(max_landmark_candidates);
@@ -50,7 +51,8 @@ bool SLAMParameters::saveToJson(QJsonDocument& doc)
     obj["distortion_k3"] = distortion_k3;
     obj["distortion_p1"] = distortion_p1;
     obj["distortion_p2"] = distortion_p2;
-    obj["calibration_target_scale"] = calibration_target_scale; // the length of the side of a case of the calibration target.
+    obj["initialization_target_scale"] = initialization_target_scale;
+    obj["initialization_target_kind"] = initialization_target_kind;
     obj["patch_size"] = patch_size;
     obj["min_distance_to_camera"] = min_distance_to_camera;
     obj["max_landmark_candidates"] = max_landmark_candidates;
@@ -120,7 +122,8 @@ bool SLAMParameters::loadFromSettings()
     distortion_k3 = s.value("distortion_k3", distortion_k3).toDouble();
     distortion_p1 = s.value("distortion_p1", distortion_p1).toDouble();
     distortion_p2 = s.value("distortion_p2", distortion_p2).toDouble();
-    calibration_target_scale = s.value("calibration_target_scale", calibration_target_scale).toDouble(); // the length of the side of a case of the calibration target.
+    initialization_target_scale = s.value("initialization_target_scale", initialization_target_scale).toDouble();
+    initialization_target_kind = s.value("initialization_target_kind", initialization_target_kind).toInt();
     patch_size = s.value("patch_size", patch_size).toInt();
     min_distance_to_camera = s.value("min_distance_to_camera", min_distance_to_camera).toDouble();
     max_landmark_candidates = s.value("max_landmark_candidates", max_landmark_candidates).toInt();
@@ -148,7 +151,8 @@ bool SLAMParameters::saveToSettings()
     s.setValue("distortion_k3", distortion_k3);
     s.setValue("distortion_p1", distortion_p1);
     s.setValue("distortion_p2", distortion_p2);
-    s.setValue("calibration_target_scale", calibration_target_scale); // the length of the side of a case of the calibration target.
+    s.setValue("initialization_target_scale", initialization_target_scale);
+    s.setValue("initialization_target_kind", initialization_target_kind);
     s.setValue("patch_size", patch_size);
     s.setValue("min_distance_to_camera", min_distance_to_camera);
     s.setValue("max_landmark_candidates", max_landmark_candidates);
@@ -172,7 +176,8 @@ void SLAMParameters::reset()
     distortion_k3 = 0.0;
     distortion_p1 = 0.0;
     distortion_p2 = 0.0;
-    calibration_target_scale = 1.0;
+    initialization_target_scale = 1.0;
+    initialization_target_kind = INITIALIZATION_TARGET_ONE_PLANE;
     patch_size = 11;
     min_distance_to_camera = 0.1;
     max_landmark_candidates = 30;

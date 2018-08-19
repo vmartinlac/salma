@@ -1,16 +1,17 @@
 #pragma once
 
 #include <QLineEdit>
+#include <QComboBox>
 #include <QDialog>
 #include <QDoubleValidator>
 #include "SLAMParameters.h"
 
-class SLAMParametersDialog : public QDialog
+class ParametersDialog : public QDialog
 {
     Q_OBJECT
 public:
 
-    SLAMParametersDialog(QWidget* parent);
+    ParametersDialog(QWidget* parent);
 
     void storeToUI(const SLAMParameters& parameters);
     void storeFromUI(SLAMParameters& parameters);
@@ -41,7 +42,8 @@ protected:
     QLineEdit* m_distortion_k3;
     QLineEdit* m_distortion_p1;
     QLineEdit* m_distortion_p2;
-    QLineEdit* m_calibration_target_scale;
+    QLineEdit* m_initialization_target_scale;
+    QComboBox* m_initialization_target_kind;
     QLineEdit* m_patch_size;
     QLineEdit* m_min_distance_to_camera;
     QLineEdit* m_max_landmark_candidates;

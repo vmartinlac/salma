@@ -6,9 +6,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
-#include "SLAMParametersDialog.h"
+#include "ParametersDialog.h"
 
-QWidget* SLAMParametersDialog::create_camera_tab()
+QWidget* ParametersDialog::create_camera_tab()
 {
     m_fx = new QLineEdit();
     m_fy = new QLineEdit();
@@ -20,6 +20,7 @@ QWidget* SLAMParametersDialog::create_camera_tab()
     m_distortion_p1 = new QLineEdit();
     m_distortion_p2 = new QLineEdit();
 
+    /*
     m_fx->setValidator(m_double_validator);
     m_fy->setValidator(m_double_validator);
     m_cx->setValidator(m_double_validator);
@@ -29,6 +30,7 @@ QWidget* SLAMParametersDialog::create_camera_tab()
     m_distortion_k3->setValidator(m_double_validator);
     m_distortion_p1->setValidator(m_double_validator);
     m_distortion_p2->setValidator(m_double_validator);
+    */
 
     QWidget* ret = new QWidget();
 
@@ -48,21 +50,26 @@ QWidget* SLAMParametersDialog::create_camera_tab()
     return ret;
 }
 
-QWidget* SLAMParametersDialog::create_target_tab()
+QWidget* ParametersDialog::create_target_tab()
 {
-    m_calibration_target_scale = new QLineEdit();
+    m_initialization_target_scale = new QLineEdit();
+    m_initialization_target_kind = new QComboBox();
+
+    m_initialization_target_kind->addItem("one plane", SLAMParameters::INITIALIZATION_TARGET_ONE_PLANE);
+    m_initialization_target_kind->addItem("two planes", SLAMParameters::INITIALIZATION_TARGET_TWO_PLANE);
 
     QWidget* ret = new QWidget();
 
     QFormLayout* lay = new QFormLayout();
     ret->setLayout(lay);
 
-    lay->addRow("calibration target unit length", m_calibration_target_scale);
+    lay->addRow("initialization target scale", m_initialization_target_scale);
+    lay->addRow("initialization target kind", m_initialization_target_kind);
 
     return ret;
 }
 
-QWidget* SLAMParametersDialog::create_engine_tab()
+QWidget* ParametersDialog::create_engine_tab()
 {
     m_patch_size = new QLineEdit();
     m_min_distance_to_camera = new QLineEdit();
@@ -86,7 +93,7 @@ QWidget* SLAMParametersDialog::create_engine_tab()
     return ret;
 }
 
-SLAMParametersDialog::SLAMParametersDialog(QWidget* parent) : QDialog(parent)
+ParametersDialog::ParametersDialog(QWidget* parent) : QDialog(parent)
 {
     m_double_validator = new QDoubleValidator(this);
 
@@ -119,7 +126,7 @@ SLAMParametersDialog::SLAMParametersDialog(QWidget* parent) : QDialog(parent)
     connect( btn_save, SIGNAL(clicked()), this, SLOT(saveToFile()) );
 }
 
-void SLAMParametersDialog::loadFromFile()
+void ParametersDialog::loadFromFile()
 {
     QString ret = QFileDialog::getOpenFileName(this, "Open");
 
@@ -140,7 +147,7 @@ void SLAMParametersDialog::loadFromFile()
     }
 }
 
-void SLAMParametersDialog::saveToFile()
+void ParametersDialog::saveToFile()
 {
     QString ret = QFileDialog::getSaveFileName(this, "Save");
 
@@ -159,9 +166,9 @@ void SLAMParametersDialog::saveToFile()
     }
 }
 
-bool SLAMParametersDialog::ask(QWidget* parent, SLAMParameters& parameters)
+bool ParametersDialog::ask(QWidget* parent, SLAMParameters& parameters)
 {
-    SLAMParametersDialog* dlg = new SLAMParametersDialog(parent);
+    ParametersDialog* dlg = new ParametersDialog(parent);
 
     dlg->storeToUI(parameters);
 
@@ -177,7 +184,7 @@ bool SLAMParametersDialog::ask(QWidget* parent, SLAMParameters& parameters)
     return (ret == QDialog::Accepted);
 }
 
-void SLAMParametersDialog::storeToUI(const SLAMParameters& parameters)
+void ParametersDialog::storeToUI(const SLAMParameters& parameters)
 {
     const int precision = 15;
 
@@ -190,7 +197,8 @@ void SLAMParametersDialog::storeToUI(const SLAMParameters& parameters)
     m_distortion_k3->setText( QString::number(parameters.distortion_k3, 'g', precision) );
     m_distortion_p1->setText( QString::number(parameters.distortion_p1, 'g', precision) );
     m_distortion_p2->setText( QString::number(parameters.distortion_p2, 'g', precision) );
-    m_calibration_target_scale->setText( QString::number(parameters.calibration_target_scale, 'g', precision) );
+    m_initialization_target_scale->setText( QString::number(parameters.initialization_target_scale, 'g', precision) );
+    m_initialization_target_kind->setCurrentIndex( std::max(0, m_initialization_target_kind->findData(parameters.initialization_target_kind) ) );
     m_patch_size->setText( QString::number(parameters.patch_size, 'g', precision) );
     m_min_distance_to_camera->setText( QString::number(parameters.min_distance_to_camera, 'g', precision) );
     m_max_landmark_candidates->setText( QString::number(parameters.max_landmark_candidates, 'g', precision) );
@@ -199,7 +207,7 @@ void SLAMParametersDialog::storeToUI(const SLAMParameters& parameters)
     m_max_depth_hypothesis->setText( QString::number(parameters.max_depth_hypothesis, 'g', precision) );
 }
 
-void SLAMParametersDialog::storeFromUI(SLAMParameters& parameters)
+void ParametersDialog::storeFromUI(SLAMParameters& parameters)
 {
     parameters.cx = m_cx->text().toDouble();
     parameters.cy = m_cy->text().toDouble();
@@ -210,7 +218,18 @@ void SLAMParametersDialog::storeFromUI(SLAMParameters& parameters)
     parameters.distortion_k3 = m_distortion_k3->text().toDouble();
     parameters.distortion_p1 = m_distortion_p1->text().toDouble();
     parameters.distortion_p2 = m_distortion_p2->text().toDouble();
-    parameters.calibration_target_scale = m_calibration_target_scale->text().toDouble(); // the length of the side of a case of the calibration target.
+    parameters.initialization_target_scale = m_initialization_target_scale->text().toDouble(); // the length of the side of a case of the initialization target.
+
+    QVariant tmp = m_initialization_target_kind->currentData();
+    if(tmp.isValid())
+    {
+        parameters.initialization_target_kind = tmp.toInt();
+    }
+    else
+    {
+        parameters.initialization_target_kind = SLAMParameters::INITIALIZATION_TARGET_ONE_PLANE;
+    }
+
     parameters.patch_size = m_patch_size->text().toInt();
     parameters.min_distance_to_camera = m_min_distance_to_camera->text().toDouble();
     parameters.max_landmark_candidates = m_max_landmark_candidates->text().toInt();

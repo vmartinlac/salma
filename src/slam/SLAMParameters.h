@@ -7,6 +7,12 @@ class SLAMParameters
 {
 public:
 
+    enum InitializationTargetKind
+    {
+        INITIALIZATION_TARGET_ONE_PLANE=0,
+        INITIALIZATION_TARGET_TWO_PLANE=1
+    };
+
     double cx;
     double cy;
     double fx;
@@ -16,7 +22,8 @@ public:
     double distortion_k3;
     double distortion_p1;
     double distortion_p2;
-    double calibration_target_scale; // the length of the side of a case of the calibration target.
+    double initialization_target_scale;
+    int initialization_target_kind;
     int patch_size;
     double min_distance_to_camera;
     int max_landmark_candidates;

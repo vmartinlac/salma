@@ -6,18 +6,17 @@
 #include <opencv2/core.hpp>
 #include <nanoflann.hpp>
 
-namespace target {
+namespace target
+{
+
+    enum KindOfTarget
+    {
+        ONE_PLANE=0,
+        TWO_PLANES=1
+    };
 
     class Detector
     {
-    public:
-
-        enum KindOfTarget
-        {
-            ONE_PLANE=0,
-            TWO_PLANES=1
-        };
-
     public:
 
         Detector();

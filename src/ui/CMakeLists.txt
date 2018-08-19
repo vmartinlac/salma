@@ -8,12 +8,14 @@ add_library(
     ViewerWidget.cpp
     utils.h
     utils.cpp
-    SLAMParametersDialog.h
-    SLAMParametersDialog.cpp
+    ParametersDialog.h
+    ParametersDialog.cpp
     VideoWidget.h
     VideoWidget.cpp
     StatsWidget.h
     StatsWidget.cpp
+    VideoInputDialog.h
+    VideoInputDialog.cpp
 )
 
 target_link_libraries(ui PUBLIC slam camera Qt5::Widgets OpenSceneGraph opencv_core opencv_imgproc)
