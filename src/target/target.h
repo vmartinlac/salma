@@ -29,9 +29,8 @@ namespace target
             const cv::Mat& image,
             KindOfTarget target,
             float case_sidelength,
-            // TODO: replace the ugly cv::Mat with the vector below.
-            // std::vector< std::pair<cv::Point2f, cv::Point3f> >& result);
-            cv::Mat& samples );
+            std::vector<cv::Point3f>& object_points,
+            std::vector<cv::Point2f>& image_points);
 
     protected:
 
@@ -153,8 +152,12 @@ namespace target
         void orient_myself(int idx); // requires point idx to have four neighbors.
         void orient_my_neighbor(int idx, int neigh_id);
         void find_folding_line();
-        bool store_results_two_planes(cv::Mat& samples);
-        bool store_results_one_plane(cv::Mat& samples);
+        bool store_results_two_planes(
+            std::vector<cv::Point3f>& object_points,
+            std::vector<cv::Point2f>& image_points);
+        bool store_results_one_plane(
+            std::vector<cv::Point3f>& object_points,
+            std::vector<cv::Point2f>& image_points);
 
     protected:
 

@@ -1,4 +1,4 @@
-#include <chrono>
+//#include <chrono>
 #include <cmath>
 #include <queue>
 #include <algorithm>
@@ -17,9 +17,14 @@ namespace target {
     {
     }
 
-    bool Detector::run( const cv::Mat& image, KindOfTarget target, float case_side_length, cv::Mat& samples )
+    bool Detector::run(
+        const cv::Mat& image,
+        KindOfTarget target,
+        float case_side_length,
+        std::vector<cv::Point3f>& object_points,
+        std::vector<cv::Point2f>& image_points)
     {
-        std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
+        //std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
 
         m_target = target;
         m_case_side_length = case_side_length;
@@ -29,47 +34,47 @@ namespace target {
         cv::imwrite("10_original.png", *m_image);
 #endif
 
-        std::cout << "Converting to greyscale..." << std::endl;
+        // Converting to greyscale.
         cv::cvtColor(image, m_greyscale, CV_BGR2GRAY);
 #ifdef TARGET_DETECTOR_DEBUG
         cv::imwrite("20_greyscale.png", m_greyscale);
 #endif
 
-        std::cout << "Thresholding..." << std::endl;
+        // Thresholding
         cv::threshold(m_greyscale, m_thresh, 100, 255, cv::THRESH_BINARY_INV);
 #ifdef TARGET_DETECTOR_DEBUG
         cv::imwrite("30_threshold.png", m_thresh);
 #endif
 
-        std::cout << "Detecting corners..." << std::endl;
+        // Detecting corners...
         detect_corners();
 
-        std::cout << "Constructing kdtree..." << std::endl;
+        // Constructing kdtree...
         build_kdtree();
 
-        std::cout << "Detecting neighbors..." << std::endl;
+        // Detecting neighbors...
         detect_neighbors();
 
-        std::cout << "Enforcing symmetry..." << std::endl;
+        // Enforcing symmetry...
         symmetrize();
 
-        std::cout << "Computing connected components..." << std::endl;
+        // Computing connected components...
         compute_connected_components();
 
         bool ret = false;
 
         if( target == TWO_PLANES )
         {
-            std::cout << "Finding folding line..." << std::endl;
+            // Finding folding line...
             find_folding_line();
 
-            std::cout << "Storing results..." << std::endl;
-            store_results_two_planes(samples);
+            // Storing results...
+            ret = store_results_two_planes(object_points, image_points);
         }
         else
         {
-            std::cout << "Storing results..." << std::endl;
-            store_results_one_plane(samples);
+            // Storing results...
+            ret = store_results_one_plane(object_points, image_points);
         }
 
 #ifdef TARGET_DETECTOR_DEBUG
@@ -120,12 +125,14 @@ namespace target {
         }
 #endif
 
+        /*
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
 
         const int dt = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
 
         std::cout << "Computation time: " << dt << " ms" << std::endl;
         std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
+        */
 
         return ret;
     }
@@ -867,7 +874,7 @@ namespace target {
 
             if(has_constant_x)
             {
-                std::cout << "Folding line is x = " << constant_x << std::endl;
+                //std::cout << "Folding line is x = " << constant_x << std::endl;
                 m_folding_line.rotation[0][0] = 0;
                 m_folding_line.rotation[0][1] = 1;
                 m_folding_line.rotation[1][0] = 1;
@@ -877,7 +884,7 @@ namespace target {
             }
             else
             {
-                std::cout << "Folding line is y = " << constant_y << std::endl;
+                //std::cout << "Folding line is y = " << constant_y << std::endl;
                 m_folding_line.rotation[0][0] = 1;
                 m_folding_line.rotation[0][1] = 0;
                 m_folding_line.rotation[1][0] = 0;
@@ -888,7 +895,7 @@ namespace target {
         }
     }
 
-    bool Detector::store_results_two_planes(cv::Mat& samples)
+    bool Detector::store_results_two_planes( std::vector<cv::Point3f>& object_points, std::vector<cv::Point2f>& image_points )
     {
         bool ret = false;
 
@@ -929,7 +936,8 @@ namespace target {
                 }
             }
 
-            samples.create( count, 5, CV_32F );
+            object_points.resize(count);
+            image_points.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -939,11 +947,11 @@ namespace target {
 
                     if( count < 0 ) throw std::logic_error("internal error");
 
-                    samples.at<float>(count, 0) = pt.keypoint.pt.x;
-                    samples.at<float>(count, 1) = pt.keypoint.pt.y;
-                    samples.at<float>(count, 2) = pt.coords_3d.x;
-                    samples.at<float>(count, 3) = pt.coords_3d.y;
-                    samples.at<float>(count, 4) = pt.coords_3d.z;
+                    image_points[count].x = pt.keypoint.pt.x;
+                    image_points[count].y = pt.keypoint.pt.y;
+                    object_points[count].x = pt.coords_3d.x;
+                    object_points[count].y = pt.coords_3d.y;
+                    object_points[count].z = pt.coords_3d.z;
                 }
             }
 
@@ -953,13 +961,14 @@ namespace target {
         return ret;
     }
 
-    bool Detector::store_results_one_plane(cv::Mat& samples)
+    bool Detector::store_results_one_plane( std::vector<cv::Point3f>& object_points, std::vector<cv::Point2f>& image_points )
     {
         if( m_biggest_connected_component >= 0 )
         {
             int count = m_connected_components[m_biggest_connected_component].size;
 
-            samples.create(count, 5, CV_32F);
+            object_points.resize(count);
+            image_points.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -976,11 +985,11 @@ namespace target {
                         m_case_side_length*float(pt.coords2d[1]),
                         0.0 );
 
-                    samples.at<float>(count, 0) = pt.keypoint.pt.x;
-                    samples.at<float>(count, 1) = pt.keypoint.pt.y;
-                    samples.at<float>(count, 2) = pt.coords_3d.x;
-                    samples.at<float>(count, 3) = pt.coords_3d.y;
-                    samples.at<float>(count, 4) = pt.coords_3d.z;
+                    object_points[count].x = pt.coords_3d.x;
+                    object_points[count].y = pt.coords_3d.y;
+                    object_points[count].z = pt.coords_3d.z;
+                    image_points[count].x = pt.keypoint.pt.x;
+                    image_points[count].y = pt.keypoint.pt.y;
                 }
             }
 

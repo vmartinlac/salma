@@ -1,4 +1,5 @@
 #include <opencv2/calib3d.hpp>
+#include <opencv2/features2d.hpp>
 #include <iostream>
 #include <QDebug>
 #include "DefaultSLAMEngine.h"
@@ -28,8 +29,8 @@ void DefaultSLAMEngine::run()
             m_parameters.distortion_p2,
             m_parameters.distortion_k3;
 
-        m_mode = MODE_DEAD;
-        //m_mode = MODE_INIT;
+        //m_mode = MODE_DEAD;
+        m_mode = MODE_INIT;
         m_calibration_matrix = K;
         m_distortion_coefficients = lens_distortion;
         m_camera_state.position.setZero();
@@ -89,7 +90,8 @@ void DefaultSLAMEngine::processImageInit()
 {
     bool ok;
     target::Detector d;
-    cv::Mat samples;
+    std::vector< cv::Point3f > object_points;
+    std::vector< cv::Point2f > image_points;
     cv::Mat rodrigues_rotation;
     cv::Mat translation;
     target::KindOfTarget kind_of_target;
@@ -109,18 +111,19 @@ void DefaultSLAMEngine::processImageInit()
         m_current_image.refFrame(),
         kind_of_target,
         m_parameters.initialization_target_scale,
-        samples);
+        object_points,
+        image_points);
 
     if( ok )
     {
-        ok = ( samples.rows >= 4*4 && samples.cols == 5 );
+        ok = ( object_points.size() >= 20 );
     }
 
     if( ok )
     {
         ok = cv::solvePnP(
-            samples( cv::Range::all(), cv::Range(2, 5) ),
-            samples( cv::Range::all(), cv::Range(0, 2) ),
+            object_points,
+            image_points,
             m_calibration_matrix,
             m_distortion_coefficients,
             rodrigues_rotation,
@@ -160,25 +163,21 @@ void DefaultSLAMEngine::processImageInit()
 
         m_landmarks.clear();
 
-        for(int i=0; i<samples.rows; i++)
+        for(int i=0; i<object_points.size(); i++)
         {
             Landmark lm;
 
-            lm.position <<
-                samples.at<float>(i, 2),
-                samples.at<float>(i, 3),
-                samples.at<float>(i, 4);
-
-            const bool ret = extractPatch(
-                cv::Point2i( samples.at<float>(i, 0), samples.at<float>(i, 1) ),
-                lm.patch);
-
-            lm.num_failed_detections = 0;
-            lm.num_successful_detections = 1;
-            lm.last_successful_detection_time = m_current_image.getTimestamp();
+            const bool ret = extractPatch( image_points[i], lm.patch );
 
             if(ret)
             {
+                lm.position.x() = object_points[i].x;
+                lm.position.y() = object_points[i].y;
+                lm.position.z() = object_points[i].z;
+                lm.num_failed_detections = 0;
+                lm.num_successful_detections = 1;
+                lm.last_successful_detection_time = m_current_image.getTimestamp();
+
                 m_landmarks.emplace_back(std::move(lm));
             }
         }
@@ -217,9 +216,12 @@ void DefaultSLAMEngine::processImageInit()
 
 void DefaultSLAMEngine::processImageSLAM()
 {
+    cv::Mat greyscale;
+    cv::cvtColor(m_current_image.refFrame(), greyscale, CV_BGR2GRAY);
+
     cv::goodFeaturesToTrack(
-        m_current_image.refFrame(),
-        m_current_corners, 30, 0.01, 2);
+        greyscale,
+        m_current_corners, 300, 0.05, 3);
 
     Eigen::VectorXd state_mu;
     Eigen::MatrixXd state_sigma;
@@ -607,7 +609,7 @@ bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)
 
     bool ret = false;
 
-    if( (image_rect & patch_rect) == image_rect )
+    if( (image_rect & patch_rect) == patch_rect )
     {
         patch = frame(patch_rect);
         ret = true;
