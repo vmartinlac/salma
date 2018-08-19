@@ -1,6 +1,6 @@
 #include "SLAMEngine.h"
 
-SLAMEngine::SLAMEngine(QObject* parent) : QThread(parent)
+SLAMEngine::SLAMEngine()
 {
     m_output = new SLAMOutput(this);
 }
@@ -8,6 +8,11 @@ SLAMEngine::SLAMEngine(QObject* parent) : QThread(parent)
 SLAMEngine::~SLAMEngine()
 {
     ;
+}
+
+void SLAMEngine::setCamera(std::shared_ptr<Camera> camera)
+{
+    m_camera = std::move(camera);
 }
 
 void SLAMEngine::setParameters(const SLAMParameters& params)

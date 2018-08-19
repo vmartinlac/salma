@@ -1,4 +1,5 @@
 #include <QVBoxLayout>
+#include <QMessageBox>
 #include <QButtonGroup>
 #include <QFileInfo>
 #include <QFileDialog>
@@ -6,6 +7,8 @@
 #include <QPushButton>
 #include <QFormLayout>
 #include "VideoInputDialog.h"
+#include "VimbaCamera.h"
+#include "OpenCVCamera.h"
 
 VideoInputDialog::VideoInputDialog(QWidget* parent) : QDialog(parent)
 {
@@ -45,11 +48,33 @@ VideoInputDialog::VideoInputDialog(QWidget* parent) : QDialog(parent)
     connect(btn_ok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btn_cancel, SIGNAL(clicked()), this, SLOT(reject()));
     connect(grp, SIGNAL(buttonClicked(int)), this, SLOT(input_changed()));
+
+    if(m_has_avt)
+    {
+        m_avt->setChecked(true);
+    }
+    else
+    {
+        m_avt->setEnabled(false);
+        m_opencv->setChecked(true);
+    }
+    input_changed();
 }
 
 void VideoInputDialog::create_avt_frame()
 {
+    VimbaCameraManager& vimba = VimbaCameraManager::instance();
+
     m_avt_camera = new QComboBox();
+    m_has_avt = (vimba.getNumCameras() > 0);
+
+    if( m_has_avt )
+    {
+        for(int i=0; i<vimba.getNumCameras(); i++)
+        {
+            m_avt_camera->addItem( vimba.getCamera(i)->getHumanName().c_str(), i );
+        }
+    }
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera:", m_avt_camera);
@@ -90,18 +115,54 @@ void VideoInputDialog::choose_file()
     {
         QFileInfo file(ret);
         m_file_choose->setText(file.fileName());
+        m_file_path = ret;
+    }
+}
+
+void VideoInputDialog::accept()
+{
+    if( m_file->isChecked() && m_file_path.isEmpty() )
+    {
+        QMessageBox::critical(this, "Error", "Please select a file!");
+    }
+    else
+    {
+        QDialog::accept();
     }
 }
 
 void VideoInputDialog::input_changed()
 {
-    m_avt_frame->setEnabled( m_avt->isChecked() );
+    m_avt_frame->setEnabled( m_has_avt && m_avt->isChecked() );
     m_file_frame->setEnabled( m_file->isChecked() );
     m_opencv_frame->setEnabled( m_opencv->isChecked() );
 }
 
-void VideoInputDialog::accept()
+std::shared_ptr<Camera> VideoInputDialog::ask_video_input(QWidget* parent)
 {
-    if(false) QDialog::accept();
+    VideoInputDialog* dlg = new VideoInputDialog(parent);
+
+    std::shared_ptr<Camera> ret;
+
+    if( QDialog::Accepted ==  dlg->exec() )
+    {
+        if( dlg->m_avt->isChecked() )
+        {
+            const int id = dlg->m_avt_camera->currentData().toInt();
+            ret = VimbaCameraManager::instance().getCamera(id);
+        }
+        else if( dlg->m_opencv->isChecked() )
+        {
+            ret.reset(new OpenCVCamera(dlg->m_opencv_camera->value()));
+        }
+        else if( dlg->m_file->isChecked() )
+        {
+            ret.reset(new OpenCVVideoFile(dlg->m_file_path.toStdString()));
+        }
+    }
+
+    delete dlg;
+
+    return ret;
 }
 

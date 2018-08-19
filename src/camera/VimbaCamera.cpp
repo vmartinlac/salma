@@ -1,9 +1,77 @@
 #include <cassert>
 #include <iostream>
 #include <stdexcept>
+#include <mutex>
+#include <vector>
 #include <opencv2/core.hpp>
+#include <VimbaC/Include/VimbaC.h>
 #include "VimbaCamera.h"
-#include "Image.h"
+
+// declaration of VimbaCamera.
+
+class VimbaCamera : public Camera
+{
+
+public:
+
+    VimbaCamera(const VmbCameraInfo_t& infos);
+
+    ~VimbaCamera() override;
+
+    std::string getHumanName() override;
+
+    bool open() override;
+
+    void close() override;
+
+    void read(Image& image) override;
+
+protected:
+
+    static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
+
+protected:
+
+    std::string m_camera_id;
+    std::string m_camera_name;
+    std::string m_camera_model;
+    std::string m_camera_serial;
+    VmbAccessMode_t m_camera_permitted_access;
+    std::string m_interface_id;
+
+    bool m_is_open;
+    VmbHandle_t m_handle;
+    VmbFrame_t m_frame;
+    std::vector<uint8_t> m_buffer;
+    std::mutex m_mutex;
+    Image m_newest_image;
+    VmbInt64_t m_tick_frequency;
+};
+
+// declaration of VimbaCameraManagerImpl
+
+class VimbaCameraManagerImpl : public VimbaCameraManager
+{
+
+public:
+
+    static VimbaCameraManagerImpl& instance() { return m_instance; }
+
+    bool initialize() override;
+
+    void finalize() override;
+
+    std::shared_ptr<Camera> getDefaultCamera() override;
+
+    int getNumCameras() override;
+
+    std::shared_ptr<Camera> getCamera(int id) override;
+
+protected:
+
+    std::vector< std::shared_ptr<Camera> > m_cameras;
+    static VimbaCameraManagerImpl m_instance;
+};
 
 // VimbaCamera
 
@@ -40,7 +108,7 @@ void VMB_CALL VimbaCamera::frame_callback( const VmbHandle_t handle, VmbFrame_t*
     VmbCaptureFrameQueue( handle, frame, &VimbaCamera::frame_callback );
 }
 
-VimbaCamera::VimbaCamera(int id, const VmbCameraInfo_t& infos) : Camera(id)
+VimbaCamera::VimbaCamera(const VmbCameraInfo_t& infos)
 {
     m_camera_id = infos.cameraIdString;
     m_camera_name = infos.cameraName;
@@ -105,23 +173,16 @@ bool VimbaCamera::open()
 
         if(ok)
         {
-            assert( m_frames.empty() );
+            m_buffer.resize(payload_size);
+            m_frame.buffer = &m_buffer.front();
+            m_frame.bufferSize = payload_size;
+            m_frame.context[0] = this;
+            m_frame.context[1] = nullptr;
+            m_frame.context[2] = nullptr;
+            m_frame.context[3] = nullptr;
 
-            const int num_frames = 2;
-            m_frames.resize(num_frames);
-
-            for( VmbFrame_t& frame : m_frames )
-            {
-                frame.buffer = new uint8_t[payload_size];
-                frame.bufferSize = payload_size;
-                frame.context[0] = this;
-                frame.context[1] = nullptr;
-                frame.context[2] = nullptr;
-                frame.context[3] = nullptr;
-
-                err = VmbFrameAnnounce(m_handle, &frame, sizeof(VmbFrame_t));
-                ok = ok && (VmbErrorSuccess == err);
-            }
+            err = VmbFrameAnnounce(m_handle, &m_frame, sizeof(VmbFrame_t));
+            ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
@@ -132,11 +193,8 @@ bool VimbaCamera::open()
 
         if(ok)
         {
-            for(VmbFrame_t& frame : m_frames)
-            {
-                err = VmbCaptureFrameQueue(m_handle, &frame, &VimbaCamera::frame_callback);
-                ok = ok && (VmbErrorSuccess == err);
-            }
+            err = VmbCaptureFrameQueue(m_handle, &m_frame, &VimbaCamera::frame_callback);
+            ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
@@ -174,18 +232,13 @@ void VimbaCamera::close()
 
         VmbCameraClose( m_handle );
 
-        for(VmbFrame_t& frame : m_frames)
-        {
-            delete[] ( (uint8_t*) frame.buffer );
-        }
-
-        m_frames.clear();
+        m_buffer.clear();
 
         m_is_open = false;
     }
 }
 
-bool VimbaCamera::read(Image& image)
+void VimbaCamera::read(Image& image)
 {
     if( m_is_open )
     {
@@ -194,23 +247,28 @@ bool VimbaCamera::read(Image& image)
         m_newest_image.moveTo(image);
 
         m_mutex.unlock();
-
-        return true;
     }
     else
     {
-        return false;
+        image.setValid(false);
     }
 }
 
-// CameraManager
+// definition of VimbaCameraManagerImpl
 
-bool VimbaCameraManager::initialize()
+VimbaCameraManagerImpl VimbaCameraManagerImpl::m_instance;
+
+VimbaCameraManager& VimbaCameraManager::instance()
+{
+    return VimbaCameraManagerImpl::instance();
+}
+
+bool VimbaCameraManagerImpl::initialize()
 {
     bool ok = true;
     VmbError_t err = VmbErrorSuccess;
     VmbUint32_t count = 0;
-    VmbCameraInfo_t* info = nullptr;
+    std::vector<VmbCameraInfo_t> info;
 
     if(ok)
     {
@@ -233,15 +291,15 @@ bool VimbaCameraManager::initialize()
 
     if(ok)
     {
-        ok = (VmbErrorSuccess == VmbCamerasList(NULL, 0, &count, sizeof(*info)));
+        ok = (VmbErrorSuccess == VmbCamerasList(NULL, 0, &count, sizeof(VmbCameraInfo_t)));
     }
 
     // retrieve camera infos.
 
     if( ok && count > 0 )
     {
-        info = new VmbCameraInfo_t[count];
-        ok = (VmbErrorSuccess == VmbCamerasList(info, count, &count, sizeof(*info)));
+        info.resize(count);
+        ok = (VmbErrorSuccess == VmbCamerasList(&info.front(), count, &count, sizeof(VmbCameraInfo_t)));
     }
 
     // create cameras.
@@ -252,13 +310,8 @@ bool VimbaCameraManager::initialize()
 
         for(int i=0; i<count; i++)
         {
-            m_cameras[i] = new VimbaCamera(i, info[i]);
+            m_cameras[i].reset( new VimbaCamera(info[i]) );
         }
-    }
-
-    if(info != nullptr)
-    {
-        delete[] info;
     }
 
     if(ok == false)
@@ -270,21 +323,26 @@ bool VimbaCameraManager::initialize()
     return ok;
 }
 
-void VimbaCameraManager::finalize()
+void VimbaCameraManagerImpl::finalize()
 {
-    for(Camera* camera : m_cameras)
+    for( std::shared_ptr<Camera>& camera : m_cameras)
     {
-        delete camera;
+        if(camera.use_count() != 1)
+        {
+            throw std::runtime_error("Attempted to release VimbaCameraManager while a VimbaCamera is still referenced.");
+        }
     }
+
+    m_cameras.clear();
 
     VmbShutdown();
 }
 
-Camera* VimbaCameraManager::getDefaultCamera()
+std::shared_ptr<Camera> VimbaCameraManagerImpl::getDefaultCamera()
 {
     if( m_cameras.empty() )
     {
-        return nullptr;
+        return std::shared_ptr<Camera>();
     }
     else
     {
@@ -292,17 +350,13 @@ Camera* VimbaCameraManager::getDefaultCamera()
     }
 }
 
-int VimbaCameraManager::getNumCameras()
+int VimbaCameraManagerImpl::getNumCameras()
 {
-    return m_num_cameras;
+    return m_cameras.size();
 }
 
-Camera* VimbaCameraManager::getCamera(int id)
+std::shared_ptr<Camera> VimbaCameraManagerImpl::getCamera(int id)
 {
     return m_cameras[id];
 }
 
-CameraManager* CameraManager::createVimbaCameraManager()
-{
-    return new VimbaCameraManager();
-}

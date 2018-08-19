@@ -128,7 +128,7 @@ ParametersDialog::ParametersDialog(QWidget* parent) : QDialog(parent)
 
 void ParametersDialog::loadFromFile()
 {
-    QString ret = QFileDialog::getOpenFileName(this, "Open");
+    QString ret = QFileDialog::getOpenFileName(this, "Open", QString(), "JSON file (*.json)");
 
     if(ret.isEmpty() == false)
     {
@@ -149,7 +149,7 @@ void ParametersDialog::loadFromFile()
 
 void ParametersDialog::saveToFile()
 {
-    QString ret = QFileDialog::getSaveFileName(this, "Save");
+    QString ret = QFileDialog::getSaveFileName(this, "Save", QString(), "JSON file (*.json)");
 
     if(ret.isEmpty() == false)
     {

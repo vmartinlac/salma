@@ -1,71 +1,24 @@
 #pragma once
 
-#include <VimbaC/Include/VimbaC.h>
-#include <string>
-#include <mutex>
-#include <vector>
+#include <memory>
 #include "Camera.h"
 #include "Image.h"
 
-// VimbaCamera
-
-class VimbaCamera : public Camera
+class VimbaCameraManager
 {
 
 public:
 
-    VimbaCamera(int id, const VmbCameraInfo_t& infos);
-    ~VimbaCamera() override;
+    static VimbaCameraManager& instance();
 
-    std::string getHumanName() override;
+    virtual bool initialize() = 0;
 
-    bool open() override;
+    virtual void finalize() = 0;
 
-    void close() override;
+    virtual std::shared_ptr<Camera> getDefaultCamera() = 0;
 
-    bool read(Image& image) override;
+    virtual int getNumCameras() = 0;
 
-protected:
-
-    static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
-
-protected:
-
-    std::string m_camera_id;
-    std::string m_camera_name;
-    std::string m_camera_model;
-    std::string m_camera_serial;
-    VmbAccessMode_t m_camera_permitted_access;
-    std::string m_interface_id;
-
-    bool m_is_open;
-    VmbHandle_t m_handle;
-    std::vector<VmbFrame_t> m_frames;
-    std::mutex m_mutex;
-    Image m_newest_image;
-    VmbInt64_t m_tick_frequency;
-};
-
-// CameraManager
-
-class VimbaCameraManager : public CameraManager
-{
-
-public:
-
-    bool initialize() override;
-
-    void finalize() override;
-
-    Camera* getDefaultCamera() override;
-
-    int getNumCameras() override;
-
-    Camera* getCamera(int id) override;
-
-protected:
-
-    int m_num_cameras;
-    std::vector<VimbaCamera*> m_cameras;
+    virtual std::shared_ptr<Camera> getCamera(int id) = 0;
 };
 

@@ -1,21 +1,10 @@
 #include "Camera.h"
 
-Camera::Camera(int id) : m_id(id)
+Camera::Camera()
 {
-    ;
-}
-
-int Camera::getId()
-{
-    return m_id;
 }
 
 Camera::~Camera()
-{
-    ;
-}
-
-CameraManager::~CameraManager()
 {
     ;
 }

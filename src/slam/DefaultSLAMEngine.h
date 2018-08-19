@@ -12,7 +12,7 @@ class DefaultSLAMEngine : public SLAMEngine
 {
 public:
 
-    DefaultSLAMEngine(Camera* camera, QObject* parent=nullptr);
+    DefaultSLAMEngine();
 
     virtual void run();
 
@@ -69,7 +69,6 @@ protected:
 protected:
 
     Mode m_mode;
-    Camera* m_camera;
     cv::Mat m_calibration_matrix;
     cv::Mat m_distortion_coefficients;
     CameraState m_camera_state;

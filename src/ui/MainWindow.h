@@ -41,6 +41,5 @@ protected:
     VideoWidget* m_video;
     StatsWidget* m_stats;
     SLAMParameters m_slam_parameters;
-    //std::unique_ptr<CameraManager> m_camera_manager;
-    //Camera* m_camera;
+    std::shared_ptr<Camera> m_camera;
 };

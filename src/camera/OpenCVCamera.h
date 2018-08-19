@@ -2,8 +2,9 @@
 #pragma once
 
 #include <opencv2/videoio.hpp>
-#include <chrono>
 #include <string>
+#include <chrono>
+#include "Image.h"
 #include "Camera.h"
 
 class OpenCVCamera : public Camera
@@ -12,6 +13,7 @@ class OpenCVCamera : public Camera
 public:
 
     OpenCVCamera(int id);
+
     ~OpenCVCamera() override;
 
     std::string getHumanName() override;
@@ -20,33 +22,39 @@ public:
 
     void close() override;
 
-    bool read(Image& image) override;
+    void read(Image& image) override;
 
 protected:
 
     cv::VideoCapture m_video;
-    std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
+    int m_id;
+    double m_t0;
+    bool m_first;
 };
 
-class OpenCVCameraManager : public CameraManager
+class OpenCVVideoFile : public Camera
 {
 
 public:
 
-    OpenCVCameraManager();
+    OpenCVVideoFile(const std::string& filename);
 
-    bool initialize() override;
+    ~OpenCVVideoFile() override;
 
-    void finalize() override;
+    std::string getHumanName() override;
 
-    Camera* getDefaultCamera() override;
+    bool open() override;
 
-    int getNumCameras() override;
+    void close() override;
 
-    Camera* getCamera(int id) override;
+    void read(Image& image) override;
 
 protected:
 
-    OpenCVCamera m_camera;
+    std::string m_filename;
+    cv::VideoCapture m_video;
+    bool m_first;
+    std::chrono::time_point< std::chrono::steady_clock > m_t0;
+    Image m_next_image;
 };
 

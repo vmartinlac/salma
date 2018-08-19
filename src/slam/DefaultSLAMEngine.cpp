@@ -4,9 +4,7 @@
 #include "DefaultSLAMEngine.h"
 #include "target.h"
 
-DefaultSLAMEngine::DefaultSLAMEngine(Camera* camera, QObject* parent) :
-    m_camera(camera),
-    SLAMEngine(parent)
+DefaultSLAMEngine::DefaultSLAMEngine()
 {
 }
 
@@ -14,7 +12,7 @@ void DefaultSLAMEngine::run()
 {
     // start-up
     {
-        if( m_camera == nullptr ) throw std::runtime_error("Internal error");
+        if( !m_camera ) throw std::runtime_error("No camera was set.");
 
         cv::Mat_<float> K(3,3);
         K <<
@@ -30,8 +28,8 @@ void DefaultSLAMEngine::run()
             m_parameters.distortion_p2,
             m_parameters.distortion_k3;
 
-        //m_mode = MODE_DEAD;
-        m_mode = MODE_INIT;
+        m_mode = MODE_DEAD;
+        //m_mode = MODE_INIT;
         m_calibration_matrix = K;
         m_distortion_coefficients = lens_distortion;
         m_camera_state.position.setZero();
@@ -660,8 +658,7 @@ bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
     return dist < 12.0; // TODO: define this constant somewhere else.
 }
 
-SLAMEngine* SLAMEngine::create(Camera* camera)
+SLAMEngine* SLAMEngine::create()
 {
-    return new DefaultSLAMEngine(camera);
+    return new DefaultSLAMEngine();
 }
-

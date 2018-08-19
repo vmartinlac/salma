@@ -5,6 +5,7 @@
 #include <QSplitter>
 #include <QLabel>
 #include <QMessageBox>
+#include <iostream>
 #include "ViewerWidget.h"
 #include "MainWindow.h"
 #include "ParametersDialog.h"
@@ -20,7 +21,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     m_a_start = tb->addAction("Start");
     m_a_stop = tb->addAction("Stop");
     tb->addSeparator();
-    m_a_video = tb->addAction("Video");
+    m_a_video = tb->addAction("Camera");
     m_a_parameters = tb->addAction("Parameters");
     tb->addSeparator();
     QAction* a_about = tb->addAction("About");
@@ -42,7 +43,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     m_a_stop->setShortcut(QKeySequence("Ctrl+S"));
     m_a_parameters->setShortcut(QKeySequence("Ctrl+P"));
     m_a_video->setShortcut(QKeySequence("Ctrl+V"));
-    a_quit->setShortcut(QKeySequence("Ctrl+Q"));
+    a_quit->setShortcut(QKeySequence("Esc"));
 
     m_a_start->setIcon(QIcon::fromTheme("media-playback-start"));
     m_a_stop->setIcon(QIcon::fromTheme("media-playback-stop"));
@@ -96,10 +97,18 @@ void MainWindow::start_slam()
 {
     if( m_slam->isRunning() == false )
     {
-        m_a_parameters->setEnabled(false);
-
-        m_slam->setParameters(m_slam_parameters);
-        m_slam->start();
+        if( m_camera )
+        {
+            m_a_parameters->setEnabled(false);
+            m_a_video->setEnabled(false);
+            m_slam->setParameters(m_slam_parameters);
+            m_slam->setCamera(m_camera);
+            m_slam->start();
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error", "Please select a camera first!");
+        }
     }
 }
 
@@ -114,25 +123,24 @@ void MainWindow::stop_slam()
 void MainWindow::slam_started()
 {
     m_a_start->setEnabled(false);
-    //m_a_start->setVisible(false);
     m_a_stop->setEnabled(true);
-    m_a_parameters->setEnabled(false);
-    //m_a_stop->setVisible(true);
 }
 
 void MainWindow::slam_stopped()
 {
     m_a_start->setEnabled(true);
-    //m_a_start->setVisible(true);
     m_a_stop->setEnabled(false);
     m_a_parameters->setEnabled(true);
-    //m_a_stop->setVisible(false);
+    m_a_video->setEnabled(true);
 }
 
 void MainWindow::ask_video_input()
 {
-    VideoInputDialog* dlg = new VideoInputDialog(this);
-    dlg->exec();
-    delete dlg;
+    std::shared_ptr<Camera> camera = VideoInputDialog::ask_video_input(this);
+
+    if(camera)
+    {
+        m_camera = std::move(camera);
+    }
 }
 

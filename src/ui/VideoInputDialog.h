@@ -5,6 +5,8 @@
 #include <QFrame>
 #include <QRadioButton>
 #include <QDialog>
+#include <memory>
+#include "Camera.h"
 
 class VideoInputDialog : public QDialog
 {
@@ -13,6 +15,8 @@ class VideoInputDialog : public QDialog
 public:
 
     VideoInputDialog(QWidget* parent=nullptr);
+
+    static std::shared_ptr<Camera> ask_video_input(QWidget* parent=nullptr);
 
 protected:
 
@@ -32,6 +36,7 @@ protected:
     QRadioButton* m_opencv;
     QRadioButton* m_file;
 
+    bool m_has_avt;
     QFrame* m_avt_frame;
     QComboBox* m_avt_camera;
 
