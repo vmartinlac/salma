@@ -12,7 +12,14 @@ SLAMEngine::~SLAMEngine()
 
 void SLAMEngine::setCamera(std::shared_ptr<Camera> camera)
 {
-    m_camera = std::move(camera);
+    if( isRunning() )
+    {
+        throw std::runtime_error("Can not set camera while slam engine is running!");
+    }
+    else
+    {
+        m_camera = std::move(camera);
+    }
 }
 
 void SLAMEngine::setParameters(const SLAMParameters& params)

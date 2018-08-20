@@ -4,7 +4,13 @@
 #include <QMutex>
 #include <QObject>
 #include <Eigen/Eigen>
+#include <vector>
 #include <opencv2/core.hpp>
+
+struct SLAMOutputLandmark
+{
+    Eigen::Vector3d position;
+};
 
 class SLAMOutput : public QObject
 {
@@ -37,8 +43,10 @@ public:
     Eigen::Vector3d angular_velocity;
 
     // landmarks.
+    std::vector<SLAMOutputLandmark> landmarks;
 
     // candidate landmarks.
+    // TODO
 
 signals:
 

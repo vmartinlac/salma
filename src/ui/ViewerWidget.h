@@ -3,6 +3,10 @@
 #include <memory>
 #include <QOpenGLWidget>
 #include <osgViewer/Viewer>
+#include <osg/PositionAttitudeTransform>
+#include <osg/Geometry>
+#include <osg/PrimitiveSet>
+#include <osg/Array>
 #include <osgViewer/GraphicsWindow>
 #include "SLAMOutput.h"
 
@@ -28,6 +32,10 @@ protected:
     void timerEvent(QTimerEvent* event) override;
     void initializeGL() override;
 
+public slots:
+
+    void home();
+
 protected slots:
 
     void refresh();
@@ -37,6 +45,10 @@ protected:
     SLAMOutput* m_slam;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
     osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> _window;
+    osg::ref_ptr<osg::PositionAttitudeTransform> _camera;
+    osg::ref_ptr<osg::Vec3Array> _landmarks;
+    osg::ref_ptr<osg::DrawArrays> _draw_landmarks;
+    osg::ref_ptr<osg::Geometry> _landmarks_geometry;
     int _updateTimer;
 };
 

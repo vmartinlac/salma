@@ -25,6 +25,9 @@ StatsWidget::StatsWidget(
     m_angular_velocity = new QLabel("n/a");
     lay->addRow("Angular velocity:", m_angular_velocity);
 
+    m_num_landmarks = new QLabel("n/a");
+    lay->addRow("Number of landmarks:", m_num_landmarks);
+
     setLayout(lay);
 
     connect(slam, SIGNAL(updated()), this, SLOT(refresh()), Qt::QueuedConnection);
@@ -55,6 +58,7 @@ void StatsWidget::refresh()
     m_attitude->setText( eigenToQt(m_slam->attitude) );
     m_linear_velocity->setText( eigenToQt(m_slam->linear_velocity) );
     m_angular_velocity->setText( eigenToQt(m_slam->angular_velocity) );
+    m_num_landmarks->setText( QString::number(m_slam->landmarks.size()) );
     m_slam->endRead();
 }
 

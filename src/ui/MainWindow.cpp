@@ -24,6 +24,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     m_a_video = tb->addAction("Camera");
     m_a_parameters = tb->addAction("Parameters");
     tb->addSeparator();
+    QAction* a_home = tb->addAction("Home");
+    tb->addSeparator();
     QAction* a_about = tb->addAction("About");
     QAction* a_quit = tb->addAction("Quit");
 
@@ -47,10 +49,11 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
 
     m_a_start->setIcon(QIcon::fromTheme("media-playback-start"));
     m_a_stop->setIcon(QIcon::fromTheme("media-playback-stop"));
-    a_about->setIcon(QIcon::fromTheme("help-about"));
-    a_quit->setIcon(QIcon::fromTheme("application-exit"));
     m_a_parameters->setIcon(QIcon::fromTheme("document-properties"));
     m_a_video->setIcon(QIcon::fromTheme("camera-video"));
+    a_home->setIcon(QIcon::fromTheme("go-home"));
+    a_about->setIcon(QIcon::fromTheme("help-about"));
+    a_quit->setIcon(QIcon::fromTheme("application-exit"));
 
     slam_stopped();
 
@@ -76,6 +79,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     resize(800, 600);
 
     m_slam_parameters.loadFromSettings();
+
+    connect(a_home, SIGNAL(triggered()), m_viewer, SLOT(home()));
 }
 
 void MainWindow::ask_slam_parameters()

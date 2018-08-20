@@ -16,15 +16,15 @@ f1, f2 = sympy.symbols(('f1', 'f2'))
 
 # observation
 
-R11 = 1 - 2*(a2*a2 + a3*a3)
-R12 = 2*(a1*a2 - a3*a0)
-R13 = 2*(a1*a3 + a2*a0)
-R21 = R12
-R22 = 1 - 2*(a1*a1 + a3*a3)
-R23 = 2*(a2*a3 - a1*a0)
-R31 = R13
-R32 = R23
-R33 = 1 - 2*(a1*a1 + a2*a2)
+R11 = 1 - 2*(a2*a2 + a3*a3);
+R12 = 2*(a1*a2 - a3*a0);
+R13 = 2*(a1*a3 + a2*a0);
+R21 = 2*(a1*a2 + a0*a3);
+R22 = 1 - 2*(a1*a1 + a3*a3);
+R23 = 2*(a2*a3 - a1*a0);
+R31 = 2*(a1*a3 - a0*a2);
+R32 = 2*(a2*a3 + a1*a0);
+R33 = 1 - 2*(a1*a1 + a2*a2);
 
 d1 = y1 - x1
 d2 = y2 - x2
@@ -49,24 +49,32 @@ for j in [0,1]:
         s = s.replace("(-x1 + y1)", "d1")
         s = s.replace("(-x2 + y2)", "d2")
         s = s.replace("(-x3 + y3)", "d3")
-        s = s.replace("(-2*a0*a1 + 2*a2*a3)", "R23")
         s = s.replace("(-2*a0*a3 + 2*a1*a2)", "R12")
-        s = s.replace("(2*a0*a2 + 2*a1*a3)", "R13")
-        s = s.replace("(2*a0*a1 - 2*a2*a3)", "(-R23)")
-        s = s.replace("(-2*a0*a2 - 2*a1*a3)", "(-R13)")
-        s = s.replace("(-2*a2**2 - 2*a3**2 + 1)", "R11")
-        s = s.replace("(-2*a1**2 - 2*a3**2 + 1)", "R22")
-        s = s.replace("(-2*a1**2 - 2*a2**2 + 1)", "R33")
-        s = s.replace("(d1*R11 + d2*R12 + d3*R13)", "ycam1")
-        s = s.replace("(d1*R12 + d2*R22 + d3*R23)", "ycam2")
-        s = s.replace("(d1*R13 + d2*R23 + d3*R33)", "ycam3")
-        s = s.replace("(2*a2**2 + 2*a3**2 - 1)", "(-R11)")
         s = s.replace("(2*a0*a3 - 2*a1*a2)", "(-R12)")
+        s = s.replace("(2*a0*a2 + 2*a1*a3)", "R13")
+        s = s.replace("(-2*a0*a2 - 2*a1*a3)", "(-R13)")
+        s = s.replace("(-2*a0*a1 + 2*a2*a3)", "R23")
+        s = s.replace("(2*a0*a1 - 2*a2*a3)", "(-R23)")
+        s = s.replace("(-2*a2**2 - 2*a3**2 + 1)", "R11")
+        s = s.replace("(2*a2**2 + 2*a3**2 - 1)", "(-R11)")
+        s = s.replace("(-2*a1**2 - 2*a3**2 + 1)", "R22")
+        s = s.replace("(2*(a1*a1) + 2*(a3*a3) - 1)", "(-R22)")
+        s = s.replace("(-2*a1**2 - 2*a2**2 + 1)", "R33")
         s = s.replace("(2*a1**2 + 2*a2**2 - 1)", "(-R33)")
-        s = s.replace("ycam3**2", "(ycam3*ycam3)")
+        s = s.replace("(2*a0*a1 + 2*a2*a3)", "R32")
+        s = s.replace("(2*a0*a3 + 2*a1*a2)", "R21")
+        s = s.replace("(-2*a0*a3 - 2*a1*a2)", "(-R21)")
+        s = s.replace("(-2*a0*a1 - 2*a2*a3)", "(-R32)")
+        s = s.replace("(-2*a0*a2 + 2*a1*a3)", "R31")
+        s = s.replace("(2*a0*a2 - 2*a1*a3)", "(-R31)")
+
+        s = s.replace("(d1*R11 + d2*R21 + d3*R31)", "ycam1")
+        s = s.replace("(d1*R12 + d2*R22 + d3*R32)", "ycam2")
+        s = s.replace("(d1*R13 + d2*R23 + d3*R33)", "ycam3")
         s = s.replace("a1**2", "(a1*a1)")
         s = s.replace("a2**2", "(a2*a2)")
         s = s.replace("a3**2", "(a3*a3)")
+        s = s.replace("ycam3**2", "(ycam3*ycam3)")
         suffix = ";"
         print(prefix + s + suffix)
 print("// END")

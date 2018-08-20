@@ -94,8 +94,8 @@ void DefaultSLAMEngine::processImageInit()
     target::Detector d;
     std::vector< cv::Point3f > object_points;
     std::vector< cv::Point2f > image_points;
-    cv::Mat rodrigues_rotation;
-    cv::Mat translation;
+    cv::Mat pnp_rodrigues;
+    cv::Mat pnp_translation;
     target::KindOfTarget kind_of_target;
     
     switch(m_parameters.initialization_target_kind)
@@ -128,8 +128,8 @@ void DefaultSLAMEngine::processImageInit()
             image_points,
             m_calibration_matrix,
             m_distortion_coefficients,
-            rodrigues_rotation,
-            translation,
+            pnp_rodrigues,
+            pnp_translation,
             false,
             cv::SOLVEPNP_ITERATIVE );
     }
@@ -138,33 +138,42 @@ void DefaultSLAMEngine::processImageInit()
     {
         // copy camera pose data.
 
-        m_camera_state.position <<
-            translation.at<float>(0, 0),
-            translation.at<float>(1, 0),
-            translation.at<float>(2, 0);
-
         Eigen::Vector3d rodrigues;
         rodrigues <<
-            rodrigues_rotation.at<float>(0, 0),
-            rodrigues_rotation.at<float>(1, 0),
-            rodrigues_rotation.at<float>(2, 0);
+            pnp_rodrigues.at<float>(0, 0),
+            pnp_rodrigues.at<float>(1, 0),
+            pnp_rodrigues.at<float>(2, 0);
+
+        Eigen::Vector3d world_to_camera_translation;
+        world_to_camera_translation <<
+            pnp_translation.at<float>(0,0),
+            pnp_translation.at<float>(1,0),
+            pnp_translation.at<float>(2,0);
 
         const double norm = rodrigues.norm();
-        const double cos_half_theta = cos(0.5*norm);
-        const double sin_half_theta = sin(0.5*norm);
 
-        m_camera_state.attitude.coeffs() << 
-            rodrigues(0)*sin_half_theta/norm,
-            rodrigues(1)*sin_half_theta/norm,
-            rodrigues(2)*sin_half_theta/norm,
-            cos_half_theta ;
+        Eigen::Quaterniond world_to_camera_rotation;
+        if( norm > 1.0e-9 )
+        {
+            world_to_camera_rotation.vec() = sin(0.5*norm) * rodrigues / norm;
+            world_to_camera_rotation.w() = cos(0.5*norm);
+        }
+        else
+        {
+            world_to_camera_rotation.setIdentity();
+        }
 
+        m_camera_state.attitude = world_to_camera_rotation.inverse();
+        m_camera_state.position = -( m_camera_state.attitude * world_to_camera_translation );
         m_camera_state.linear_velocity.setZero();
         m_camera_state.angular_velocity.setZero();
+    }
 
+    if(ok)
+    {
         // create first landmarks.
 
-        // TODO : beforehand, check that we have enough landmarks far enough from the borders of the image so that they have a patch.
+        // Nice to have: check beforehand that we have enough landmarks far enough from the borders to avoid a little bit of computation waste.
 
         m_landmarks.clear();
 
@@ -200,6 +209,7 @@ void DefaultSLAMEngine::processImageInit()
             m_state_covariance.setZero();
             m_state_covariance.diagonal().fill(sigma*sigma); // TODO
 
+            //m_mode = MODE_DEAD;
             m_mode = MODE_SLAM;
             qInfo() << "Successful initialization.";
             qInfo() << "Switching to SLAM mode.";
@@ -249,6 +259,16 @@ void DefaultSLAMEngine::write_output()
         }
     }
 
+    std::vector<SLAMOutputLandmark> output_landmarks;
+    output_landmarks.reserve( m_landmarks.size() );
+    for(Landmark& lm : m_landmarks)
+    {
+        SLAMOutputLandmark olm;
+        olm.position = lm.position;
+
+        output_landmarks.push_back(olm);
+    }
+
     m_output->beginWrite();
     switch( m_mode )
     {
@@ -270,6 +290,7 @@ void DefaultSLAMEngine::write_output()
     m_output->attitude = m_camera_state.attitude;
     m_output->linear_velocity = m_camera_state.linear_velocity;
     m_output->angular_velocity = m_camera_state.angular_velocity;
+    m_output->landmarks.swap(output_landmarks);
     m_output->endWrite();
     m_output->updated();
 }
@@ -472,18 +493,18 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
     const double R11 = 1.0 - 2.0*(a2*a2 + a3*a3);
     const double R12 = 2.0*(a1*a2 - a3*a0);
     const double R13 = 2.0*(a1*a3 + a2*a0);
-    const double R21 = R12;
+    const double R21 = 2.0*(a1*a2 + a0*a3);
     const double R22 = 1.0 - 2.0*(a1*a1 + a3*a3);
     const double R23 = 2.0*(a2*a3 - a1*a0);
-    const double R31 = R13;
-    const double R32 = R23;
+    const double R31 = 2.0*(a1*a3 - a0*a2);
+    const double R32 = 2.0*(a2*a3 + a1*a0);
     const double R33 = 1.0 - 2.0*(a1*a1 + a2*a2);
 
-    const double c1 = m_calibration_matrix.at<float>(0,2);
-    const double c2 = m_calibration_matrix.at<float>(1,2);
+    const double c1 = m_parameters.cx;
+    const double c2 = m_parameters.cy;
 
-    const double f1 = m_calibration_matrix.at<float>(0,0);
-    const double f2 = m_calibration_matrix.at<float>(1,1);
+    const double f1 = m_parameters.fx;
+    const double f2 = m_parameters.fy;
 
     // compute find landmarks, compute residuals and jacobian.
 
@@ -512,40 +533,41 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
         if( ok)
         {
-            ok = ( ycam3 > m_parameters.min_distance_to_camera );
+            ok = ( ycam3 > m_parameters.min_distance_to_camera ); // TODO: check this line.
         }
 
         if( ok )
         {
             u1 = c1 + f1 * ycam1/ycam3;
             u2 = c2 + f2 * ycam2/ycam3;
-            // TODO : check that u1 and u2 lies on the image in order to spare some wasteful computations.
+            cv::Rect viewport( cv::Point2i(0,0), m_current_image.refFrame().size() );
+            ok = viewport.contains( cv::Point2f(u1, u2) );
         }
 
         if( ok )
         {
-            // Generated by python script measurement.py
+            // Generated by python script update.py
             // BEGIN
             J.insert(2*i+0, 0) = f1*R13*ycam1/(ycam3*ycam3) + f1*(-R11)/ycam3;
-            J.insert(2*i+0, 1) = f1*R23*ycam1/(ycam3*ycam3) + f1*(-R12)/ycam3;
-            J.insert(2*i+0, 2) = f1*(-R13)/ycam3 + f1*R33*ycam1/(ycam3*ycam3);
-            J.insert(2*i+0, 3) = f1*(2*a1*d2 - 2*a2*d1)*ycam1/(ycam3*ycam3) + f1*(2*a2*d3 - 2*a3*d2)/ycam3;
+            J.insert(2*i+0, 1) = f1*R23*ycam1/(ycam3*ycam3) + f1*(-R21)/ycam3;
+            J.insert(2*i+0, 2) = f1*(-R31)/ycam3 + f1*R33*ycam1/(ycam3*ycam3);
+            J.insert(2*i+0, 3) = f1*(2*a1*d2 - 2*a2*d1)*ycam1/(ycam3*ycam3) + f1*(-2*a2*d3 + 2*a3*d2)/ycam3;
             J.insert(2*i+0, 4) = f1*(2*a2*d2 + 2*a3*d3)/ycam3 + f1*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam1/(ycam3*ycam3);
-            J.insert(2*i+0, 5) = f1*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam1/(ycam3*ycam3) + f1*(2*a0*d3 + 2*a1*d2 - 4*a2*d1)/ycam3;
-            J.insert(2*i+0, 6) = f1*(-2*a1*d1 - 2*a2*d2)*ycam1/(ycam3*ycam3) + f1*(-2*a0*d2 + 2*a1*d3 - 4*a3*d1)/ycam3;
+            J.insert(2*i+0, 5) = f1*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam1/(ycam3*ycam3) + f1*(-2*a0*d3 + 2*a1*d2 - 4*a2*d1)/ycam3;
+            J.insert(2*i+0, 6) = f1*(-2*a1*d1 - 2*a2*d2)*ycam1/(ycam3*ycam3) + f1*(2*a0*d2 + 2*a1*d3 - 4*a3*d1)/ycam3;
             J.insert(2*i+0, 13+3*i+0) = f1*(-R13)*ycam1/(ycam3*ycam3) + f1*R11/ycam3;
-            J.insert(2*i+0, 13+3*i+1) = f1*(-R23)*ycam1/(ycam3*ycam3) + f1*R12/ycam3;
-            J.insert(2*i+0, 13+3*i+2) = f1*R13/ycam3 + f1*(-R33)*ycam1/(ycam3*ycam3);
+            J.insert(2*i+0, 13+3*i+1) = f1*(-R23)*ycam1/(ycam3*ycam3) + f1*R21/ycam3;
+            J.insert(2*i+0, 13+3*i+2) = f1*R31/ycam3 + f1*(-R33)*ycam1/(ycam3*ycam3);
             J.insert(2*i+1, 0) = f2*R13*ycam2/(ycam3*ycam3) + f2*(-R12)/ycam3;
-            J.insert(2*i+1, 1) = f2*R23*ycam2/(ycam3*ycam3) + f2*(2*a1*a1 + 2*a3*a3 - 1)/ycam3;
-            J.insert(2*i+1, 2) = f2*(-R23)/ycam3 + f2*R33*ycam2/(ycam3*ycam3);
-            J.insert(2*i+1, 3) = f2*(2*a1*d2 - 2*a2*d1)*ycam2/(ycam3*ycam3) + f2*(-2*a1*d3 - 2*a3*d1)/ycam3;
-            J.insert(2*i+1, 4) = f2*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam2/(ycam3*ycam3) + f2*(-2*a0*d3 - 4*a1*d2 + 2*a2*d1)/ycam3;
+            J.insert(2*i+1, 1) = f2*R23*ycam2/(ycam3*ycam3) + f2*(2*(a1*a1) + 2*(a3*a3) - 1)/ycam3;
+            J.insert(2*i+1, 2) = f2*(-R32)/ycam3 + f2*R33*ycam2/(ycam3*ycam3);
+            J.insert(2*i+1, 3) = f2*(2*a1*d2 - 2*a2*d1)*ycam2/(ycam3*ycam3) + f2*(2*a1*d3 - 2*a3*d1)/ycam3;
+            J.insert(2*i+1, 4) = f2*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam2/(ycam3*ycam3) + f2*(2*a0*d3 - 4*a1*d2 + 2*a2*d1)/ycam3;
             J.insert(2*i+1, 5) = f2*(2*a1*d1 + 2*a3*d3)/ycam3 + f2*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam2/(ycam3*ycam3);
             J.insert(2*i+1, 6) = f2*(-2*a1*d1 - 2*a2*d2)*ycam2/(ycam3*ycam3) + f2*(-2*a0*d1 + 2*a2*d3 - 4*a3*d2)/ycam3;
             J.insert(2*i+1, 13+3*i+0) = f2*(-R13)*ycam2/(ycam3*ycam3) + f2*R12/ycam3;
             J.insert(2*i+1, 13+3*i+1) = f2*(-R23)*ycam2/(ycam3*ycam3) + f2*R22/ycam3;
-            J.insert(2*i+1, 13+3*i+2) = f2*R23/ycam3 + f2*(-R33)*ycam2/(ycam3*ycam3);
+            J.insert(2*i+1, 13+3*i+2) = f2*R32/ycam3 + f2*(-R33)*ycam2/(ycam3*ycam3);
             // END
 
             Eigen::Matrix2d covariance = J.block(2*i,0,2,dim) * pred_sigma * J.block(2*i,0,2,dim).transpose();
@@ -574,6 +596,10 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         found[i] = ok;
     }
 
+    // TODO: remove this line.
+    std::cout << num_found << std::endl;
+    //
+
     if(num_found > 0)
     {
         // compute a matrix to extract out residuals corresponding to found landmarks.
@@ -594,7 +620,10 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
         Eigen::SparseMatrix<double> noise(2*num_found, 2*num_found);
         noise.reserve(2*num_found);
-        noise.diagonal().fill(6.0); // TODO: define this constant somewhere else.
+        for(int i=0; i<2*num_found; i++)
+        {
+            noise.insert(i, i) = 8.0*8.0; // TODO: define this constant somewhere else.
+        }
 
         auto projected_J = proj * J;
         auto projected_residuals = proj * residuals;
@@ -672,13 +701,10 @@ bool DefaultSLAMEngine::findPatch(
 
     for(std::vector<cv::Point2i>::iterator it=m_current_corners.begin(); found == false && it!=m_current_corners.end(); it++)
     {
-        if( area.contains(*it) && extractPatch( *it, candidate) )
+        if( area.contains(*it) && extractPatch( *it, candidate) && comparePatches(candidate, patch) )
         {
-            if( comparePatches(candidate, patch) )
-            {
-                result = *it;
-                found = true;
-            }
+            result = *it;
+            found = true;
         }
     }
 
@@ -698,6 +724,7 @@ bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
 
     const double dist = cv::norm(P1, P2, cv::NORM_L2) / double(N);
 
+    //std::cout << dist << std::endl;
     return dist < 12.0; // TODO: define this constant somewhere else.
 }
 
