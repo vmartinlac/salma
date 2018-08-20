@@ -74,6 +74,8 @@ void DefaultSLAMEngine::run()
                 }
             }
 
+            write_output();
+
             m_time_last_frame = m_current_image.getTimestamp();
         }
         else
@@ -157,6 +159,9 @@ void DefaultSLAMEngine::processImageInit()
             rodrigues(2)*sin_half_theta/norm,
             cos_half_theta ;
 
+        m_camera_state.linear_velocity.setZero();
+        m_camera_state.angular_velocity.setZero();
+
         // create first landmarks.
 
         // TODO : beforehand, check that we have enough landmarks far enough from the borders of the image so that they have a patch.
@@ -189,8 +194,8 @@ void DefaultSLAMEngine::processImageInit()
             const double sigma = 0.15*m_parameters.initialization_target_scale; // TODO: to clarify.
 
             m_state_covariance.resize(
-                12 + m_landmarks.size(),
-                12 + m_landmarks.size() );
+                13 + 3*m_landmarks.size(),
+                13 + 3*m_landmarks.size() );
 
             m_state_covariance.setZero();
             m_state_covariance.diagonal().fill(sigma*sigma); // TODO
@@ -204,14 +209,6 @@ void DefaultSLAMEngine::processImageInit()
             m_landmarks.clear();
         }
     }
-
-    // write output.
-
-    m_output->beginWrite();
-    m_output->image = m_current_image.refFrame().clone();
-    m_output->mode = "INIT";
-    m_output->endWrite();
-    m_output->updated();
 }
 
 void DefaultSLAMEngine::processImageSLAM()
@@ -231,6 +228,50 @@ void DefaultSLAMEngine::processImageSLAM()
     saveState(state_mu, state_sigma);
 
     // TODO: manage candidate landmarks.
+}
+
+void DefaultSLAMEngine::write_output()
+{
+    cv::Mat output_image = m_current_image.refFrame().clone();
+
+    if( m_mode == MODE_SLAM)
+    {
+        for(const Landmark& lm : m_landmarks)
+        {
+            Eigen::Vector3d pos = m_camera_state.attitude.inverse() * (lm.position - m_camera_state.position);
+
+            cv::Point2f pt(
+                m_parameters.cx + m_parameters.fx*pos.x()/pos.z(),
+                m_parameters.cy + m_parameters.fy*pos.y()/pos.z() );
+
+            const int radius = output_image.cols*8/640;
+            cv::circle(output_image, pt, radius, cv::Scalar(0, 255, 0), -1);
+        }
+    }
+
+    m_output->beginWrite();
+    switch( m_mode )
+    {
+    case MODE_INIT:
+        m_output->mode = "INIT";
+        break;
+    case MODE_SLAM:
+        m_output->mode = "SLAM";
+        break;
+    case MODE_DEAD:
+        m_output->mode = "DEAD";
+        break;
+    default:
+        throw std::runtime_error("internal error");
+        break;
+    }
+    m_output->image = output_image;
+    m_output->position = m_camera_state.position;
+    m_output->attitude = m_camera_state.attitude;
+    m_output->linear_velocity = m_camera_state.linear_velocity;
+    m_output->angular_velocity = m_camera_state.angular_velocity;
+    m_output->endWrite();
+    m_output->updated();
 }
 
 void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)

@@ -55,6 +55,8 @@ protected:
     void processImageSLAM();
     void processImageDead();
 
+    void write_output();
+
     bool extractPatch( const cv::Point2i& point, cv::Mat& patch );
     bool findPatch(
         const cv::Mat& patch,
