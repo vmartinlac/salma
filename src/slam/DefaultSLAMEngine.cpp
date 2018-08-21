@@ -200,7 +200,8 @@ void DefaultSLAMEngine::processImageInit()
 
         if( m_landmarks.size() >= 8 )
         {
-            const double sigma = 0.15*m_parameters.initialization_target_scale; // TODO: to clarify.
+            //const double sigma = 0.15*m_parameters.initialization_target_scale; // TODO: to clarify.
+            const double sigma = 0.003; // TODO: find a way to estimate this quantity.
 
             m_state_covariance.resize(
                 13 + 3*m_landmarks.size(),
@@ -238,61 +239,6 @@ void DefaultSLAMEngine::processImageSLAM()
     saveState(state_mu, state_sigma);
 
     // TODO: manage candidate landmarks.
-}
-
-void DefaultSLAMEngine::write_output()
-{
-    cv::Mat output_image = m_current_image.refFrame().clone();
-
-    if( m_mode == MODE_SLAM)
-    {
-        for(const Landmark& lm : m_landmarks)
-        {
-            Eigen::Vector3d pos = m_camera_state.attitude.inverse() * (lm.position - m_camera_state.position);
-
-            cv::Point2f pt(
-                m_parameters.cx + m_parameters.fx*pos.x()/pos.z(),
-                m_parameters.cy + m_parameters.fy*pos.y()/pos.z() );
-
-            const int radius = output_image.cols*8/640;
-            cv::circle(output_image, pt, radius, cv::Scalar(0, 255, 0), -1);
-        }
-    }
-
-    std::vector<SLAMOutputLandmark> output_landmarks;
-    output_landmarks.reserve( m_landmarks.size() );
-    for(Landmark& lm : m_landmarks)
-    {
-        SLAMOutputLandmark olm;
-        olm.position = lm.position;
-
-        output_landmarks.push_back(olm);
-    }
-
-    m_output->beginWrite();
-    switch( m_mode )
-    {
-    case MODE_INIT:
-        m_output->mode = "INIT";
-        break;
-    case MODE_SLAM:
-        m_output->mode = "SLAM";
-        break;
-    case MODE_DEAD:
-        m_output->mode = "DEAD";
-        break;
-    default:
-        throw std::runtime_error("internal error");
-        break;
-    }
-    m_output->image = output_image;
-    m_output->position = m_camera_state.position;
-    m_output->attitude = m_camera_state.attitude;
-    m_output->linear_velocity = m_camera_state.linear_velocity;
-    m_output->angular_velocity = m_camera_state.angular_velocity;
-    m_output->landmarks.swap(output_landmarks);
-    m_output->endWrite();
-    m_output->updated();
 }
 
 void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
@@ -445,8 +391,8 @@ void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pr
     J.makeCompressed();
 
     // TODO: setup these constants correctly.
-    const double sigma_v = 0.0; //dt*0.1;
-    const double sigma_w = 0.0;
+    const double sigma_v = 0.1; //dt*0.1;
+    const double sigma_w = 0.1;
 
     Eigen::SparseMatrix<double> Q(dim, dim);
     Q.reserve(6);
@@ -460,6 +406,13 @@ void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pr
     Q.makeCompressed();
 
     pred_sigma = J * (m_state_covariance + Q) * J.transpose();
+    /*
+    std::cout << "mu" << std::endl;
+    std::cout << pred_mu << std::endl;
+    std::cout << "sigma" << std::endl;
+    std::cout << pred_sigma << std::endl;
+    std::cout << std::endl;
+    */
 }
 
 void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
@@ -533,7 +486,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
         if( ok)
         {
-            ok = ( ycam3 > m_parameters.min_distance_to_camera ); // TODO: check this line.
+            ok = ( ycam3 > 1.0e-8 && ycam3 > m_parameters.min_distance_to_camera ); // TODO: check this line.
         }
 
         if( ok )
@@ -572,8 +525,13 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
             Eigen::Matrix2d covariance = J.block(2*i,0,2,dim) * pred_sigma * J.block(2*i,0,2,dim).transpose();
 
-            const double box_radius_1 = std::sqrt( covariance(0,0) );
-            const double box_radius_2 = std::sqrt( covariance(1,1) );
+            // TODO: compute a general ellipse instead of this axis aligned box.
+            const double box_radius_1 = 2.0 * std::sqrt( covariance(0,0) );
+            const double box_radius_2 = 2.0 * std::sqrt( covariance(1,1) );
+
+            // TODO: remove
+            std::cout << box_radius_1 << ' ' << box_radius_2 << std::endl;
+            //
 
             ok = findPatch(
                 m_landmarks[i].patch,
@@ -585,6 +543,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         {
             residuals(2*i+0) = found_point.x - u1;
             residuals(2*i+1) = found_point.y - u2;
+            std::cout << "Residual: " << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
             num_found++;
         }
         else
@@ -596,9 +555,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         found[i] = ok;
     }
 
-    // TODO: remove this line.
-    std::cout << num_found << std::endl;
-    //
+    std::cout << "Number of landmarks found in current image:" << num_found << std::endl;
 
     if(num_found > 0)
     {
@@ -622,7 +579,8 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         noise.reserve(2*num_found);
         for(int i=0; i<2*num_found; i++)
         {
-            noise.insert(i, i) = 8.0*8.0; // TODO: define this constant somewhere else.
+            const double sigma = 2.0; // TODO: define this constant somewhere else.
+            noise.insert(i, i) = sigma*sigma;
         }
 
         auto projected_J = proj * J;
@@ -635,6 +593,13 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
         Eigen::VectorXd new_mu = pred_mu + pred_sigma * projected_J.transpose() * solver.solve( projected_residuals );
         Eigen::MatrixXd new_sigma = pred_sigma - pred_sigma * projected_J.transpose() * solver.solve( projected_J * pred_sigma );
+
+        /*
+        std::cout << "delta_mu" << std::endl;
+        std::cout << (new_mu - pred_mu) << std::endl;
+        std::cout << std::endl;
+        //m_mode = MODE_DEAD;
+        */
 
         pred_mu.swap(new_mu);
         pred_sigma.swap(new_sigma);
@@ -688,6 +653,61 @@ bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)
     return ret;
 }
 
+void DefaultSLAMEngine::write_output()
+{
+    cv::Mat output_image = m_current_image.refFrame().clone();
+
+    if( m_mode == MODE_SLAM)
+    {
+        for(const Landmark& lm : m_landmarks)
+        {
+            Eigen::Vector3d pos = m_camera_state.attitude.inverse() * (lm.position - m_camera_state.position);
+
+            cv::Point2f pt(
+                m_parameters.cx + m_parameters.fx*pos.x()/pos.z(),
+                m_parameters.cy + m_parameters.fy*pos.y()/pos.z() );
+
+            const int radius = output_image.cols*8/640;
+            cv::circle(output_image, pt, radius, cv::Scalar(0, 255, 0), -1);
+        }
+    }
+
+    std::vector<SLAMOutputLandmark> output_landmarks;
+    output_landmarks.reserve( m_landmarks.size() );
+    for(Landmark& lm : m_landmarks)
+    {
+        SLAMOutputLandmark olm;
+        olm.position = lm.position;
+
+        output_landmarks.push_back(olm);
+    }
+
+    m_output->beginWrite();
+    switch( m_mode )
+    {
+    case MODE_INIT:
+        m_output->mode = "INIT";
+        break;
+    case MODE_SLAM:
+        m_output->mode = "SLAM";
+        break;
+    case MODE_DEAD:
+        m_output->mode = "DEAD";
+        break;
+    default:
+        throw std::runtime_error("internal error");
+        break;
+    }
+    m_output->image = output_image;
+    m_output->position = m_camera_state.position;
+    m_output->attitude = m_camera_state.attitude;
+    m_output->linear_velocity = m_camera_state.linear_velocity;
+    m_output->angular_velocity = m_camera_state.angular_velocity;
+    m_output->landmarks.swap(output_landmarks);
+    m_output->endWrite();
+    m_output->updated();
+}
+
 bool DefaultSLAMEngine::findPatch(
     const cv::Mat& patch,
     const cv::Rect& area,
@@ -695,20 +715,20 @@ bool DefaultSLAMEngine::findPatch(
 {
     const cv::Mat& image = m_current_image.refFrame();
 
-    bool found = false;
-
     cv::Mat candidate;
 
-    for(std::vector<cv::Point2i>::iterator it=m_current_corners.begin(); found == false && it!=m_current_corners.end(); it++)
+    int num_found = 0;
+
+    for( cv::Point2i& pt : m_current_corners )
     {
-        if( area.contains(*it) && extractPatch( *it, candidate) && comparePatches(candidate, patch) )
+        if( area.contains(pt) && extractPatch( pt, candidate) && comparePatches(candidate, patch) )
         {
-            result = *it;
-            found = true;
+            result = pt;
+            num_found++;
         }
     }
 
-    return found;
+    return (num_found == 1);
 }
 
 bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
@@ -725,7 +745,7 @@ bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
     const double dist = cv::norm(P1, P2, cv::NORM_L2) / double(N);
 
     //std::cout << dist << std::endl;
-    return dist < 12.0; // TODO: define this constant somewhere else.
+    return dist < 10.0; // TODO: define this constant somewhere else.
 }
 
 SLAMEngine* SLAMEngine::create()

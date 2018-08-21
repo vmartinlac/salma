@@ -10,6 +10,8 @@
 #include "MainWindow.h"
 #include "ParametersDialog.h"
 #include "VideoInputDialog.h"
+// TODO: NOT NEEDED
+#include "OpenCVCamera.h"
 
 MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     QMainWindow(parent),
@@ -81,6 +83,10 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     m_slam_parameters.loadFromSettings();
 
     connect(a_home, SIGNAL(triggered()), m_viewer, SLOT(home()));
+
+    //TODO: tmp for debug
+    m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/build/video.mp4") );
+    //
 }
 
 void MainWindow::ask_slam_parameters()
