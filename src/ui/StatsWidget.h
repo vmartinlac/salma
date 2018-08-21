@@ -21,6 +21,7 @@ protected slots:
 protected:
 
     QLabel* m_mode;
+    QLabel* m_frame_id;
     QLabel* m_position;
     QLabel* m_attitude;
     QLabel* m_linear_velocity;

@@ -2,15 +2,19 @@
 #include <opencv2/features2d.hpp>
 #include <iostream>
 #include <QDebug>
-#include "DefaultSLAMEngine.h"
+#include "SLAMEngineImpl.h"
 #include "target.h"
 
-DefaultSLAMEngine::DefaultSLAMEngine()
+SLAMEngineImpl::SLAMEngineImpl()
 {
 }
 
-void DefaultSLAMEngine::run()
+void SLAMEngineImpl::run()
 {
+    std::cout << "=====================" << std::endl;
+    std::cout << " SLAM ENGINE STARTED " << std::endl;
+    std::cout << "=====================" << std::endl;
+
     // start-up
     {
         if( !m_camera ) throw std::runtime_error("No camera was set.");
@@ -41,11 +45,10 @@ void DefaultSLAMEngine::run()
         m_state_covariance.resize(0, 0);
         m_candidate_landmarks.clear();
         m_time_last_frame = 0.0;
+        m_frame_id = 0;
     }
 
     m_camera->open();
-
-    bool first = true;
 
     while( isInterruptionRequested() == false )
     {
@@ -53,30 +56,30 @@ void DefaultSLAMEngine::run()
 
         if(m_current_image.isValid())
         {
-            if(first)
+            std::cout << "-> Processing frame " << m_frame_id << std::endl;
+
+            switch(m_mode)
             {
-                first = false;
-            }
-            else
-            {
-                switch(m_mode)
-                {
-                case MODE_INIT:
-                    processImageInit();
-                    break;
-                case MODE_SLAM:
-                    processImageSLAM();
-                    break;
-                case MODE_DEAD:
-                default:
-                    processImageDead();
-                    break;
-                }
+            case MODE_INIT:
+                std::cout << "Mode is INIT" << std::endl;
+                processImageInit();
+                break;
+            case MODE_SLAM:
+                std::cout << "Mode is SLAM" << std::endl;
+                processImageSLAM();
+                break;
+            case MODE_DEAD:
+            default:
+                std::cout << "Mode is DEAD" << std::endl;
+                processImageDead();
+                break;
             }
 
             write_output();
 
+            // we assume that this variable is not used in INIT mode, so we do not need to set its value before this point.
             m_time_last_frame = m_current_image.getTimestamp();
+            m_frame_id++;
         }
         else
         {
@@ -86,9 +89,11 @@ void DefaultSLAMEngine::run()
     }
 
     m_camera->close();
+
+    std::cout << "SLAM ENGINE ENDED" << std::endl;
 }
 
-void DefaultSLAMEngine::processImageInit()
+void SLAMEngineImpl::processImageInit()
 {
     bool ok;
     target::Detector d;
@@ -190,7 +195,7 @@ void DefaultSLAMEngine::processImageInit()
                 lm.position.z() = object_points[i].z;
                 lm.num_failed_detections = 0;
                 lm.num_successful_detections = 1;
-                lm.last_successful_detection_time = m_current_image.getTimestamp();
+                lm.last_seen_frame = m_frame_id;
 
                 m_landmarks.emplace_back(std::move(lm));
             }
@@ -222,7 +227,7 @@ void DefaultSLAMEngine::processImageInit()
     }
 }
 
-void DefaultSLAMEngine::processImageSLAM()
+void SLAMEngineImpl::processImageSLAM()
 {
     cv::Mat greyscale;
     cv::cvtColor(m_current_image.refFrame(), greyscale, CV_BGR2GRAY);
@@ -241,7 +246,7 @@ void DefaultSLAMEngine::processImageSLAM()
     // TODO: manage candidate landmarks.
 }
 
-void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
     const double dt = m_current_image.getTimestamp() - m_time_last_frame;
 
@@ -391,17 +396,17 @@ void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pr
     J.makeCompressed();
 
     // TODO: setup these constants correctly.
-    const double sigma_v = 0.1; //dt*0.1;
+    const double sigma_v = 0.6; //dt*0.1;
     const double sigma_w = 0.1;
 
     Eigen::SparseMatrix<double> Q(dim, dim);
     Q.reserve(6);
-    Q.insert(7,7) = sigma_v;
-    Q.insert(8,8) = sigma_v;
-    Q.insert(9,9) = sigma_v;
-    Q.insert(10,10) = sigma_w;
-    Q.insert(11,11) = sigma_w;
-    Q.insert(12,12) = sigma_w;
+    Q.insert(7,7) = sigma_v*sigma_v;
+    Q.insert(8,8) = sigma_v*sigma_v;
+    Q.insert(9,9) = sigma_v*sigma_v;
+    Q.insert(10,10) = sigma_w*sigma_w;
+    Q.insert(11,11) = sigma_w*sigma_w;
+    Q.insert(12,12) = sigma_w*sigma_w;
 
     Q.makeCompressed();
 
@@ -415,7 +420,7 @@ void DefaultSLAMEngine::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pr
     */
 }
 
-void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
+void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
     const Image& image = m_current_image;
 
@@ -486,7 +491,8 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
 
         if( ok)
         {
-            ok = ( ycam3 > 1.0e-8 && ycam3 > m_parameters.min_distance_to_camera ); // TODO: check this line.
+            // TODO: check this line.
+            ok = ( ycam3 > 1.0e-8 && ycam3 > m_parameters.min_distance_to_camera );
         }
 
         if( ok )
@@ -529,13 +535,19 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
             const double box_radius_1 = 2.0 * std::sqrt( covariance(0,0) );
             const double box_radius_2 = 2.0 * std::sqrt( covariance(1,1) );
 
+            cv::Rect search_rect(
+                u1 - box_radius_1,
+                u2 - box_radius_2,
+                3*box_radius_1,
+                3*box_radius_2 );
+
             // TODO: remove
-            std::cout << box_radius_1 << ' ' << box_radius_2 << std::endl;
+            //std::cout << "Search box size: " << box_radius_1 << ' ' << box_radius_2 << std::endl;
             //
 
             ok = findPatch(
                 m_landmarks[i].patch,
-                cv::Rect( u1-box_radius_1, u2-box_radius_2, 2*box_radius_1, 2*box_radius_2 ),
+                search_rect,
                 found_point );
         }
 
@@ -543,7 +555,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         {
             residuals(2*i+0) = found_point.x - u1;
             residuals(2*i+1) = found_point.y - u2;
-            std::cout << "Residual: " << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
+            //std::cout << "Residual: " << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
             num_found++;
         }
         else
@@ -553,9 +565,14 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         }
 
         found[i] = ok;
+
+        if( found[i] )
+        {
+            m_landmarks[i].last_seen_frame = m_frame_id;
+        }
     }
 
-    std::cout << "Number of landmarks found in current image:" << num_found << std::endl;
+    std::cout << "Number of landmarks found in current frame: " << num_found << std::endl;
 
     if(num_found > 0)
     {
@@ -579,7 +596,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
         noise.reserve(2*num_found);
         for(int i=0; i<2*num_found; i++)
         {
-            const double sigma = 2.0; // TODO: define this constant somewhere else.
+            const double sigma = 8.0 * double(m_current_image.width()) / 640.0; // TODO: define this constant somewhere else.
             noise.insert(i, i) = sigma*sigma;
         }
 
@@ -606,7 +623,7 @@ void DefaultSLAMEngine::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pre
     }
 }
 
-void DefaultSLAMEngine::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
+void SLAMEngineImpl::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
 {
     m_camera_state.position = mu.segment<3>(0);
     m_camera_state.attitude.w() = mu(3);
@@ -624,7 +641,7 @@ void DefaultSLAMEngine::saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
     m_state_covariance.swap(sigma);
 }
 
-void DefaultSLAMEngine::processImageDead()
+void SLAMEngineImpl::processImageDead()
 {
     m_output->beginWrite();
     m_output->image = m_current_image.refFrame().clone();
@@ -633,7 +650,7 @@ void DefaultSLAMEngine::processImageDead()
     m_output->updated();
 }
 
-bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)
+bool SLAMEngineImpl::extractPatch( const cv::Point2i& point, cv::Mat& patch)
 {
     const cv::Mat& frame = m_current_image.refFrame();
 
@@ -653,7 +670,7 @@ bool DefaultSLAMEngine::extractPatch( const cv::Point2i& point, cv::Mat& patch)
     return ret;
 }
 
-void DefaultSLAMEngine::write_output()
+void SLAMEngineImpl::write_output()
 {
     cv::Mat output_image = m_current_image.refFrame().clone();
 
@@ -667,8 +684,20 @@ void DefaultSLAMEngine::write_output()
                 m_parameters.cx + m_parameters.fx*pos.x()/pos.z(),
                 m_parameters.cy + m_parameters.fy*pos.y()/pos.z() );
 
-            const int radius = output_image.cols*8/640;
-            cv::circle(output_image, pt, radius, cv::Scalar(0, 255, 0), -1);
+            const int radius = output_image.cols*5/640;
+
+            cv::Scalar color;
+            if( lm.last_seen_frame == m_frame_id )
+            {
+                color = cv::Scalar(32, 255, 32);
+            }
+            else
+            {
+                color = cv::Scalar(255, 32, 32);
+            }
+
+            cv::circle(output_image, pt, radius+1, cv::Scalar(0,0,0), -1);
+            cv::circle(output_image, pt, radius, color, -1);
         }
     }
 
@@ -698,6 +727,7 @@ void DefaultSLAMEngine::write_output()
         throw std::runtime_error("internal error");
         break;
     }
+    m_output->frame_id = m_frame_id;
     m_output->image = output_image;
     m_output->position = m_camera_state.position;
     m_output->attitude = m_camera_state.attitude;
@@ -708,7 +738,7 @@ void DefaultSLAMEngine::write_output()
     m_output->updated();
 }
 
-bool DefaultSLAMEngine::findPatch(
+bool SLAMEngineImpl::findPatch(
     const cv::Mat& patch,
     const cv::Rect& area,
     cv::Point2i& result)
@@ -731,7 +761,7 @@ bool DefaultSLAMEngine::findPatch(
     return (num_found == 1);
 }
 
-bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
+bool SLAMEngineImpl::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
 {
     if(
         P1.rows != m_parameters.patch_size || P1.cols != m_parameters.patch_size ||
@@ -750,5 +780,5 @@ bool DefaultSLAMEngine::comparePatches(const cv::Mat& P1, const cv::Mat& P2)
 
 SLAMEngine* SLAMEngine::create()
 {
-    return new DefaultSLAMEngine();
+    return new SLAMEngineImpl();
 }

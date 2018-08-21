@@ -14,8 +14,8 @@ public:
 
     void moveTo(Image& other);
 
-    bool isValid() { return m_valid; }
-    void setValid(bool v) { m_valid = v; }
+    bool isValid();
+    void setValid(bool v);
 
     double getTimestamp();
     void setTimestamp(double t);
@@ -73,5 +73,15 @@ inline cv::Mat& Image::refFrame()
 inline double Image::getTimestamp()
 {
     return m_timestamp;
+}
+
+inline void Image::setValid(bool v)
+{
+    m_valid = v;
+}
+
+inline bool Image::isValid()
+{
+    return m_valid;
 }
 

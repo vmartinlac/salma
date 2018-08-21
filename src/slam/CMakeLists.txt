@@ -4,8 +4,8 @@ add_library(
     STATIC
     SLAMEngine.h
     SLAMEngine.cpp
-    DefaultSLAMEngine.h
-    DefaultSLAMEngine.cpp
+    SLAMEngineImpl.h
+    SLAMEngineImpl.cpp
     SLAMParameters.h
     SLAMParameters.cpp
     SLAMOutput.h

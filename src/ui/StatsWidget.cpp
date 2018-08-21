@@ -13,6 +13,9 @@ StatsWidget::StatsWidget(
     m_mode = new QLabel("n/a");
     lay->addRow("Mode:", m_mode);
 
+    m_frame_id = new QLabel("n/a");
+    lay->addRow("Frame ID:", m_frame_id);
+
     m_position = new QLabel("n/a");
     lay->addRow("Position:", m_position);
 
@@ -54,6 +57,7 @@ void StatsWidget::refresh()
 {
     m_slam->beginRead();
     m_mode->setText( m_slam->mode );
+    m_frame_id->setText( QString::number(m_slam->frame_id) );
     m_position->setText( eigenToQt(m_slam->position) );
     m_attitude->setText( eigenToQt(m_slam->attitude) );
     m_linear_velocity->setText( eigenToQt(m_slam->linear_velocity) );

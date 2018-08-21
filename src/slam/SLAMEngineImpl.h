@@ -8,11 +8,11 @@
 #include "Camera.h"
 #include "Image.h"
 
-class DefaultSLAMEngine : public SLAMEngine
+class SLAMEngineImpl : public SLAMEngine
 {
 public:
 
-    DefaultSLAMEngine();
+    SLAMEngineImpl();
 
     virtual void run();
 
@@ -39,7 +39,7 @@ protected:
         cv::Mat patch;
         int num_failed_detections;
         int num_successful_detections;
-        double last_successful_detection_time;
+        int last_seen_frame;
     };
 
     struct CandidateLandmark
@@ -79,6 +79,9 @@ protected:
     std::vector<CandidateLandmark> m_candidate_landmarks;
     Image m_current_image;
     std::vector<cv::Point2i> m_current_corners;
+    //std::vector<cv::Point2i> m_corners;
+    //std::vector<cv::Point2f> m_undistorted_corners;
     double m_time_last_frame;
+    int m_frame_id;
 };
 

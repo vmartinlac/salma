@@ -27,15 +27,11 @@ ViewerWidget::ViewerWidget(SLAMOutput* slam, QWidget* parent) :
 
     {
         _landmarks = new osg::Vec3Array();
-        //_landmarks->setDataVariance(osg::Object::DYNAMIC);
-        _landmarks->push_back( osg::Vec3(-3, -3, -3) );
-        _landmarks->push_back( osg::Vec3(3, 3, -3) );
 
         osg::ref_ptr<osg::Vec3Array> lm_colors = new osg::Vec3Array();
         lm_colors->push_back( osg::Vec3(0.0, 1.0, 0.0) );
 
-        _draw_landmarks = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, 2 );
-        //_draw_landmarks->setDataVariance(osg::Object::DYNAMIC);
+        _draw_landmarks = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, 0 );
 
         _landmarks_geometry = new osg::Geometry();
         _landmarks_geometry->setUseDisplayList(false);

@@ -10,8 +10,10 @@
 #include "MainWindow.h"
 #include "ParametersDialog.h"
 #include "VideoInputDialog.h"
+
 // TODO: NOT NEEDED
 #include "OpenCVCamera.h"
+//
 
 MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     QMainWindow(parent),
@@ -85,7 +87,7 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     connect(a_home, SIGNAL(triggered()), m_viewer, SLOT(home()));
 
     //TODO: tmp for debug
-    m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/build/video.mp4") );
+    m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/data/smartphone/videos/video2.mp4") );
     //
 }
 
