@@ -15,6 +15,7 @@ VideoWidget::VideoWidget(SLAMOutput* slam, QWidget* parent) :
     QImage image(640, 480, QImage::Format_RGB888);
     image.fill(Qt::black);
 
+    /*
     QPainter p(&image);
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::red);
@@ -25,6 +26,7 @@ VideoWidget::VideoWidget(SLAMOutput* slam, QWidget* parent) :
     p.drawEllipse(QPoint(320, 240), 50, 50);
     p.setBrush(Qt::yellow);
     p.drawEllipse(QPoint(320, 240), 25, 25);
+    */
 
     m_label = new QLabel();
     m_label->setScaledContents(true);

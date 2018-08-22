@@ -62,7 +62,8 @@ protected:
     bool extractPatch( const cv::Point2i& point, cv::Mat& patch );
     bool findPatch(
         const cv::Mat& patch,
-        const cv::Rect& area,
+        const cv::Point2f& ellipse_center,
+        const cv::Vec2f& ellipse_radii,
         cv::Point2i& found_coords );
     bool comparePatches(const cv::Mat& P1, const cv::Mat& P2);
 
@@ -74,7 +75,6 @@ protected:
 
     cv::Mat m_calibration_matrix;
     cv::Mat m_distortion_coefficients;
-    int m_min_init_landmarks;
 
     Mode m_mode;
     Image m_current_image;

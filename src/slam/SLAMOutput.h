@@ -33,6 +33,7 @@ public:
     // string describing what the slam engine is doing.
     QString mode;
     int frame_id;
+    double timestamp;
 
     // output debug image (basically the image from the camera annotated by the engine).
     cv::Mat image;

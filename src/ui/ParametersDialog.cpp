@@ -20,18 +20,6 @@ QWidget* ParametersDialog::create_camera_tab()
     m_distortion_p1 = new QLineEdit();
     m_distortion_p2 = new QLineEdit();
 
-    /*
-    m_fx->setValidator(m_double_validator);
-    m_fy->setValidator(m_double_validator);
-    m_cx->setValidator(m_double_validator);
-    m_cy->setValidator(m_double_validator);
-    m_distortion_k1->setValidator(m_double_validator);
-    m_distortion_k2->setValidator(m_double_validator);
-    m_distortion_k3->setValidator(m_double_validator);
-    m_distortion_p1->setValidator(m_double_validator);
-    m_distortion_p2->setValidator(m_double_validator);
-    */
-
     QWidget* ret = new QWidget();
 
     QFormLayout* lay = new QFormLayout();
@@ -77,6 +65,9 @@ QWidget* ParametersDialog::create_engine_tab()
     m_num_depth_hypotheses = new QLineEdit();
     m_min_depth_hypothesis = new QLineEdit();
     m_max_depth_hypothesis = new QLineEdit();
+    m_gftt_max_corners = new QLineEdit();
+    m_gftt_quality_level = new QLineEdit();
+    m_min_init_landmarks = new QLineEdit();
 
     QWidget* ret = new QWidget();
 
@@ -89,14 +80,15 @@ QWidget* ParametersDialog::create_engine_tab()
     lay->addRow("num depth hypotheses", m_num_depth_hypotheses);
     lay->addRow("min depth hypothesis", m_min_depth_hypothesis);
     lay->addRow("max depth hypothesis", m_max_depth_hypothesis);
+    lay->addRow("GFTT max corners", m_gftt_max_corners);
+    lay->addRow("GFTT quality level", m_gftt_quality_level);
+    lay->addRow("min init landmarks", m_min_init_landmarks);
 
     return ret;
 }
 
 ParametersDialog::ParametersDialog(QWidget* parent) : QDialog(parent)
 {
-    m_double_validator = new QDoubleValidator(this);
-
     QTabWidget* tab = new QTabWidget();
     tab->addTab(create_camera_tab(), "Camera");
     tab->addTab(create_target_tab(), "Target");
@@ -155,14 +147,33 @@ void ParametersDialog::saveToFile()
     {
         SLAMParameters parameters;
 
-        storeFromUI(parameters);
+        const bool ok1 = storeFromUI(parameters);
 
-        const int ok = parameters.saveToFile(ret);
-
-        if(ok == false)
+        if(ok1)
         {
-            QMessageBox::critical(this, "Error", "Could not save parameters to file.");
+            const bool ok2 = parameters.saveToFile(ret);
+
+            if(ok2 == false)
+            {
+                QMessageBox::critical(this, "Error", "Could not save parameters to file.");
+            }
         }
+        else
+        {
+            QMessageBox::critical(this, "Error", "Some field could not be parsed!");
+        }
+    }
+}
+
+void ParametersDialog::accept()
+{
+    if( storeFromUI(m_accepted_parameters) )
+    {
+        QDialog::accept();
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "Some field could not be parsed!");
     }
 }
 
@@ -176,7 +187,8 @@ bool ParametersDialog::ask(QWidget* parent, SLAMParameters& parameters)
 
     if(ret == QDialog::Accepted)
     {
-        dlg->storeFromUI(parameters);
+        //dlg->storeFromUI(parameters);
+        parameters = dlg->m_accepted_parameters;
     }
 
     delete dlg;
@@ -199,42 +211,53 @@ void ParametersDialog::storeToUI(const SLAMParameters& parameters)
     m_distortion_p2->setText( QString::number(parameters.distortion_p2, 'g', precision) );
     m_initialization_target_scale->setText( QString::number(parameters.initialization_target_scale, 'g', precision) );
     m_initialization_target_kind->setCurrentIndex( std::max(0, m_initialization_target_kind->findData(parameters.initialization_target_kind) ) );
-    m_patch_size->setText( QString::number(parameters.patch_size, 'g', precision) );
+    m_patch_size->setText( QString::number(parameters.patch_size) );
     m_min_distance_to_camera->setText( QString::number(parameters.min_distance_to_camera, 'g', precision) );
-    m_max_landmark_candidates->setText( QString::number(parameters.max_landmark_candidates, 'g', precision) );
-    m_num_depth_hypotheses->setText( QString::number(parameters.num_depth_hypotheses, 'g', precision) );
+    m_max_landmark_candidates->setText( QString::number(parameters.max_landmark_candidates) );
+    m_num_depth_hypotheses->setText( QString::number(parameters.num_depth_hypotheses) );
     m_min_depth_hypothesis->setText( QString::number(parameters.min_depth_hypothesis, 'g', precision) );
     m_max_depth_hypothesis->setText( QString::number(parameters.max_depth_hypothesis, 'g', precision) );
+    m_gftt_max_corners->setText( QString::number(parameters.gftt_max_corners) );
+    m_gftt_quality_level->setText( QString::number(parameters.gftt_quality_level, 'g', precision) );
+    m_min_init_landmarks->setText( QString::number(parameters.min_init_landmarks) );
 }
 
-void ParametersDialog::storeFromUI(SLAMParameters& parameters)
+bool ParametersDialog::storeFromUI(SLAMParameters& parameters)
 {
-    parameters.cx = m_cx->text().toDouble();
-    parameters.cy = m_cy->text().toDouble();
-    parameters.fx = m_fx->text().toDouble();
-    parameters.fy = m_fy->text().toDouble();
-    parameters.distortion_k1 = m_distortion_k1->text().toDouble();
-    parameters.distortion_k2 = m_distortion_k2->text().toDouble();
-    parameters.distortion_k3 = m_distortion_k3->text().toDouble();
-    parameters.distortion_p1 = m_distortion_p1->text().toDouble();
-    parameters.distortion_p2 = m_distortion_p2->text().toDouble();
-    parameters.initialization_target_scale = m_initialization_target_scale->text().toDouble(); // the length of the side of a case of the initialization target.
+    bool ok = true;
+    bool ret = true;
+
+    parameters.cx = m_cx->text().toDouble(&ok); ret = (ret && ok);
+    parameters.cy = m_cy->text().toDouble(&ok); ret = (ret && ok);
+    parameters.fx = m_fx->text().toDouble(&ok); ret = (ret && ok);
+    parameters.fy = m_fy->text().toDouble(&ok); ret = (ret && ok);
+    parameters.distortion_k1 = m_distortion_k1->text().toDouble(&ok); ret = (ret && ok);
+    parameters.distortion_k2 = m_distortion_k2->text().toDouble(&ok); ret = (ret && ok);
+    parameters.distortion_k3 = m_distortion_k3->text().toDouble(&ok); ret = (ret && ok);
+    parameters.distortion_p1 = m_distortion_p1->text().toDouble(&ok); ret = (ret && ok);
+    parameters.distortion_p2 = m_distortion_p2->text().toDouble(&ok); ret = (ret && ok);
+    parameters.initialization_target_scale = m_initialization_target_scale->text().toDouble(&ok); ret = (ret && ok);
 
     QVariant tmp = m_initialization_target_kind->currentData();
     if(tmp.isValid())
     {
-        parameters.initialization_target_kind = tmp.toInt();
+        parameters.initialization_target_kind = tmp.toInt(&ok); ret = (ret && ok);
     }
     else
     {
         parameters.initialization_target_kind = SLAMParameters::INITIALIZATION_TARGET_ONE_PLANE;
     }
 
-    parameters.patch_size = m_patch_size->text().toInt();
-    parameters.min_distance_to_camera = m_min_distance_to_camera->text().toDouble();
-    parameters.max_landmark_candidates = m_max_landmark_candidates->text().toInt();
-    parameters.num_depth_hypotheses = m_num_depth_hypotheses->text().toInt();
-    parameters.min_depth_hypothesis = m_min_depth_hypothesis->text().toDouble();
-    parameters.max_depth_hypothesis = m_max_depth_hypothesis->text().toDouble();
+    parameters.patch_size = m_patch_size->text().toInt(&ok); ret = (ret && ok);
+    parameters.min_distance_to_camera = m_min_distance_to_camera->text().toDouble(&ok); ret = (ret && ok);
+    parameters.max_landmark_candidates = m_max_landmark_candidates->text().toInt(&ok); ret = (ret && ok);
+    parameters.num_depth_hypotheses = m_num_depth_hypotheses->text().toInt(&ok); ret = (ret && ok);
+    parameters.min_depth_hypothesis = m_min_depth_hypothesis->text().toDouble(&ok); ret = (ret && ok);
+    parameters.max_depth_hypothesis = m_max_depth_hypothesis->text().toDouble(&ok); ret = (ret && ok);
+    parameters.gftt_quality_level = m_gftt_quality_level->text().toDouble(&ok); ret = (ret && ok);
+    parameters.gftt_max_corners = m_gftt_max_corners->text().toInt(&ok); ret = (ret && ok);
+    parameters.min_init_landmarks = m_min_init_landmarks->text().toInt(&ok); ret = (ret && ok);
+
+    return ret;
 }
 

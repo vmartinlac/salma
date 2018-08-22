@@ -27,5 +27,6 @@ protected:
     QLabel* m_linear_velocity;
     QLabel* m_angular_velocity;
     QLabel* m_num_landmarks;
+    QLabel* m_timestamp;
     SLAMOutput* m_slam;
 };

@@ -31,6 +31,9 @@ bool SLAMParameters::loadFromJson(const QJsonDocument& doc)
         num_depth_hypotheses = obj["num_depth_hypotheses"].toInt(num_depth_hypotheses);
         min_depth_hypothesis = obj["min_depth_hypothesis"].toDouble(min_depth_hypothesis);
         max_depth_hypothesis = obj["max_depth_hypothesis"].toDouble(max_depth_hypothesis);
+        min_init_landmarks = obj["min_init_landmarks"].toInt(min_init_landmarks);
+        gftt_quality_level = obj["gftt_quality_level"].toDouble(gftt_quality_level);
+        gftt_max_corners = obj["gftt_max_corners"].toInt(gftt_max_corners);
 
         ret = true;
     }
@@ -59,6 +62,9 @@ bool SLAMParameters::saveToJson(QJsonDocument& doc)
     obj["num_depth_hypotheses"] = num_depth_hypotheses;
     obj["min_depth_hypothesis"] = min_depth_hypothesis;
     obj["max_depth_hypothesis"] = max_depth_hypothesis;
+    obj["min_init_landmarks"] = min_init_landmarks;
+    obj["gftt_quality_level"] = gftt_quality_level;
+    obj["gftt_max_corners"] = gftt_max_corners;
 
     doc.setObject(obj);
 
@@ -130,6 +136,9 @@ bool SLAMParameters::loadFromSettings()
     num_depth_hypotheses = s.value("num_depth_hypotheses", num_depth_hypotheses).toInt();
     min_depth_hypothesis = s.value("min_depth_hypothesis", min_depth_hypothesis).toDouble();
     max_depth_hypothesis = s.value("max_depth_hypothesis", max_depth_hypothesis).toDouble();
+    min_init_landmarks = s.value("min_init_landmarks", min_init_landmarks).toInt();
+    gftt_max_corners = s.value("gftt_max_corners", gftt_max_corners).toInt();
+    gftt_quality_level = s.value("gftt_quality_level", gftt_quality_level).toDouble();
 
     s.endGroup();
 
@@ -159,6 +168,9 @@ bool SLAMParameters::saveToSettings()
     s.setValue("num_depth_hypotheses", num_depth_hypotheses);
     s.setValue("min_depth_hypothesis", min_depth_hypothesis);
     s.setValue("max_depth_hypothesis", max_depth_hypothesis);
+    s.setValue("min_init_landmarks", min_init_landmarks);
+    s.setValue("gftt_quality_level", gftt_quality_level);
+    s.setValue("gftt_max_corners", gftt_max_corners);
 
     s.endGroup();
 
@@ -184,6 +196,9 @@ void SLAMParameters::reset()
     num_depth_hypotheses = 100;
     min_depth_hypothesis = 0.2;
     max_depth_hypothesis = 5.0;
+    min_init_landmarks = 20;
+    gftt_quality_level = 0.05;
+    gftt_max_corners = 400;
 }
 
 SLAMParameters::SLAMParameters()

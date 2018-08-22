@@ -16,6 +16,9 @@ StatsWidget::StatsWidget(
     m_frame_id = new QLabel("n/a");
     lay->addRow("Frame ID:", m_frame_id);
 
+    m_timestamp = new QLabel("n/a");
+    lay->addRow("Timestamp:", m_timestamp);
+
     m_position = new QLabel("n/a");
     lay->addRow("Position:", m_position);
 
@@ -57,6 +60,7 @@ void StatsWidget::refresh()
 {
     m_slam->beginRead();
     m_mode->setText( m_slam->mode );
+    m_timestamp->setText( QString::number(m_slam->timestamp) );
     m_frame_id->setText( QString::number(m_slam->frame_id) );
     m_position->setText( eigenToQt(m_slam->position) );
     m_attitude->setText( eigenToQt(m_slam->attitude) );

@@ -14,12 +14,13 @@ public:
     ParametersDialog(QWidget* parent);
 
     void storeToUI(const SLAMParameters& parameters);
-    void storeFromUI(SLAMParameters& parameters);
+    bool storeFromUI(SLAMParameters& parameters);
 
     static bool ask(QWidget* parent, SLAMParameters& parameters);
 
 protected slots:
 
+    void accept() override;
     void loadFromFile();
     void saveToFile();
 
@@ -31,7 +32,7 @@ protected:
 
 protected:
 
-    QDoubleValidator* m_double_validator;
+    SLAMParameters m_accepted_parameters;
 
     QLineEdit* m_fx;
     QLineEdit* m_fy;
@@ -50,5 +51,8 @@ protected:
     QLineEdit* m_num_depth_hypotheses;
     QLineEdit* m_min_depth_hypothesis;
     QLineEdit* m_max_depth_hypothesis;
+    QLineEdit* m_min_init_landmarks;
+    QLineEdit* m_gftt_max_corners;
+    QLineEdit* m_gftt_quality_level;
 };
 
