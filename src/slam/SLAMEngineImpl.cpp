@@ -15,38 +15,7 @@ void SLAMEngineImpl::run()
     std::cout << " SLAM ENGINE STARTED " << std::endl;
     std::cout << "=====================" << std::endl;
 
-    // start-up
-    {
-        if( !m_camera ) throw std::runtime_error("No camera was set.");
-
-        cv::Mat_<float> K(3,3);
-        K <<
-            m_parameters.fx, 0.0, m_parameters.cx,
-            0.0, m_parameters.fy, m_parameters.cy,
-            0.0, 0.0, 1.0;
-
-        cv::Mat_<float> lens_distortion(5, 1);
-        lens_distortion <<
-            m_parameters.distortion_k1,
-            m_parameters.distortion_k2,
-            m_parameters.distortion_p1,
-            m_parameters.distortion_p2,
-            m_parameters.distortion_k3;
-
-        //m_mode = MODE_DEAD;
-        m_mode = MODE_INIT;
-        m_calibration_matrix = K;
-        m_distortion_coefficients = lens_distortion;
-        m_camera_state.position.setZero();
-        m_camera_state.attitude.setIdentity();
-        m_camera_state.linear_velocity.setZero();
-        m_camera_state.angular_velocity.setZero();
-        m_landmarks.clear();
-        m_state_covariance.resize(0, 0);
-        m_candidate_landmarks.clear();
-        m_time_last_frame = 0.0;
-        m_frame_id = 0;
-    }
+    setup();
 
     m_camera->open();
 
@@ -57,6 +26,12 @@ void SLAMEngineImpl::run()
         if(m_current_image.isValid())
         {
             std::cout << "-> Processing frame " << m_frame_id << std::endl;
+
+            // TODO: do this in a clean and more efficient way.
+            cv::Mat tmp;
+            cv::undistort(m_current_image.refFrame(), tmp, m_calibration_matrix, m_distortion_coefficients);
+            m_current_image.refFrame() = std::move(tmp);
+            //
 
             switch(m_mode)
             {
@@ -93,6 +68,49 @@ void SLAMEngineImpl::run()
     std::cout << "SLAM ENGINE ENDED" << std::endl;
 }
 
+void SLAMEngineImpl::setup()
+{
+    // check that we have a camera.
+
+    if( !m_camera ) throw std::runtime_error("No camera was set.");
+
+    // setup calibration matrix.
+
+    cv::Mat_<float> K(3,3);
+    K <<
+        m_parameters.fx, 0.0, m_parameters.cx,
+        0.0, m_parameters.fy, m_parameters.cy,
+        0.0, 0.0, 1.0;
+
+    // setup lens distortion coefficients.
+
+    cv::Mat_<float> lens_distortion(5, 1);
+    lens_distortion <<
+        m_parameters.distortion_k1,
+        m_parameters.distortion_k2,
+        m_parameters.distortion_p1,
+        m_parameters.distortion_p2,
+        m_parameters.distortion_k3;
+
+    m_calibration_matrix = K;
+    m_distortion_coefficients = lens_distortion;
+    m_min_init_landmarks = 20;
+
+    m_mode = MODE_INIT;
+    m_current_image.setValid(false);
+    m_current_corners.clear();
+    m_time_last_frame = 0.0;
+    m_frame_id = 0;
+
+    m_camera_state.position.setZero();
+    m_camera_state.attitude.setIdentity();
+    m_camera_state.linear_velocity.setZero();
+    m_camera_state.angular_velocity.setZero();
+    m_landmarks.clear();
+    m_state_covariance.resize(0, 0);
+    m_candidate_landmarks.clear();
+}
+
 void SLAMEngineImpl::processImageInit()
 {
     bool ok;
@@ -123,7 +141,7 @@ void SLAMEngineImpl::processImageInit()
 
     if( ok )
     {
-        ok = ( object_points.size() >= 20 );
+        ok = ( object_points.size() >= m_min_init_landmarks );
     }
 
     if( ok )
@@ -203,10 +221,12 @@ void SLAMEngineImpl::processImageInit()
 
         // set mode to SLAM.
 
-        if( m_landmarks.size() >= 8 )
+        if( m_landmarks.size() >= m_min_init_landmarks )
         {
             //const double sigma = 0.15*m_parameters.initialization_target_scale; // TODO: to clarify.
-            const double sigma = 0.003; // TODO: find a way to estimate this quantity.
+            const double sigma = 0.003;
+            // TODO: find a way to estimate this quantity.
+            // Maybe use reprojection error.
 
             m_state_covariance.resize(
                 13 + 3*m_landmarks.size(),

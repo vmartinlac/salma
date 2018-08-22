@@ -51,6 +51,8 @@ protected:
 
 protected:
 
+    void setup();
+
     void processImageInit();
     void processImageSLAM();
     void processImageDead();
@@ -70,18 +72,19 @@ protected:
 
 protected:
 
-    Mode m_mode;
     cv::Mat m_calibration_matrix;
     cv::Mat m_distortion_coefficients;
+    int m_min_init_landmarks;
+
+    Mode m_mode;
+    Image m_current_image;
+    std::vector<cv::Point2i> m_current_corners;
+    double m_time_last_frame;
+    int m_frame_id;
+
     CameraState m_camera_state;
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;
     std::vector<CandidateLandmark> m_candidate_landmarks;
-    Image m_current_image;
-    std::vector<cv::Point2i> m_current_corners;
-    //std::vector<cv::Point2i> m_corners;
-    //std::vector<cv::Point2f> m_undistorted_corners;
-    double m_time_last_frame;
-    int m_frame_id;
 };
 
