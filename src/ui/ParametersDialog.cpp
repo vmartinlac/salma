@@ -68,6 +68,7 @@ QWidget* ParametersDialog::create_engine_tab()
     m_gftt_max_corners = new QLineEdit();
     m_gftt_quality_level = new QLineEdit();
     m_min_init_landmarks = new QLineEdit();
+    m_max_landmarks_per_frame = new QLineEdit();
 
     QWidget* ret = new QWidget();
 
@@ -83,6 +84,7 @@ QWidget* ParametersDialog::create_engine_tab()
     lay->addRow("GFTT max corners", m_gftt_max_corners);
     lay->addRow("GFTT quality level", m_gftt_quality_level);
     lay->addRow("min init landmarks", m_min_init_landmarks);
+    lay->addRow("max landmarks per frame", m_max_landmarks_per_frame);
 
     return ret;
 }
@@ -220,6 +222,7 @@ void ParametersDialog::storeToUI(const SLAMParameters& parameters)
     m_gftt_max_corners->setText( QString::number(parameters.gftt_max_corners) );
     m_gftt_quality_level->setText( QString::number(parameters.gftt_quality_level, 'g', precision) );
     m_min_init_landmarks->setText( QString::number(parameters.min_init_landmarks) );
+    m_max_landmarks_per_frame->setText( QString::number(parameters.max_landmarks_per_frame) );
 }
 
 bool ParametersDialog::storeFromUI(SLAMParameters& parameters)
@@ -257,6 +260,7 @@ bool ParametersDialog::storeFromUI(SLAMParameters& parameters)
     parameters.gftt_quality_level = m_gftt_quality_level->text().toDouble(&ok); ret = (ret && ok);
     parameters.gftt_max_corners = m_gftt_max_corners->text().toInt(&ok); ret = (ret && ok);
     parameters.min_init_landmarks = m_min_init_landmarks->text().toInt(&ok); ret = (ret && ok);
+    parameters.max_landmarks_per_frame = m_max_landmarks_per_frame->text().toInt(&ok); ret = (ret && ok);
 
     return ret;
 }

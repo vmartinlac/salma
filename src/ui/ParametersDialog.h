@@ -54,5 +54,6 @@ protected:
     QLineEdit* m_min_init_landmarks;
     QLineEdit* m_gftt_max_corners;
     QLineEdit* m_gftt_quality_level;
+    QLineEdit* m_max_landmarks_per_frame;
 };
 

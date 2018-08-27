@@ -22,6 +22,7 @@ ViewerWidget::ViewerWidget(SLAMOutput* slam, QWidget* parent) :
     QOpenGLWidget(parent)
 {
     osg::ref_ptr<osg::Group> data = new osg::Group();
+    data->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
     // create landmarks osg representation.
 

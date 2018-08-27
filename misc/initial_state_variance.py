@@ -21,5 +21,5 @@ for i in range(4):
         derivative = output_list[i].diff(input_list[j]).subs(dico)
         J[i,j] = derivative.evalf()
 
-delta = numpy.pi*2.0/180.0
+delta = numpy.pi*0.1/180.0
 print(J.dot(numpy.array([delta, delta, delta])))

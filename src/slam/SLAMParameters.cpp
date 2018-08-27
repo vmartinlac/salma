@@ -34,6 +34,7 @@ bool SLAMParameters::loadFromJson(const QJsonDocument& doc)
         min_init_landmarks = obj["min_init_landmarks"].toInt(min_init_landmarks);
         gftt_quality_level = obj["gftt_quality_level"].toDouble(gftt_quality_level);
         gftt_max_corners = obj["gftt_max_corners"].toInt(gftt_max_corners);
+        max_landmarks_per_frame = obj["max_landmarks_per_frame"].toInt(max_landmarks_per_frame);
 
         ret = true;
     }
@@ -65,6 +66,7 @@ bool SLAMParameters::saveToJson(QJsonDocument& doc)
     obj["min_init_landmarks"] = min_init_landmarks;
     obj["gftt_quality_level"] = gftt_quality_level;
     obj["gftt_max_corners"] = gftt_max_corners;
+    obj["max_landmarks_per_frame"] = max_landmarks_per_frame;
 
     doc.setObject(obj);
 
@@ -139,6 +141,7 @@ bool SLAMParameters::loadFromSettings()
     min_init_landmarks = s.value("min_init_landmarks", min_init_landmarks).toInt();
     gftt_max_corners = s.value("gftt_max_corners", gftt_max_corners).toInt();
     gftt_quality_level = s.value("gftt_quality_level", gftt_quality_level).toDouble();
+    max_landmarks_per_frame = s.value("max_landmarks_per_frame", max_landmarks_per_frame).toInt();
 
     s.endGroup();
 
@@ -171,6 +174,7 @@ bool SLAMParameters::saveToSettings()
     s.setValue("min_init_landmarks", min_init_landmarks);
     s.setValue("gftt_quality_level", gftt_quality_level);
     s.setValue("gftt_max_corners", gftt_max_corners);
+    s.setValue("max_landmarks_per_frame", max_landmarks_per_frame);
 
     s.endGroup();
 
@@ -199,6 +203,7 @@ void SLAMParameters::reset()
     min_init_landmarks = 20;
     gftt_quality_level = 0.05;
     gftt_max_corners = 400;
+    max_landmarks_per_frame = 5;
 }
 
 SLAMParameters::SLAMParameters()

@@ -31,13 +31,19 @@ public:
     // slam engine parameters.
     int patch_size;
     double min_distance_to_camera;
-    int max_landmark_candidates;
+    int max_landmark_candidates; // TODO: rather say candidate landmarks ?
     int num_depth_hypotheses;
     double min_depth_hypothesis;
     double max_depth_hypothesis;
     int min_init_landmarks;
     double gftt_quality_level;
     int gftt_max_corners;
+
+    // Maximal number of landmarks considered as found on one frame.
+    // we limit the number of landmarks so that the linear system
+    // to inverse at each frame is not too large and computation
+    // time remains low consequently.
+    int max_landmarks_per_frame; // TODO: save this parameter from/to json. let the user set it from the ui.
 
     SLAMParameters();
     bool loadFromJson(const QJsonDocument& doc);

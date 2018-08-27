@@ -2,8 +2,8 @@
 add_library(
     target
     STATIC
-    target.h
-    target.cpp
+    Tracker.h
+    Tracker.cpp
 )
 
 target_link_libraries(target PUBLIC opencv_core opencv_imgproc opencv_features2d nanoflann::nanoflann)

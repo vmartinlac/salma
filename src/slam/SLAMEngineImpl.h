@@ -7,6 +7,7 @@
 #include "SLAMEngine.h"
 #include "Camera.h"
 #include "Image.h"
+#include "Tracker.h"
 
 class SLAMEngineImpl : public SLAMEngine
 {
@@ -21,6 +22,7 @@ protected:
     enum Mode
     {
         MODE_INIT,
+        //MODE_TT,
         MODE_SLAM,
         MODE_DEAD
     };
@@ -54,6 +56,7 @@ protected:
     void setup();
 
     void processImageInit();
+    //void processImageTT();
     void processImageSLAM();
     void processImageDead();
 
@@ -86,5 +89,7 @@ protected:
     std::vector<Landmark> m_landmarks;
     Eigen::MatrixXd m_state_covariance;
     std::vector<CandidateLandmark> m_candidate_landmarks;
+
+    target::Tracker m_tracker;
 };
 

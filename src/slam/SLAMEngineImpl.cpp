@@ -1,9 +1,50 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/features2d.hpp>
 #include <iostream>
+#include <QTime>
 #include <QDebug>
 #include "SLAMEngineImpl.h"
-#include "target.h"
+#include "Tracker.h"
+#include "FinitePriorityQueue.h"
+
+/*
+static void correct_pose_wrt_previous(
+    const Eigen::Vector3d& last_known_position,
+    const Eigen::Quaterniond& last_known_attitude,
+    const Eigen::Vector3d& new_position,
+    const Eigen::Quaterniond& new_attitude,
+    Eigen::Vector3d& translation,
+    Eigen::Quaterniond& rotation)
+{
+    // correct attitude.
+
+    Eigen::Quaterniond ambiguity[4];
+    ambiguity[0] = Eigen::Quaterniond(Eigen::AngleAxisd(0.0, Eigen::Vector3d::UnitZ()));
+    ambiguity[1] = Eigen::Quaterniond(Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitZ()));
+    ambiguity[2] = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ()));
+    ambiguity[3] = Eigen::Quaterniond(Eigen::AngleAxisd(1.5*M_PI, Eigen::Vector3d::UnitZ()));
+
+    int j = 0;
+    double best_angle = 0.0;
+    for(int i=0; i<4; i++)
+    {
+        const double angle = last_known_attitude.angularDistance( ambiguity[i] * new_attitude );
+        if( i == 0 || angle < best_angle )
+        {
+            j = i;
+            best_angle = angle;
+        }
+    }
+    std::cout << std::endl;
+
+    rotation = ambiguity[j];
+
+    // correct 
+
+    translation.setZero();
+}
+*/
+
 
 SLAMEngineImpl::SLAMEngineImpl()
 {
@@ -108,46 +149,28 @@ void SLAMEngineImpl::setup()
     m_landmarks.clear();
     m_state_covariance.resize(0, 0);
     m_candidate_landmarks.clear();
+
+    m_tracker.setUnitLength( m_parameters.initialization_target_scale );
 }
 
 void SLAMEngineImpl::processImageInit()
 {
     bool ok;
-    target::Detector d;
-    std::vector< cv::Point3f > object_points;
-    std::vector< cv::Point2f > image_points;
     cv::Mat pnp_rodrigues;
     cv::Mat pnp_translation;
-    target::KindOfTarget kind_of_target;
     
-    switch(m_parameters.initialization_target_kind)
-    {
-    case SLAMParameters::INITIALIZATION_TARGET_TWO_PLANE:
-        kind_of_target = target::TWO_PLANES;
-        break;
-    case SLAMParameters::INITIALIZATION_TARGET_ONE_PLANE:
-    default:
-        kind_of_target = target::ONE_PLANE;
-        break;
-    }
-
-    ok = d.run(
-        m_current_image.refFrame(),
-        kind_of_target,
-        m_parameters.initialization_target_scale,
-        object_points,
-        image_points);
+    ok = m_tracker.track( m_current_image.refFrame(), true );
 
     if( ok )
     {
-        ok = ( object_points.size() >= m_parameters.min_init_landmarks );
+        ok = ( m_tracker.objectPoints().size() >= m_parameters.min_init_landmarks );
     }
 
     if( ok )
     {
         ok = cv::solvePnP(
-            object_points,
-            image_points,
+            m_tracker.objectPoints(),
+            m_tracker.imagePoints(),
             m_calibration_matrix,
             m_distortion_coefficients,
             pnp_rodrigues,
@@ -193,80 +216,95 @@ void SLAMEngineImpl::processImageInit()
 
     if(ok)
     {
-        // create first landmarks.
+        const std::vector<cv::Point3f>& object_points = m_tracker.objectPoints();
+        const std::vector<cv::Point2f>& image_points = m_tracker.imagePoints();
 
-        // Nice to have: check beforehand that we have enough landmarks far enough from the borders to avoid a little bit of computation waste.
-
-        m_landmarks.clear();
-
-        for(int i=0; i<object_points.size(); i++)
-        {
-            Landmark lm;
-
-            const bool ret = extractPatch( image_points[i], lm.patch );
-
-            if(ret)
-            {
-                lm.position.x() = object_points[i].x;
-                lm.position.y() = object_points[i].y;
-                lm.position.z() = object_points[i].z;
-                lm.num_failed_detections = 0;
-                lm.num_successful_detections = 1;
-                lm.last_seen_frame = m_frame_id;
-
-                m_landmarks.emplace_back(std::move(lm));
-            }
-        }
-
-        // set mode to SLAM.
-
-        const int M = m_landmarks.size();
-        if( M >= m_parameters.min_init_landmarks )
-        {
-            m_state_covariance.resize( 13 + 3*M, 13 + 3*M );
-
-            m_state_covariance.setZero();
-
-            double mean_sigma_landmark = 0.0;
-
-            for(int i=0; i<M; i++)
-            {
-                Eigen::Vector3d in_camera_frame = m_camera_state.attitude.inverse() * (m_landmarks[i].position - m_camera_state.position);
-                const double depth = std::max( m_parameters.min_distance_to_camera, in_camera_frame.z() );
-                const double eps = double(m_current_image.width()) * 0.9 / 640.0;
-                const double sigma_landmark = eps * depth / std::max(m_parameters.fx, m_parameters.fy);
-                m_state_covariance.diagonal().segment(13+3*i, 3).fill(sigma_landmark*sigma_landmark);
-
-                mean_sigma_landmark += sigma_landmark;
-            }
-
-            mean_sigma_landmark /= double(M);
-
-            const double sigma_position = 0.8 * mean_sigma_landmark;
-            const double sigma_attitude = 0.015; // see misc/initial_state_variance.py.
-            const double sigma_linear_velocity = 0.0;
-            const double sigma_angular_velocity = 0.0;
-            m_state_covariance.diagonal().segment<3>(0).fill(sigma_position*sigma_position);
-            m_state_covariance.diagonal().segment<4>(3).fill(sigma_attitude*sigma_attitude);
-            m_state_covariance.diagonal().segment<3>(7).fill(sigma_linear_velocity*sigma_linear_velocity);
-            m_state_covariance.diagonal().segment<3>(10).fill(sigma_angular_velocity*sigma_angular_velocity);
-
-
-            m_mode = MODE_SLAM;
-            //m_mode = MODE_DEAD;
-            qInfo() << "Successful initialization.";
-            qInfo() << "Switching to SLAM mode.";
-        }
-        else
         {
             m_landmarks.clear();
+
+            for(int i=0; i<object_points.size(); i++)
+            {
+                Landmark lm;
+
+                const bool ret = extractPatch( image_points[i], lm.patch );
+
+                if(ret)
+                {
+                    lm.position.x() = object_points[i].x;
+                    lm.position.y() = object_points[i].y;
+                    lm.position.z() = object_points[i].z;
+                    lm.num_failed_detections = 0;
+                    lm.num_successful_detections = 1;
+                    lm.last_seen_frame = m_frame_id;
+
+                    m_landmarks.emplace_back(std::move(lm));
+                }
+            }
+
+            const int M = m_landmarks.size();
+            if( M >= m_parameters.min_init_landmarks )
+            {
+                m_state_covariance.resize( 13 + 3*M, 13 + 3*M );
+
+                m_state_covariance.setZero();
+
+                double mean_sigma_landmark = 0.0;
+
+                for(int i=0; i<M; i++)
+                {
+                    Eigen::Vector3d in_camera_frame = m_camera_state.attitude.inverse() * (m_landmarks[i].position - m_camera_state.position);
+                    const double depth = std::max( m_parameters.min_distance_to_camera, in_camera_frame.z() );
+                    const double eps = double(m_current_image.width()) * 0.9 / 640.0;
+                    const double sigma_landmark = eps * depth / std::max(m_parameters.fx, m_parameters.fy);
+                    m_state_covariance.diagonal().segment(13+3*i, 3).fill(sigma_landmark*sigma_landmark);
+
+                    mean_sigma_landmark += sigma_landmark;
+                }
+
+                mean_sigma_landmark /= double(M);
+
+                const double sigma_position = 0.8 * mean_sigma_landmark;
+                const double sigma_attitude = 0.015; // see misc/initial_state_variance.py.
+                const double sigma_linear_velocity = 0.0;
+                const double sigma_angular_velocity = 0.0;
+                m_state_covariance.diagonal().segment<3>(0).fill(sigma_position*sigma_position);
+                m_state_covariance.diagonal().segment<4>(3).fill(sigma_attitude*sigma_attitude);
+                m_state_covariance.diagonal().segment<3>(7).fill(sigma_linear_velocity*sigma_linear_velocity);
+                m_state_covariance.diagonal().segment<3>(10).fill(sigma_angular_velocity*sigma_angular_velocity);
+
+                m_mode = MODE_SLAM;
+
+                qInfo() << "Successful initialization.";
+                qInfo() << "Switching to SLAM mode.";
+            }
+            else
+            {
+                m_landmarks.clear();
+            }
         }
     }
 }
 
+/*
+void SLAMEngineImpl::processImageTT()
+{
+    ;
+}
+*/
+
 void SLAMEngineImpl::processImageSLAM()
 {
+    QTime chrono;
+    int time_corners = 0;
+    int time_prediction = 0;
+    int time_update = 0;
+
     cv::Mat greyscale;
+    Eigen::VectorXd state_mu;
+    Eigen::MatrixXd state_sigma;
+
+    chrono.start();
+
     cv::cvtColor(m_current_image.refFrame(), greyscale, CV_BGR2GRAY);
 
     cv::goodFeaturesToTrack(
@@ -276,12 +314,20 @@ void SLAMEngineImpl::processImageSLAM()
         m_parameters.gftt_quality_level,
         0);
 
-    Eigen::VectorXd state_mu;
-    Eigen::MatrixXd state_sigma;
+    time_corners = chrono.elapsed();
 
+    chrono.start();
     EKFPredict(state_mu, state_sigma);
+    time_prediction = chrono.elapsed();
+
+    chrono.start();
     EKFUpdate(state_mu, state_sigma);
+    time_update = chrono.elapsed();
+
     saveState(state_mu, state_sigma);
+
+    const int total = time_corners + time_prediction + time_update;
+    std::cout << "corners : prediction : update = " << time_corners << " : " << time_prediction << " : " << time_update << std::endl;
 
     // TODO: manage candidate landmarks.
 }
@@ -436,6 +482,8 @@ void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_
     J.makeCompressed();
 
     // TODO: setup these constants correctly.
+    //const double sigma_v = dt*5.3; //dt*0.1;
+    //const double sigma_w = dt*1.2;
     const double sigma_v = dt*5.3; //dt*0.1;
     const double sigma_w = dt*1.2;
 
@@ -455,19 +503,15 @@ void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_
 
 void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
-    const Image& image = m_current_image;
-
     const int num_landmarks = m_landmarks.size();
     const int dim = 13 + 3*num_landmarks;
-
-    std::vector<bool> found(num_landmarks);
 
     Eigen::VectorXd residuals(2*num_landmarks);
 
     Eigen::SparseMatrix<double> J(2*num_landmarks, dim);
     J.reserve(20*num_landmarks);
 
-    int num_found = 0;
+    FinitePriorityQueue<int,int> priority_queue(m_parameters.max_landmarks_per_frame);
 
     // retrieve of compute some constants.
 
@@ -563,14 +607,16 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
             // END
 
             Eigen::Matrix2d covariance = J.block(2*i,0,2,dim) * pred_sigma * J.block(2*i,0,2,dim).transpose();
+            //cv::circle(tmp, cv::Point2f(u1, u2), std::sqrt(covariance(0,0)), cv::Scalar(0, 255, 0), 1);
 
             // TODO: compute a general ellipse instead of this axis aligned box.
             const double max_radius = double(m_current_image.width()) * 20.0/640.0;
-            const double box_radius_1 = std::min(4.0 * std::sqrt( covariance(0,0) ), max_radius);
-            const double box_radius_2 = std::min(4.0 * std::sqrt( covariance(1,1) ), max_radius);
+            const double min_radius = double(m_current_image.width()) * 2.0/640.0;
+            const double box_radius_1 = std::max(std::min(4.0 * std::sqrt( covariance(0,0) ), max_radius), min_radius);
+            const double box_radius_2 = std::max(std::min(4.0 * std::sqrt( covariance(1,1) ), max_radius), min_radius);
 
             // TODO: remove
-            std::cout << "Search box size: " << box_radius_1 << ' ' << box_radius_2 << std::endl;
+            //std::cerr << "B " << m_frame_id << ' ' << box_radius_1 << ' ' << box_radius_2 << std::endl;
             //
 
             ok = findPatch(
@@ -584,22 +630,18 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
         {
             residuals(2*i+0) = found_point.x - u1;
             residuals(2*i+1) = found_point.y - u2;
-            std::cout << "Residual: " << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
-            num_found++;
+            //std::cerr << "R " << m_frame_id << ' ' << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
+
+            priority_queue.push(i, -m_landmarks[i].last_seen_frame);
         }
         else
         {
             residuals(2*i+0) = 0.0;
             residuals(2*i+1) = 0.0;
         }
-
-        found[i] = ok;
-
-        if( found[i] )
-        {
-            m_landmarks[i].last_seen_frame = m_frame_id;
-        }
     }
+
+    const int num_found = priority_queue.size();
 
     std::cout << "Number of landmarks found in current frame: " << num_found << std::endl;
 
@@ -610,23 +652,25 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
         Eigen::SparseMatrix<double> proj(2*num_found, 2*num_landmarks);
         proj.reserve(4*num_found);
 
-        int j = 0;
-        for(int i=0; j<num_found && i<num_landmarks; i++)
-        {
-            if(found[i])
-            {
-                proj.insert(2*j+0, 2*i+0) = 1.0;
-                proj.insert(2*j+1, 2*i+1) = 1.0;
-                j++;
-            }
-        }
-
         Eigen::SparseMatrix<double> noise(2*num_found, 2*num_found);
         noise.reserve(2*num_found);
-        for(int i=0; i<2*num_found; i++)
+
         {
-            const double sigma = 2.0 * double(m_current_image.width()) / 640.0; // TODO: define this constant somewhere else.
-            noise.insert(i, i) = sigma*sigma;
+            int j = 0;
+            for(int i : priority_queue)
+            {
+                m_landmarks[i].last_seen_frame = m_frame_id;
+                proj.insert(2*j+0, 2*i+0) = 1.0;
+                proj.insert(2*j+1, 2*i+1) = 1.0;
+
+                const double sigma = 2.0 * double(m_current_image.width()) / 640.0; // TODO: define this constant somewhere else.
+                noise.insert(2*j+0, 2*j+0) = sigma*sigma;
+                noise.insert(2*j+1, 2*j+1) = sigma*sigma;
+
+                j++;
+            }
+
+            if( j != num_found ) throw std::logic_error("internal error");
         }
 
         auto projected_J = proj * J;
@@ -814,3 +858,4 @@ SLAMEngine* SLAMEngine::create()
 {
     return new SLAMEngineImpl();
 }
+
