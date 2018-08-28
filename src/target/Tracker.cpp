@@ -734,6 +734,9 @@ namespace target {
 
             if(count != 0) throw std::logic_error("internal error");
 
+            cv::TermCriteria term_criteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS, 20, 1.0e-3);
+            cv::cornerSubPix(m_greyscale, m_image_points, cv::Size(5, 5), cv::Size(-1, -1), term_criteria);
+
             ret = true;
         }
         else

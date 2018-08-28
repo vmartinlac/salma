@@ -60,15 +60,13 @@ protected:
     void processImageSLAM();
     void processImageDead();
 
-    void write_output();
+    void writeOutput();
 
-    bool extractPatch( const cv::Point2i& point, cv::Mat& patch );
     bool findPatch(
         const cv::Mat& patch,
         const cv::Point2f& ellipse_center,
         const cv::Vec2f& ellipse_radii,
-        cv::Point2i& found_coords );
-    bool comparePatches(const cv::Mat& P1, const cv::Mat& P2);
+        cv::Point2f& found_coords );
 
     void EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
     void EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
@@ -81,7 +79,6 @@ protected:
 
     Mode m_mode;
     Image m_current_image;
-    std::vector<cv::Point2i> m_current_corners;
     double m_time_last_frame;
     int m_frame_id;
 
