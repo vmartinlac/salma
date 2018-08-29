@@ -714,6 +714,7 @@ namespace target {
 
             m_object_points.resize(count);
             m_image_points.resize(count);
+            m_image_keypoints.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -729,6 +730,8 @@ namespace target {
                         0.0 );
 
                     m_image_points[count] = pt.keypoint.pt;
+
+                    m_image_keypoints[count] = pt.keypoint;
                 }
             }
 

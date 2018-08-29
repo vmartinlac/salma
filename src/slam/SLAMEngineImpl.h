@@ -3,7 +3,8 @@
 
 #include <Eigen/Eigen>
 #include <vector>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/features2d.hpp>
 #include "SLAMEngine.h"
 #include "Camera.h"
 #include "Image.h"
@@ -38,7 +39,7 @@ protected:
     struct Landmark
     {
         Eigen::Vector3d position;
-        cv::Mat patch;
+        cv::Mat descriptor;
         int num_failed_detections;
         int num_successful_detections;
         int last_seen_frame;
@@ -46,7 +47,7 @@ protected:
 
     struct CandidateLandmark
     {
-        cv::Mat patch;
+        cv::Mat descriptor;
         Eigen::Vector3d origin;
         Eigen::Vector3d direction;
     };
@@ -61,12 +62,6 @@ protected:
     void processImageDead();
 
     void writeOutput();
-
-    bool findPatch(
-        const cv::Mat& patch,
-        const cv::Point2f& ellipse_center,
-        const cv::Vec2f& ellipse_radii,
-        cv::Point2f& found_coords );
 
     void EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
     void EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
@@ -88,5 +83,7 @@ protected:
     std::vector<CandidateLandmark> m_candidate_landmarks;
 
     target::Tracker m_tracker;
+    cv::Ptr<cv::Feature2D> m_detector;
+    cv::Ptr<cv::Feature2D> m_descriptor;
 };
 

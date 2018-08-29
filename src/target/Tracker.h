@@ -25,6 +25,7 @@ namespace target
 
         const std::vector<cv::Point3f>& objectPoints();
         const std::vector<cv::Point2f>& imagePoints();
+        const std::vector<cv::KeyPoint>& imageKeyPoints();
 
         void clear();
 
@@ -164,6 +165,7 @@ namespace target
 
         std::vector<cv::Point3f> m_object_points;
         std::vector<cv::Point2f> m_image_points;
+        std::vector<cv::KeyPoint> m_image_keypoints;
     };
 
     inline void Tracker::setUnitLength(double length)
@@ -179,6 +181,11 @@ namespace target
     inline const std::vector<cv::Point2f>& Tracker::imagePoints()
     {
         return m_image_points;
+    }
+
+    inline const std::vector<cv::KeyPoint>& Tracker::imageKeyPoints()
+    {
+        return m_image_keypoints;
     }
 }
 

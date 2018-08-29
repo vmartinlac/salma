@@ -1,53 +1,16 @@
 #include <opencv2/calib3d.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/features2d.hpp>
 #include <iostream>
 #include <QTime>
 #include <QDebug>
 #include "SLAMEngineImpl.h"
 #include "Tracker.h"
-#include "FinitePriorityQueue.h"
-
-/*
-static void correct_pose_wrt_previous(
-    const Eigen::Vector3d& last_known_position,
-    const Eigen::Quaterniond& last_known_attitude,
-    const Eigen::Vector3d& new_position,
-    const Eigen::Quaterniond& new_attitude,
-    Eigen::Vector3d& translation,
-    Eigen::Quaterniond& rotation)
-{
-    // correct attitude.
-
-    Eigen::Quaterniond ambiguity[4];
-    ambiguity[0] = Eigen::Quaterniond(Eigen::AngleAxisd(0.0, Eigen::Vector3d::UnitZ()));
-    ambiguity[1] = Eigen::Quaterniond(Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitZ()));
-    ambiguity[2] = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ()));
-    ambiguity[3] = Eigen::Quaterniond(Eigen::AngleAxisd(1.5*M_PI, Eigen::Vector3d::UnitZ()));
-
-    int j = 0;
-    double best_angle = 0.0;
-    for(int i=0; i<4; i++)
-    {
-        const double angle = last_known_attitude.angularDistance( ambiguity[i] * new_attitude );
-        if( i == 0 || angle < best_angle )
-        {
-            j = i;
-            best_angle = angle;
-        }
-    }
-    std::cout << std::endl;
-
-    rotation = ambiguity[j];
-
-    // correct 
-
-    translation.setZero();
-}
-*/
-
 
 SLAMEngineImpl::SLAMEngineImpl()
 {
+    m_detector = cv::GFTTDetector::create( 600 );
+    m_descriptor = cv::ORB::create();
 }
 
 void SLAMEngineImpl::run()
@@ -68,12 +31,6 @@ void SLAMEngineImpl::run()
         {
             std::cout << "-> Processing frame " << m_frame_id << std::endl;
 
-            /* TODO: do this in a clean and more efficient way.
-            cv::Mat tmp;
-            cv::undistort(m_current_image.refFrame(), tmp, m_calibration_matrix, m_distortion_coefficients);
-            m_current_image.refFrame() = std::move(tmp);
-            */
-
             switch(m_mode)
             {
             case MODE_INIT:
@@ -93,7 +50,7 @@ void SLAMEngineImpl::run()
 
             writeOutput();
 
-            // we assume that this variable is not used in INIT mode, so we do not need to set its value before this point.
+            // we assume that m_time_last_frame is not used in INIT mode, so we do not need to set its value before this point.
             m_time_last_frame = m_current_image.getTimestamp();
             m_frame_id++;
         }
@@ -236,12 +193,6 @@ void SLAMEngineImpl::processImageInit()
                 m_landmarks.emplace_back();
                 Landmark& lm = m_landmarks.back();
 
-                cv::getRectSubPix(
-                    m_current_image.refFrame(),
-                    cv::Size( m_parameters.patch_size, m_parameters.patch_size ),
-                    image_points[i],
-                    lm.patch );
-
                 lm.position.x() = object_points[i].x;
                 lm.position.y() = object_points[i].y;
                 lm.position.z() = object_points[i].z;
@@ -252,6 +203,7 @@ void SLAMEngineImpl::processImageInit()
         }
 
         const int M = m_landmarks.size();
+
         if( M >= m_parameters.min_init_landmarks )
         {
             m_state_covariance.resize( 13 + 3*M, 13 + 3*M );
@@ -281,6 +233,21 @@ void SLAMEngineImpl::processImageInit()
             m_state_covariance.diagonal().segment<4>(3).fill(sigma_attitude*sigma_attitude);
             m_state_covariance.diagonal().segment<3>(7).fill(sigma_linear_velocity*sigma_linear_velocity);
             m_state_covariance.diagonal().segment<3>(10).fill(sigma_angular_velocity*sigma_angular_velocity);
+
+            // BEGIN compute descriptors.
+            {
+                std::vector<cv::KeyPoint> kpts = m_tracker.imageKeyPoints();
+                cv::Mat descriptors;
+                // TODO: do this in a cleaner way. There is no guarantee that the descriptor will assign exactly one output point for each input point.
+                m_descriptor->compute(m_current_image.refFrame(), kpts, descriptors);
+                if( kpts.size() != m_tracker.imageKeyPoints().size() ) { throw std::runtime_error("error"); }
+                for(int i=0; i<M; i++)
+                {
+                    m_landmarks[i].descriptor = descriptors.row(i);
+                }
+
+            }
+            // END
 
             m_mode = MODE_SLAM;
 
@@ -496,149 +463,145 @@ void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_
 
 void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma)
 {
+    // define some constants.
+
     const int num_landmarks = m_landmarks.size();
     const int dim = 13 + 3*num_landmarks;
+
     const cv::Rect viewport(
         m_parameters.patch_size,
         m_parameters.patch_size,
         m_current_image.refFrame().cols - 2*m_parameters.patch_size,
         m_current_image.refFrame().rows - 2*m_parameters.patch_size );
 
+    const double measurement_sigma = 2.5*m_current_image.width()/640.0;
+
+    // define some variables.
+
     Eigen::VectorXd residuals(2*num_landmarks);
 
     Eigen::SparseMatrix<double, Eigen::RowMajor> J(2*num_landmarks, dim);
-    J.reserve(20*num_landmarks);
 
-    FinitePriorityQueue<int,int> priority_queue(m_parameters.max_landmarks_per_frame);
+    std::vector<bool> found(num_landmarks);
 
-    // retrieve of compute some constants.
+    int num_found = 0;
 
-    const double x1 = pred_mu(0);
-    const double x2 = pred_mu(1);
-    const double x3 = pred_mu(2);
+    std::vector<int> selection;
 
-    const double a0 = pred_mu(3);
-    const double a1 = pred_mu(4);
-    const double a2 = pred_mu(5);
-    const double a3 = pred_mu(6);
+    std::vector<cv::Point3f> to_project;
 
-    // rotation matrix from camera frame to world frame.
-    const double R11 = 1.0 - 2.0*(a2*a2 + a3*a3);
-    const double R12 = 2.0*(a1*a2 - a3*a0);
-    const double R13 = 2.0*(a1*a3 + a2*a0);
-    const double R21 = 2.0*(a1*a2 + a0*a3);
-    const double R22 = 1.0 - 2.0*(a1*a1 + a3*a3);
-    const double R23 = 2.0*(a2*a3 - a1*a0);
-    const double R31 = 2.0*(a1*a3 - a0*a2);
-    const double R32 = 2.0*(a2*a3 + a1*a0);
-    const double R33 = 1.0 - 2.0*(a1*a1 + a2*a2);
+    std::vector<cv::Point2f> projected;
 
-    const double c1 = m_parameters.cx;
-    const double c2 = m_parameters.cy;
+    cv::Mat landmarks_descriptors;
 
-    const double f1 = m_parameters.fx;
-    const double f2 = m_parameters.fy;
+    std::vector<cv::KeyPoint> corners;
 
-    // compute find landmarks, compute residuals and jacobian.
+    cv::Mat corner_descriptors;
 
+    // determine which points we will attempt to find in the image.
+
+    selection.reserve(num_landmarks);
+    to_project.reserve(num_landmarks);
     for(int i=0; i<num_landmarks; i++)
     {
-        Landmark& lm = m_landmarks[i];
+        Eigen::Vector3d in_camera_frame = m_camera_state.attitude.inverse() * ( m_landmarks[i].position - m_camera_state.position );
 
-        const double y1 = lm.position.x();
-        const double y2 = lm.position.y();
-        const double y3 = lm.position.z();
-
-        const double d1 = y1 - x1;
-        const double d2 = y2 - x2;
-        const double d3 = y3 - x3;
-
-        const double ycam1 = R11*d1 + R21*d2 + R31*d3;
-        const double ycam2 = R12*d1 + R22*d2 + R32*d3;
-        const double ycam3 = R13*d1 + R23*d2 + R33*d3;
-
-        double u1 = 0.0;
-        double u2 = 0.0;
-
-        cv::Point2f found_point(0.0, 0.0);
-
-        bool ok = true;
-
-        if( ok)
+        if( in_camera_frame.z() > 1.0e-8 && in_camera_frame.z() > m_parameters.min_distance_to_camera )
         {
-            // TODO: check this line.
-            ok = ( ycam3 > 1.0e-8 && ycam3 > m_parameters.min_distance_to_camera );
-        }
+            in_camera_frame /= in_camera_frame.z();
+            const double x = in_camera_frame.x() * m_parameters.fx + m_parameters.cx;
+            const double y = in_camera_frame.y() * m_parameters.fy + m_parameters.cy;
 
-        if( ok )
-        {
-            u1 = c1 + f1 * ycam1/ycam3;
-            u2 = c2 + f2 * ycam2/ycam3;
+            if( viewport.contains(cv::Point2f(x, y)) )
+            {
+                selection.push_back(i);
 
-            ok = viewport.contains( cv::Point2f(u1, u2) );
-        }
-
-        if( ok )
-        {
-            // Generated by python script update.py
-            // BEGIN
-            J.insert(2*i+0, 0) = f1*R13*ycam1/(ycam3*ycam3) + f1*(-R11)/ycam3;
-            J.insert(2*i+0, 1) = f1*R23*ycam1/(ycam3*ycam3) + f1*(-R21)/ycam3;
-            J.insert(2*i+0, 2) = f1*(-R31)/ycam3 + f1*R33*ycam1/(ycam3*ycam3);
-            J.insert(2*i+0, 3) = f1*(2*a1*d2 - 2*a2*d1)*ycam1/(ycam3*ycam3) + f1*(-2*a2*d3 + 2*a3*d2)/ycam3;
-            J.insert(2*i+0, 4) = f1*(2*a2*d2 + 2*a3*d3)/ycam3 + f1*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam1/(ycam3*ycam3);
-            J.insert(2*i+0, 5) = f1*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam1/(ycam3*ycam3) + f1*(-2*a0*d3 + 2*a1*d2 - 4*a2*d1)/ycam3;
-            J.insert(2*i+0, 6) = f1*(-2*a1*d1 - 2*a2*d2)*ycam1/(ycam3*ycam3) + f1*(2*a0*d2 + 2*a1*d3 - 4*a3*d1)/ycam3;
-            J.insert(2*i+0, 13+3*i+0) = f1*(-R13)*ycam1/(ycam3*ycam3) + f1*R11/ycam3;
-            J.insert(2*i+0, 13+3*i+1) = f1*(-R23)*ycam1/(ycam3*ycam3) + f1*R21/ycam3;
-            J.insert(2*i+0, 13+3*i+2) = f1*R31/ycam3 + f1*(-R33)*ycam1/(ycam3*ycam3);
-            J.insert(2*i+1, 0) = f2*R13*ycam2/(ycam3*ycam3) + f2*(-R12)/ycam3;
-            J.insert(2*i+1, 1) = f2*R23*ycam2/(ycam3*ycam3) + f2*(2*(a1*a1) + 2*(a3*a3) - 1)/ycam3;
-            J.insert(2*i+1, 2) = f2*(-R32)/ycam3 + f2*R33*ycam2/(ycam3*ycam3);
-            J.insert(2*i+1, 3) = f2*(2*a1*d2 - 2*a2*d1)*ycam2/(ycam3*ycam3) + f2*(2*a1*d3 - 2*a3*d1)/ycam3;
-            J.insert(2*i+1, 4) = f2*(2*a0*d2 + 4*a1*d3 - 2*a3*d1)*ycam2/(ycam3*ycam3) + f2*(2*a0*d3 - 4*a1*d2 + 2*a2*d1)/ycam3;
-            J.insert(2*i+1, 5) = f2*(2*a1*d1 + 2*a3*d3)/ycam3 + f2*(-2*a0*d1 + 4*a2*d3 - 2*a3*d2)*ycam2/(ycam3*ycam3);
-            J.insert(2*i+1, 6) = f2*(-2*a1*d1 - 2*a2*d2)*ycam2/(ycam3*ycam3) + f2*(-2*a0*d1 + 2*a2*d3 - 4*a3*d2)/ycam3;
-            J.insert(2*i+1, 13+3*i+0) = f2*(-R13)*ycam2/(ycam3*ycam3) + f2*R12/ycam3;
-            J.insert(2*i+1, 13+3*i+1) = f2*(-R23)*ycam2/(ycam3*ycam3) + f2*R22/ycam3;
-            J.insert(2*i+1, 13+3*i+2) = f2*R32/ycam3 + f2*(-R33)*ycam2/(ycam3*ycam3);
-            // END
-
-            Eigen::Matrix2d covariance = J.block(2*i,0,2,dim) * pred_sigma * J.block(2*i,0,2,dim).transpose();
-
-            // TODO: compute a general ellipse instead of this axis aligned box.
-            const double max_radius = double(m_current_image.width()) * 20.0/640.0;
-            const double min_radius = double(m_current_image.width()) * 2.0/640.0;
-            const double box_radius_1 = std::max(std::min(4.0 * std::sqrt( covariance(0,0) ), max_radius), min_radius);
-            const double box_radius_2 = std::max(std::min(4.0 * std::sqrt( covariance(1,1) ), max_radius), min_radius);
-
-            // TODO: remove
-            //std::cerr << "B " << m_frame_id << ' ' << box_radius_1 << ' ' << box_radius_2 << std::endl;
-            //
-
-            ok = findPatch(
-                m_landmarks[i].patch,
-                cv::Point2f(u1, u2),
-                cv::Vec2f(box_radius_1, box_radius_2),
-                found_point );
-        }
-
-        if(ok)
-        {
-            residuals(2*i+0) = found_point.x - u1;
-            residuals(2*i+1) = found_point.y - u2;
-            //std::cerr << "R " << m_frame_id << ' ' << found_point.x - u1 << ' ' << found_point.y - u2 << std::endl;
-
-            priority_queue.push(i, -m_landmarks[i].last_seen_frame);
-        }
-        else
-        {
-            residuals(2*i+0) = 0.0;
-            residuals(2*i+1) = 0.0;
+                to_project.push_back( cv::Point3f(
+                    m_landmarks[i].position.x(),
+                    m_landmarks[i].position.y(),
+                    m_landmarks[i].position.z() ));
+            }
         }
     }
 
-    const int num_found = priority_queue.size();
+    const int num_visible = to_project.size();
+
+    // project points in the image and compute the jacobian of this operation.
+
+    if( num_visible > 0 )
+    {
+        const Eigen::Vector3d R; // TODO
+
+        const Eigen::Vector3d T = -(m_camera_state.attitude.inverse() * m_camera_state.position);
+
+        cv::Mat_<float> R_cv(3,1);
+        R_cv << R.x(), R.y(), R.z();
+
+        cv::Mat_<float> T_cv(3,1);
+        T_cv << T.x(), T.y(), T.z();
+
+        cv::Mat jacobian;
+        cv::projectPoints(to_project, R_cv, T_cv, m_calibration_matrix, m_distortion_coefficients, projected, jacobian);
+
+        J.reserve(20*num_visible);
+        landmarks_descriptors.create(num_visible, m_descriptor->descriptorSize(), m_descriptor->descriptorType());
+
+        for(int i=0; i<num_visible; i++)
+        {
+            // make sure that selection is sorted, otherwise filling the matrix will take a long time.
+            if(i > 0 && selection[i-1] >= selection[i]) throw std::logic_error("internal error");
+
+            const int j = selection[i];
+
+            landmarks_descriptors.row(i) = m_landmarks[j].descriptor;
+
+            // TODO : fill J.
+        }
+    }
+
+    // compute keypoints and their descriptors.
+
+    if( num_visible == 0 )
+    {
+        num_found = 0;
+        found.assign(num_landmarks, false);
+    }
+    else
+    {
+        cv::Mat& image = m_current_image.refFrame();
+
+        cv::Mat mask(image.size(), CV_8U);
+        mask = 0;
+
+        Eigen::Matrix3d Q;
+        Q <<
+            measurement_sigma*measurement_sigma, 0.0,
+            0.0, measurement_sigma*measurement_sigma;
+
+        for(int i=0; i<num_visible; i++)
+        {
+            const int j = selection[i];
+
+            const Eigen::Matrix2d covar_obs = J.block(2*j,0,2,dim) * m_state_covariance * J.block(2*j,0,2,dim).transpose() + Q;
+
+            const double sigmax = std::sqrt( covar_obs(0,0) );
+            const double sigmay = std::sqrt( covar_obs(1,1) );
+
+            cv::Rect patch( projected[i].x - 3.0*sigmax, projected[i].y - 3.0*sigmay, 6.0*sigmax, 6.0*sigmay );
+
+            if( (patch | viewport) == viewport )
+            {
+                mask(patch) = 1;
+            }
+        }
+
+        m_detector->detect(image, corners, mask);
+        m_descriptor->compute(image, corners, corner_descriptors);
+
+        ;
+    }
+
+    // TODO: fill num_found, found and residuals.
 
     std::cout << "Number of landmarks found in current frame: " << num_found << std::endl;
 
@@ -654,17 +617,19 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
 
         {
             int j = 0;
-            for(int i : priority_queue)
+            for(int i=0; i<num_landmarks; i++)
             {
-                m_landmarks[i].last_seen_frame = m_frame_id;
-                proj.insert(2*j+0, 2*i+0) = 1.0;
-                proj.insert(2*j+1, 2*i+1) = 1.0;
+                if(found[i])
+                {
+                    m_landmarks[i].last_seen_frame = m_frame_id;
+                    proj.insert(2*j+0, 2*i+0) = 1.0;
+                    proj.insert(2*j+1, 2*i+1) = 1.0;
 
-                const double sigma = 2.0 * double(m_current_image.width()) / 640.0; // TODO: define this constant somewhere else.
-                noise.insert(2*j+0, 2*j+0) = sigma*sigma;
-                noise.insert(2*j+1, 2*j+1) = sigma*sigma;
+                    noise.insert(2*j+0, 2*j+0) = measurement_sigma*measurement_sigma;
+                    noise.insert(2*j+1, 2*j+1) = measurement_sigma*measurement_sigma;
 
-                j++;
+                    j++;
+                }
             }
 
             if( j != num_found ) throw std::logic_error("internal error");
@@ -810,57 +775,6 @@ void SLAMEngineImpl::writeOutput()
     m_output->updated();
 }
 
-bool SLAMEngineImpl::findPatch(
-    const cv::Mat& patch,
-    const cv::Point2f& ellipse_center,
-    const cv::Vec2f& ellipse_radii,
-    cv::Point2f& result)
-{
-    int area_width = std::max<int>(
-        int(std::ceil(2.0*ellipse_radii(0))) + patch.cols,
-        patch.cols*2/3 );
-
-    int area_height = std::max<int>(
-        int(std::ceil(2.0*ellipse_radii(1))) + patch.rows,
-        patch.rows*2/3 );
-
-    cv::Rect area(
-        int(std::floor(ellipse_center.x - ellipse_radii(0))) - area_width/2,
-        int(std::floor(ellipse_center.y - ellipse_radii(1))) - area_height/2,
-        area_width,
-        area_height);
-
-    cv::Rect max_area( cv::Point(0,0), m_current_image.refFrame().size() );
-
-    bool ret = false;
-
-    if( (area | max_area) == max_area )
-    {
-        cv::Mat response;
-        cv::matchTemplate(
-            m_current_image.refFrame()(area),
-            patch,
-            response,
-            cv::TM_SQDIFF);
-
-        double value;
-        cv::Point loc;
-        cv::minMaxLoc( response, &value, nullptr, &loc, nullptr);
-
-        const double threshold = 5000.0 * double( patch.rows * patch.cols );
-
-        if( value < threshold )
-        {
-            result = area.tl() + loc + cv::Point2i(patch.cols/2, patch.rows/2);
-            cv::circle( m_current_image.refFrame(), result, 3, cv::Scalar(0,255,0), -1);
-            std::cout << cv::norm(ellipse_center - result) << std::endl;
-
-            ret = true;
-        }
-    }
-
-    return ret;
-}
 
 SLAMEngine* SLAMEngine::create()
 {
