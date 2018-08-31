@@ -83,7 +83,6 @@ protected:
     std::vector<CandidateLandmark> m_candidate_landmarks;
 
     target::Tracker m_tracker;
-    cv::Ptr<cv::Feature2D> m_detector;
-    cv::Ptr<cv::Feature2D> m_descriptor;
+    cv::Ptr<cv::Feature2D> m_feature;
 };
 

@@ -7,6 +7,59 @@
 #include "SLAMEngineImpl.h"
 #include "Tracker.h"
 
+inline void quaternion2rodrigues(const Eigen::Quaterniond& quaternion, cv::Mat& rodrigues, bool invert, Eigen::Matrix<double, 3, 4>* jacobian=nullptr)
+{
+    Eigen::Quaterniond a = quaternion.normalized();
+
+    Eigen::Vector3d r;
+
+    const double s = a.vec().norm();
+
+    const double eps = 1.0e-8;
+
+    // TODO: fill the jacobian.
+
+    if( s > eps )
+    {
+        if( std::fabs( a.w() ) > eps )
+        {
+            if( invert )
+            {
+                r = a.vec() * ( 2.0 * std::atan( s / a.w() ) / s );
+
+                if( jacobian != nullptr )
+                {
+                    ;
+                }
+            }
+            else
+            {
+                r = -a.vec() * ( 2.0 * std::atan( s / a.w() ) / s );
+            }
+        }
+        else
+        {
+            if( invert )
+            {
+                r = a.vec() * (M_PI / s);
+            }
+            else
+            {
+                r = -a.vec() * (M_PI / s);
+            }
+        }
+    }
+    else
+    {
+        r.setZero();
+    }
+
+    rodrigues.create(3, 1, CV_32F);
+    rodrigues.at<float>(0) = r.x();
+    rodrigues.at<float>(1) = r.y();
+    rodrigues.at<float>(2) = r.z();
+}
+
 SLAMEngineImpl::SLAMEngineImpl()
 {
     m_detector = cv::GFTTDetector::create( 600 );
@@ -236,13 +289,24 @@ void SLAMEngineImpl::processImageInit()
 
             // BEGIN compute descriptors.
             {
-                std::vector<cv::KeyPoint> kpts = m_tracker.imageKeyPoints();
+                /*
+                std::vector<cv::KeyPoint> corners;
                 cv::Mat descriptors;
-                // TODO: do this in a cleaner way. There is no guarantee that the descriptor will assign exactly one output point for each input point.
-                m_descriptor->compute(m_current_image.refFrame(), kpts, descriptors);
-                if( kpts.size() != m_tracker.imageKeyPoints().size() ) { throw std::runtime_error("error"); }
+
+                m_feature->detectAndCompute( m_current_image.refFrame(), corners, descriptors );
+                TODO
+                */
+
+                std::vector<cv::KeyPoint> original_keypoints = m_tracker.imageKeyPoints();
+                std::vector<cv::KeyPoint> keypoints = original_keypoints;
+                cv::Mat descriptors;
+
+                m_feature->compute(m_current_image.refFrame(), keypoints, descriptors);
+                if( keypoints.size() != original_keypoints.size() ) { throw std::runtime_error("error"); }
+
                 for(int i=0; i<M; i++)
                 {
+                    if( cv::norm( keypoints[i].pt - original_keypoints[i].pt ) > 2.0 ) { throw std::runtime_error("error"); }
                     m_landmarks[i].descriptor = descriptors.row(i);
                 }
 
@@ -492,7 +556,7 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
 
     std::vector<cv::Point2f> projected;
 
-    cv::Mat landmarks_descriptors;
+    cv::Mat landmark_descriptors;
 
     std::vector<cv::KeyPoint> corners;
 
@@ -502,6 +566,7 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
 
     selection.reserve(num_landmarks);
     to_project.reserve(num_landmarks);
+
     for(int i=0; i<num_landmarks; i++)
     {
         Eigen::Vector3d in_camera_frame = m_camera_state.attitude.inverse() * ( m_landmarks[i].position - m_camera_state.position );
@@ -530,32 +595,54 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_s
 
     if( num_visible > 0 )
     {
-        const Eigen::Vector3d R; // TODO
+        cv::Mat rodrigues;
+        Eigen::Matrix<double, 3, 4> J1;
 
-        const Eigen::Vector3d T = -(m_camera_state.attitude.inverse() * m_camera_state.position);
+        quaternion2rodrigues( m_camera_state.attitude, rodrigues, true, &J1 );
 
-        cv::Mat_<float> R_cv(3,1);
-        R_cv << R.x(), R.y(), R.z();
+        Eigen::Matrix3d RW2C = m_camera_state.attitude.inverse().toRotationMatrix();
 
-        cv::Mat_<float> T_cv(3,1);
-        T_cv << T.x(), T.y(), T.z();
+        // TODO!
+
+        const Eigen::Vector3d translation = -( RW2C * m_camera_state.position );
+
+        //Eigen::Matrix3d J3 = 
 
         cv::Mat jacobian;
-        cv::projectPoints(to_project, R_cv, T_cv, m_calibration_matrix, m_distortion_coefficients, projected, jacobian);
+        cv::projectPoints(
+            to_project,
+            cv::Mat(3, 1, CV_64F, rodrigues.data()),
+            cv::Mat(3, 1, CV_64F, translation.data()),
+            m_calibration_matrix,
+            m_distortion_coefficients,
+            projected,
+            jacobian);
+
+        if( jacobian.rows != 2*num_visible ) throw std::runtime_error("internal error");
+        if( jacobian.cols != 15 ) throw std::runtime_error("internal error");
+
+        Eigen::Map< Eigen::MatrixXd > map(jacobian.ptr(), 2*num_visible, 15);
 
         J.reserve(20*num_visible);
         landmarks_descriptors.create(num_visible, m_descriptor->descriptorSize(), m_descriptor->descriptorType());
 
         for(int i=0; i<num_visible; i++)
         {
-            // make sure that selection is sorted, otherwise filling the matrix will take a long time.
+            // check that selection vector is sorted (if not, filling the sparse matrix would take a long time).
+
             if(i > 0 && selection[i-1] >= selection[i]) throw std::logic_error("internal error");
 
             const int j = selection[i];
 
             landmarks_descriptors.row(i) = m_landmarks[j].descriptor;
 
+            Eigen::Matrix<double, 2, 3> jac_translation;
+            jac_translation <<
+                jacobian.at<float>(0,0), jacobian.at<float>(
+            Eigen::Matrix<double, 2, 9> local_J;
+
             // TODO : fill J.
+            J.insert( 2*i+0, 0 )
         }
     }
 
