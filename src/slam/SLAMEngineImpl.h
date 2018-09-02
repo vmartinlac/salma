@@ -23,7 +23,6 @@ protected:
     enum Mode
     {
         MODE_INIT,
-        //MODE_TT,
         MODE_SLAM,
         MODE_DEAD
     };
@@ -39,7 +38,7 @@ protected:
     struct Landmark
     {
         Eigen::Vector3d position;
-        cv::Mat descriptor;
+        cv::Mat descriptor_or_template;
         int num_failed_detections;
         int num_successful_detections;
         int last_seen_frame;
@@ -57,23 +56,40 @@ protected:
     void setup();
 
     void processImageInit();
-    //void processImageTT();
     void processImageSLAM();
     void processImageDead();
 
     void writeOutput();
 
-    void EKFPredict(Eigen::VectorXd& pred_mu, Eigen::MatrixXd& pred_sigma);
+    void EKFPredict(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
     void EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
-    void saveState(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
+
+    void retrieveBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
+    void storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
+
+    void computeResiduals(
+        std::vector<int>& selection,
+        Eigen::VectorXd& h,
+        Eigen::SparseMatrix<double>& J,
+        Eigen::VectorXd& residuals);
 
 protected:
+
+    // TODO: put this into parameters.
+    enum
+    {
+        TRACKING_TEMPLATE=0,
+        TRACKING_DESCRIPTOR=1
+    };
+    int m_tracking_method;
+    //
 
     cv::Mat m_calibration_matrix;
     cv::Mat m_distortion_coefficients;
 
     Mode m_mode;
     Image m_current_image;
+    Image m_previous_image;
     double m_time_last_frame;
     int m_frame_id;
 
