@@ -22,8 +22,7 @@ private:
         const cv::Mat& dist,
         double min_dist,
         const cv::Rect& viewport,
-        std::vector<int>& lms,
-        Eigen::VectorXd& h,
+        const std::vector<int>& lms,
         Eigen::MatrixXd& J);
 };
 

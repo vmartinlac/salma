@@ -39,15 +39,15 @@ void TestSLAM::test_h()
 {
     Eigen::VectorXd X(13+3*3);
     X <<
-        1.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
         1.0, 0.0, 0.0,
         0.0, 0.0, M_PI*0.5,
         0.0, 0.0, -5.0,
         1.0, 0.0, -5.0,
         0.0, 0.0, 5.0;
 
-    X.segment<4>(3).normalize();
+    //X.segment<4>(3).normalize();
 
     cv::Mat K;
     const double alpha = M_PI*15.0/180.0;
@@ -69,7 +69,17 @@ void TestSLAM::test_h()
     std::cout << lm.size() << std::endl;
     QVERIFY( lm.size() == 2 );
     QVERIFY( lm[0] == 0 && lm[1] == 1 );
-    //QVERIFY( 
+
+    Eigen::MatrixXd J2;
+    finite_differences_h(
+        X,
+        K,
+        cv::Mat(),
+        1.0e-2,
+        cv::Rect(0,0,640,480),
+        lm,
+        J2);
+    std::cout << J - J2 << std::endl;
 }
 
 void TestSLAM::finite_differences_f(const Eigen::VectorXd& X, double dt, Eigen::MatrixXd& J)
@@ -91,6 +101,45 @@ void TestSLAM::finite_differences_f(const Eigen::VectorXd& X, double dt, Eigen::
         SLAMPrimitives::compute_f(XX, dt, f, tmp);
 
         J.col(i) = (f - fref) * (1.0/eps);
+    }
+}
+
+void TestSLAM::finite_differences_h(
+    const Eigen::VectorXd& X,
+    const cv::Mat& K,
+    const cv::Mat& dist,
+    double min_dist,
+    const cv::Rect& viewport,
+    const std::vector<int>& lms,
+    Eigen::MatrixXd& J)
+{
+    Eigen::SparseMatrix<double> tmp;
+    Eigen::VectorXd h0;
+    std::vector<int> lms2;
+    SLAMPrimitives::compute_h( X, K, dist, min_dist, viewport, lms2, h0, tmp );
+
+    QVERIFY( lms2.size() == lms.size() );
+    for(int i=0; i<lms2.size(); i++)
+        QVERIFY( lms2[i] == lms[i] );
+
+    J.resize(h0.size(), X.size());
+
+    const double eps = 1.0e-3;
+
+    for(int i=0; i<X.size(); i++)
+    {
+        Eigen::VectorXd XX = X;
+        XX(i) += eps;
+
+        std::vector<int> lms3;
+        Eigen::VectorXd h1;
+        SLAMPrimitives::compute_h( XX, K, dist, min_dist, viewport, lms3, h1, tmp );
+
+        QVERIFY( lms3.size() == lms.size() );
+        for(int i=0; i<lms3.size(); i++)
+            QVERIFY( lms3[i] == lms[i] );
+
+        J.col(i) = (h1 - h0) * (1.0/eps);
     }
 }
 
