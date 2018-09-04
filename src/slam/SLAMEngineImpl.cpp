@@ -448,7 +448,7 @@ void SLAMEngineImpl::retrieveBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
         mu.segment<3>(13+3*i) = m_landmarks[i].position;
     }
 
-    m_state_covariance.swap(sigma); // We swap instead of copying (we assert that m_state_covariance will not be used between calls to retrieveBelief and storeBelief).
+    sigma = m_state_covariance; // we could swap, as m_state_covariance will not be used until next call to storeBelief().
 }
 
 void SLAMEngineImpl::storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
@@ -468,7 +468,7 @@ void SLAMEngineImpl::storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
         m_landmarks[i].position = mu.segment<3>(13+3*i);
     }
 
-    m_state_covariance.swap(sigma);
+    m_state_covariance = sigma; // we could swap.
 }
 
 void SLAMEngineImpl::processImageDead()
@@ -747,7 +747,7 @@ SLAMEngine* SLAMEngine::create()
                 }
             }
 
-            cv::imwrite("slam_debug_"+std::to_string(m_frame_id)+"_B.png", debug);
+            cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_B.png", debug);
         }
 #endif
 
@@ -802,7 +802,7 @@ SLAMEngine* SLAMEngine::create()
             }
         }
 
-        cv::imwrite("slam_debug_"+std::to_string(m_frame_id)+"_C.png", debug);
+        cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_C.png", debug);
     }
 #endif
 */

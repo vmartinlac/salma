@@ -24,19 +24,19 @@ namespace target {
 
         m_image = &image;
 #ifdef TARGET_DETECTOR_DEBUG
-        cv::imwrite("10_original.png", *m_image);
+        cv::imwrite("debug_output/10_original.png", *m_image);
 #endif
 
         // Converting to greyscale.
         cv::cvtColor(image, m_greyscale, CV_BGR2GRAY);
 #ifdef TARGET_DETECTOR_DEBUG
-        cv::imwrite("20_greyscale.png", m_greyscale);
+        cv::imwrite("debug_output/20_greyscale.png", m_greyscale);
 #endif
 
         // Thresholding
         cv::threshold(m_greyscale, m_thresh, 100, 255, cv::THRESH_BINARY_INV);
 #ifdef TARGET_DETECTOR_DEBUG
-        cv::imwrite("30_threshold.png", m_thresh);
+        cv::imwrite("debug_output/30_threshold.png", m_thresh);
 #endif
 
         // Detecting corners...
@@ -88,7 +88,7 @@ namespace target {
         {
             cv::Mat debug;
             cv::drawKeypoints(*m_image, keypoints, debug);
-            cv::imwrite("40_keypoints.png", debug);
+            cv::imwrite("debug_output/40_keypoints.png", debug);
         }
 #endif
 
@@ -109,7 +109,7 @@ namespace target {
             {
                 cv::circle(debug, pt.keypoint.pt, radius, cv::Scalar(255, 0, 0), -1);
             }
-            cv::imwrite("50_keypoints_post_filtering.png", debug);
+            cv::imwrite("debug_output/50_keypoints_post_filtering.png", debug);
         }
 #endif
     }
@@ -425,7 +425,7 @@ namespace target {
                     }
                 }
             }
-            cv::imwrite("60_post_symmetrization.png", debug);
+            cv::imwrite("debug_output/60_post_symmetrization.png", debug);
         }
 #endif
     }
@@ -484,7 +484,7 @@ namespace target {
                 }
             }
 
-            cv::imwrite("70_post_connected_components.png", debug);
+            cv::imwrite("debug_output/70_post_connected_components.png", debug);
         }
 #endif
     }
