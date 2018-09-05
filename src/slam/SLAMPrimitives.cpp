@@ -331,3 +331,51 @@ void SLAMPrimitives::computeJacobianOfWorld2CameraTransformation(
     J.block<3,3>(0, 7) = R;
 }
 
+void SLAMPrimitives::convertPose(
+    const cv::Mat& rodrigues,
+    const cv::Mat& t,
+    Eigen::Quaterniond& attitude,
+    Eigen::Vector3d& position)
+{
+    Eigen::Vector3d rodrigues_eigen;
+    if( rodrigues.type() == CV_32F )
+    {
+        rodrigues_eigen.x() = rodrigues.at<float>(0);
+        rodrigues_eigen.y() = rodrigues.at<float>(1);
+        rodrigues_eigen.z() = rodrigues.at<float>(2);
+    }
+    else if( rodrigues.type() == CV_64F )
+    {
+        rodrigues_eigen.x() = rodrigues.at<double>(0);
+        rodrigues_eigen.y() = rodrigues.at<double>(1);
+        rodrigues_eigen.z() = rodrigues.at<double>(2);
+    }
+
+    Eigen::Vector3d t_eigen;
+    if( t.type() == CV_32F )
+    {
+        t_eigen.x() = t.at<float>(0);
+        t_eigen.y() = t.at<float>(1);
+        t_eigen.z() = t.at<float>(2);
+    }
+    else if( t.type() == CV_64F )
+    {
+        t_eigen.x() = t.at<double>(0);
+        t_eigen.y() = t.at<double>(1);
+        t_eigen.z() = t.at<double>(2);
+    }
+
+    const double norm = rodrigues_eigen.norm();
+
+    if( norm > 1.0e-8 )
+    {
+        attitude.vec() = -sin(0.5*norm) * rodrigues_eigen / norm;
+        attitude.w() = cos(0.5*norm);
+    }
+    else
+    {
+        attitude.setIdentity();
+    }
+
+    position = -( attitude * t_eigen );
+}

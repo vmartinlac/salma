@@ -27,5 +27,11 @@ public:
         const Eigen::VectorXd& X,
         int landmark,
         Eigen::Matrix<double, 3, 10>& J);
+
+    static void convertPose(
+        const cv::Mat& rodrigues,
+        const cv::Mat& t,
+        Eigen::Quaterniond& attitude,
+        Eigen::Vector3d& position);
 };
 

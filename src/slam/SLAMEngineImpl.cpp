@@ -141,37 +141,12 @@ void SLAMEngineImpl::processImageInit()
             cv::SOLVEPNP_ITERATIVE );
     }
 
-    if( ok )
+    // initialize m_camera_state.
+    if(ok)
     {
-        // copy camera pose data.
+        SLAMPrimitives::convertPose(
+            pnp_rodrigues, pnp_translation, m_camera_state.attitude, m_camera_state.position);
 
-        Eigen::Vector3d rodrigues;
-        rodrigues <<
-            pnp_rodrigues.at<float>(0, 0),
-            pnp_rodrigues.at<float>(1, 0),
-            pnp_rodrigues.at<float>(2, 0);
-
-        Eigen::Vector3d world_to_camera_translation;
-        world_to_camera_translation <<
-            pnp_translation.at<float>(0,0),
-            pnp_translation.at<float>(1,0),
-            pnp_translation.at<float>(2,0);
-
-        const double norm = rodrigues.norm();
-
-        Eigen::Quaterniond world_to_camera_rotation;
-        if( norm > 1.0e-9 )
-        {
-            world_to_camera_rotation.vec() = sin(0.5*norm) * rodrigues / norm;
-            world_to_camera_rotation.w() = cos(0.5*norm);
-        }
-        else
-        {
-            world_to_camera_rotation.setIdentity();
-        }
-
-        m_camera_state.attitude = world_to_camera_rotation.inverse();
-        m_camera_state.position = -( m_camera_state.attitude * world_to_camera_translation );
         m_camera_state.linear_velocity.setZero();
         m_camera_state.angular_velocity.setZero();
     }
@@ -186,13 +161,9 @@ void SLAMEngineImpl::processImageInit()
         m_landmarks.clear();
         m_landmarks.reserve( N );
 
-        cv::Rect viewport(
-            m_parameters.patch_size,
-            m_parameters.patch_size,
-            m_current_image.refFrame().cols - 2*m_parameters.patch_size,
-            m_current_image.refFrame().rows - 2*m_parameters.patch_size );
-
+        std::vector<bool> has_descriptor_or_template;
         cv::Mat descriptors;
+        std::vector<cv::Mat> templates;
 
         if( m_tracking_method == TRACKING_DESCRIPTOR)
         {
@@ -202,6 +173,7 @@ void SLAMEngineImpl::processImageInit()
             std::vector<cv::KeyPoint> keypoints = original_keypoints;
 
             m_feature->compute(m_current_image.refFrame(), keypoints, descriptors);
+
             if( keypoints.size() != original_keypoints.size() ) { throw std::runtime_error("error"); }
 
             for(int i=0; i<N; i++)
@@ -212,11 +184,42 @@ void SLAMEngineImpl::processImageInit()
                 }
             }
 
+            has_descriptor_or_template.assign(N, true);
+        }
+        else if( m_tracking_method == TRACKING_TEMPLATE )
+        {
+            has_descriptor_or_template.resize(N);
+            templates.resize(N);
+
+            cv::Rect viewport(
+                m_parameters.patch_size/2+1,
+                m_parameters.patch_size/2+1, 
+                m_current_image.width() - m_parameters.patch_size/2-1,
+                m_current_image.height() - m_parameters.patch_size/2-1 );
+
+            cv::Size size( m_parameters.patch_size, m_parameters.patch_size );
+
+            for(int i=0; i<N; i++)
+            {
+                if( viewport.contains(image_points[i]) )
+                {
+                    cv::getRectSubPix( m_current_image.refFrame(), size, image_points[i], templates[i] );
+                    has_descriptor_or_template[i] = true;
+                }
+                else
+                {
+                    has_descriptor_or_template[i] = false;
+                }
+            }
+        }
+        else
+        {
+            throw std::runtime_error("internal error");
         }
 
         for(int i=0; i<N; i++)
         {
-            if( viewport.contains( image_points[i] ) )
+            if( has_descriptor_or_template[i] )
             {
                 m_landmarks.emplace_back();
                 Landmark& lm = m_landmarks.back();
@@ -224,20 +227,20 @@ void SLAMEngineImpl::processImageInit()
                 lm.position.x() = object_points[i].x;
                 lm.position.y() = object_points[i].y;
                 lm.position.z() = object_points[i].z;
+
                 lm.num_failed_detections = 0;
                 lm.num_successful_detections = 1;
                 lm.last_seen_frame = m_frame_id;
 
-                if( m_tracking_method == TRACKING_DESCRIPTOR )
+                switch( m_tracking_method )
                 {
+                case TRACKING_DESCRIPTOR:
                     lm.descriptor_or_template = descriptors.row(i);
-                }
-                else if( m_tracking_method == TRACKING_TEMPLATE )
-                {
-                    //lm.descriptor_or_template = ; // TODO
-                }
-                else
-                {
+                    break;
+                case TRACKING_TEMPLATE:
+                    lm.descriptor_or_template = templates[i];
+                    break;
+                default:
                     throw std::runtime_error("internal error");
                 }
             }
