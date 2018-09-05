@@ -68,10 +68,31 @@ protected:
     void storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
 
     void computeResiduals(
+        const Eigen::VectorXd& state_mu,
+        const Eigen::MatrixXd& state_sigma,
         std::vector<int>& selection,
         Eigen::VectorXd& h,
         Eigen::SparseMatrix<double>& J,
         Eigen::VectorXd& residuals);
+
+    void matchWithTemplates(
+        const Eigen::VectorXd& state_mu,
+        const Eigen::MatrixXd& state_sigma,
+        const std::vector<int>& selection,
+        const Eigen::VectorXd& h,
+        const Eigen::SparseMatrix<double>& J,
+        Eigen::VectorXd& residuals,
+        std::vector<bool> found);
+
+    void matchWithDescriptors(
+        const Eigen::VectorXd& state_mu,
+        const Eigen::MatrixXd& state_sigma,
+        const std::vector<int>& selection,
+        const Eigen::VectorXd& h,
+        const Eigen::SparseMatrix<double>& J,
+        Eigen::VectorXd& residuals,
+        std::vector<bool> found);
+        
 
 protected:
 
@@ -82,6 +103,7 @@ protected:
         TRACKING_DESCRIPTOR=1
     };
     int m_tracking_method;
+    double m_measurement_standard_deviation;
     //
 
     cv::Mat m_calibration_matrix;

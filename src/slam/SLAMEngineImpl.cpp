@@ -72,7 +72,10 @@ void SLAMEngineImpl::run()
 
 void SLAMEngineImpl::setup()
 {
+    // TODO
     m_tracking_method = TRACKING_TEMPLATE;
+    m_measurement_standard_deviation = 1.8/640.0;
+    //
 
     // check that we have a camera.
 
@@ -355,7 +358,7 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
 
     const int dim = 13 + 3*num_landmarks;
 
-    const double measurement_sigma = 2.0*m_current_image.width()/640.0; // TODO: define this constant somewhere else ?
+    const double measurement_sigma = m_measurement_standard_deviation*m_current_image.width();
 
     const cv::Rect viewport( 0, 0, m_current_image.width(), m_current_image.height() );
 
@@ -376,6 +379,8 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
     Eigen::VectorXd residuals;
 
     computeResiduals(
+        mu,
+        sigma,
         selection,
         h,
         J,
@@ -409,6 +414,8 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
 }
 
 void SLAMEngineImpl::computeResiduals(
+    const Eigen::VectorXd& state_mu,
+    const Eigen::MatrixXd& state_sigma,
     std::vector<int>& selection,
     Eigen::VectorXd& h,
     Eigen::SparseMatrix<double>& J,
@@ -418,10 +425,296 @@ void SLAMEngineImpl::computeResiduals(
 
     const int dim = 13 + 3*num_landmarks;
 
+    const int N = selection.size();
+    if( J.rows() != 2*N || h.size() != 2*N ) throw std::runtime_error("internal error");
+
+    std::vector<bool> found;
+
+    if( m_tracking_method == TRACKING_TEMPLATE )
+    {
+        matchWithTemplates( state_mu, state_sigma, selection, h, J, residuals, found);
+    }
+    else if( m_tracking_method == TRACKING_DESCRIPTOR )
+    {
+        matchWithDescriptors( state_mu, state_sigma, selection, h, J, residuals, found);
+    }
+    else
+    {
+        throw std::runtime_error("internal error");
+    }
+
+    if( found.size() != N || residuals.size() != 2*N ) throw std::runtime_error("internal error");
+
+#ifdef SLAM_DEBUG
+    {
+        cv::Mat debug = m_current_image.refFrame().clone();
+
+        for(int i=0; i<N; i++)
+        {
+            if( found[i] )
+            {
+                cv::Point2f measured_pt(h(2*i+0)+residuals(2*i+0), h(2*i+1)+residuals(2*i+1));
+                cv::Point2f predicted_pt(h(2*i+0), h(2*i+1));
+                // residual = measured - predicted
+                cv::line( debug, predicted_pt, measured_pt, cv::Scalar(0,255,0), 2);
+            }
+        }
+
+        cv::imwrite("debug_output/slam_residuals_"+std::to_string(m_frame_id)+".png", debug);
+    }
+#endif
+
+    {
+        int num_found = 0;
+        for(int i=0; i<N; i++)
+        {
+            if(found[i])
+            {
+                num_found++;
+            }
+        }
+
+        Eigen::SparseMatrix<double, Eigen::RowMajor> proj(2*num_found, 2*N);
+
+        std::vector<int> new_selection(N);
+
+        int j = 0;
+        for(int i=0; i<N; i++)
+        {
+            if(found[i])
+            {
+                if( j >= num_found ) throw std::runtime_error("internal error");
+
+                proj.insert(2*j, 2*i) = 1.0;
+                proj.insert(2*j+1, 2*i+1) = 1.0;
+                new_selection[j] = selection[i];
+                j++;
+            }
+        }
+
+        if( j != num_found ) throw std::runtime_error("internal error");
+
+        Eigen::SparseMatrix<double> new_J = proj * J;
+        Eigen::VectorXd new_residuals = proj * residuals;
+        Eigen::VectorXd new_h = proj * h;
+
+        selection.swap(new_selection);
+        h.swap(new_h);
+        J.swap(new_J);
+        residuals.swap(new_residuals);
+    }
+
+    /*
     selection.clear();
     h.resize(0);
     J.resize(0, 13+3*num_landmarks);
     residuals.resize(0);
+    */
+}
+
+void SLAMEngineImpl::matchWithDescriptors(
+    const Eigen::VectorXd& state_mu,
+    const Eigen::MatrixXd& state_sigma,
+    const std::vector<int>& selection,
+    const Eigen::VectorXd& h,
+    const Eigen::SparseMatrix<double>& J,
+    Eigen::VectorXd& residuals,
+    std::vector<bool> found)
+{
+    const int num_landmarks = m_landmarks.size();
+    const int dim = 13 + 3*num_landmarks;
+    const int N = selection.size();
+
+    found.assign(N, false);
+    residuals.resize(2*N);
+    residuals.setZero();
+
+    cv::Mat& image = m_current_image.refFrame();
+
+    cv::Mat mask( image.size(), CV_16S );
+    mask = -1;
+
+    const double measurement_sigma = m_measurement_standard_deviation*m_current_image.width();
+
+    Eigen::Matrix2d Q;
+    Q <<
+        measurement_sigma*measurement_sigma, 0.0,
+        0.0, measurement_sigma*measurement_sigma;
+
+    for(int i=0; i<N; i++)
+    {
+        Eigen::SparseMatrix<double> tmp = J.block(2*i, 0, 2, dim);
+
+        const Eigen::Matrix2d covar = tmp * state_sigma * tmp.transpose() + Q;
+
+        if( std::fabs( covar.determinant() ) > 1.0e-6 )
+        {
+            const Eigen::Matrix2d covar_inv = covar.inverse();
+
+            int radius = 4 * static_cast<int>( std::sqrt( std::max( covar(0,0), covar(1,1) ) ) );
+
+
+            // TODO TMP
+            radius = std::min(radius, 10*m_current_image.width()/640);
+            //
+
+            for(int da=-radius; da<=radius; da++)
+            {
+                for(int db=-radius; db<=radius; db++)
+                {
+                    const int a = cvRound(h(2*i+0)) + da;
+                    const int b = cvRound(h(2*i+1)) + db;
+
+                    if( 0 <= a && a < image.cols && 0 <= b && b < image.rows )
+                    {
+                        Eigen::Vector2d delta;
+                        delta.x() = double(da);
+                        delta.y() = double(db);
+
+                        const double deviation2 = ( delta.transpose() * covar_inv * delta );
+                        if( deviation2 >= 0 && deviation2 < 3.0*3.0 )
+                        {
+                            int16_t& value = mask.at<int16_t>(b, a);
+
+                            if(value == -1)
+                            {
+                                value = i;
+                            }
+                            else
+                            {
+                                value = -2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+/*
+#ifdef SLAM_DEBUG
+    {
+        cv::Mat debug( image.size(), CV_8UC3 );
+
+        for(int i=0; i<debug.cols; i++)
+        {
+            for(int j=0; j<debug.rows; j++)
+            {
+                int16_t input = mask.at<int16_t>(j,i);
+
+                cv::Vec3b output;
+
+                if(input == -1)
+                {
+                    output = cv::Vec3b(0,0,0);
+                }
+                else if(input == -2)
+                {
+                    output = cv::Vec3b(255,0,0);
+                }
+                else
+                {
+                    int gamma = 255*input/(num_visible-1);
+                    output = cv::Vec3b(
+                        0,
+                        gamma,
+                        255-gamma);
+                }
+
+                debug.at<cv::Vec3b>(j,i) = output;
+            }
+        }
+
+        cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_B.png", debug);
+    }
+#endif
+    */
+
+    std::vector<cv::KeyPoint> corners;
+    cv::Mat descriptors;
+    m_feature->detectAndCompute(image, cv::Mat(), corners, descriptors);
+
+    std::vector<double> descriptor_distance(N, 0.0);
+
+    for(int i=0; i<corners.size(); i++)
+    {
+        const int16_t value = mask.at<int16_t>(corners[i].pt);
+
+        if( value >= 0)
+        {
+            const double dist = cv::norm( descriptors.row(i), m_landmarks[selection[value]].descriptor_or_template );
+
+            if( found[value] == false || dist < descriptor_distance[value] )
+            {
+                descriptor_distance[value] = dist;
+                residuals(2*value+0) = corners[i].pt.x - h(2*value+0);
+                residuals(2*value+1) = corners[i].pt.y - h(2*value+1);
+                found[value] = true;
+            }
+        }
+    }
+}
+
+void SLAMEngineImpl::matchWithTemplates(
+    const Eigen::VectorXd& state_mu,
+    const Eigen::MatrixXd& state_sigma,
+    const std::vector<int>& selection,
+    const Eigen::VectorXd& h,
+    const Eigen::SparseMatrix<double>& J,
+    Eigen::VectorXd& residuals,
+    std::vector<bool> found)
+{
+    const int num_landmarks = m_landmarks.size();
+    const int dim = 13 + 3*num_landmarks;
+    const int N = selection.size();
+
+    found.assign(N, false);
+    residuals.resize(2*N);
+    residuals.setZero();
+
+    cv::Rect image_viewport( 0, 0, m_current_image.width(), m_current_image.height() );
+
+    const double measurement_sigma = m_measurement_standard_deviation*m_current_image.width();
+
+    Eigen::Matrix2d Q;
+    Q <<
+        measurement_sigma*measurement_sigma, 0.0,
+        0.0, measurement_sigma*measurement_sigma;
+
+    for(int i=0; i<N; i++)
+    {
+        Eigen::SparseMatrix<double> tmp = J.block(2*i, 0, 2, dim);
+
+        Eigen::Matrix2d obs_sigma = tmp * state_sigma * tmp.transpose() + Q;
+
+        const int sx = 1 + static_cast<int>(std::ceil(std::sqrt( obs_sigma(0) ))) + m_parameters.patch_size;
+        const int sy = 1 + static_cast<int>(std::ceil(std::sqrt( obs_sigma(1) ))) + m_parameters.patch_size;
+
+        cv::Rect area(
+            h(2*i+0) - sx,
+            h(2*i+1) - sy,
+            2*sx,
+            2*sy);
+
+        if( (image_viewport | area) == image_viewport )
+        {
+            cv::Mat result;
+            cv::matchTemplate(m_current_image.refFrame(), m_landmarks[selection[i]].descriptor_or_template, result, CV_TM_SQDIFF);
+
+            cv::Point pt;
+            cv::minMaxLoc(result, nullptr, nullptr, &pt, nullptr);
+
+            found[i] = true;
+            residuals(2*i+0) = pt.x - h(2*i+0);
+            residuals(2*i+1) = pt.y - h(2*i+1);
+        }
+        else
+        {
+            found[i] == false;
+            residuals(2*i+0) = 0.0;
+            residuals(2*i+1) = 0.0;
+        }
+    }
 }
 
 void SLAMEngineImpl::retrieveBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
@@ -585,228 +878,4 @@ SLAMEngine* SLAMEngine::create()
 {
     return new SLAMEngineImpl();
 }
-
-
-
-    // match 1.
-    /*
-    else
-    {
-        Eigen::Matrix2d Q;
-        Q <<
-            measurement_sigma*measurement_sigma, 0.0,
-            0.0, measurement_sigma*measurement_sigma;
-
-        cv::Ptr<cv::BFMatcher> matcher = cv::BFMatcher::create(cv::NORM_L2, true);
-
-        std::vector<cv::DMatch> matches;
-        matcher->match(m_current_descriptors, landmark_descriptors, matches);
-
-        found.assign(num_landmarks, false);
-
-        for( cv::DMatch& m : matches )
-        {
-            const int corner = m.queryIdx;
-            const int i = m.trainIdx;
-            const int j = selection[i];
-
-            Eigen::SparseMatrix<double> projection(2, 2*num_landmarks);
-            projection.reserve(2);
-            projection.insert(0, 2*j+0) = 1.0;
-            projection.insert(1, 2*j+1) = 1.0;
-
-            const Eigen::Matrix2d covar_obs = (projection * J) * pred_sigma * (projection * J).transpose() + Q;
-
-            if( std::fabs( covar_obs.determinant() ) > 1.0e-6 )
-            {
-                const Eigen::Matrix2d info = covar_obs.inverse();
-
-                cv::Vec2f delta_cv = m_current_corners[corner].pt - projected[i];
-
-                Eigen::Vector2d delta;
-                delta.x() = delta_cv[0];
-                delta.y() = delta_cv[1];
-
-                const double r = delta.transpose() * info * delta;
-
-                if( r >= 0 && r < 3.0*3.0 )
-                {
-                    found[j] = true;
-                    residuals.segment<2>(2*j) = delta;
-                    affectation[i] = corner;
-                }
-            }
-
-        }
-
-        num_found = 0;
-
-        for(int i=0; i<num_landmarks; i++)
-        {
-            if(found[i])
-            {
-                num_found++;
-            }
-        }
-    }
-    */
-
-    // match 2.
-    /*
-    else
-    {
-
-        cv::Mat& image = m_current_image.refFrame();
-
-        cv::Mat mask( image.size(), CV_16S );
-        mask = -1;
-
-        Eigen::Matrix2d Q;
-        Q <<
-            measurement_sigma*measurement_sigma, 0.0,
-            0.0, measurement_sigma*measurement_sigma;
-
-        for(int i=0; i<num_visible; i++)
-        {
-            const int j = selection[i];
-
-            Eigen::SparseMatrix<double> projection(2, 2*num_landmarks);
-            projection.reserve(2);
-            projection.insert(0, 2*j+0) = 1.0;
-            projection.insert(1, 2*j+1) = 1.0;
-
-            const Eigen::Matrix2d covar_obs = (projection * J) * pred_sigma * (projection * J).transpose() + Q;
-
-            if( std::fabs( covar_obs.determinant() ) > 1.0e-6 )
-            {
-                const Eigen::Matrix2d info = covar_obs.inverse();
-
-                int radius = 4 * static_cast<int>( std::sqrt( std::max( covar_obs(0,0), covar_obs(1,1) ) ) );
-                radius = std::min(radius, 10*m_current_image.width()/640);
-
-                for(int da=-radius; da<=radius; da++)
-                {
-                    for(int db=-radius; db<=radius; db++)
-                    {
-                        const int a = cvRound(projected[i].x) + da;
-                        const int b = cvRound(projected[i].y) + db;
-
-                        if( 0 <= a && a < image.cols && 0 <= b && b < image.rows )
-                        {
-                            Eigen::Vector2d delta;
-                            delta.x() = double(da);
-                            delta.y() = double(db);
-
-                            const double deviation2 = ( delta.transpose() * info * delta );
-                            if( deviation2 >= 0 && deviation2 < 3.0*3.0 )
-                            {
-                                int16_t& value = mask.at<int16_t>(b, a);
-
-                                if(value == -1)
-                                {
-                                    value = i;
-                                }
-                                else
-                                {
-                                    value = -2;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-#ifdef SLAM_DEBUG
-        {
-            cv::Mat debug( image.size(), CV_8UC3 );
-
-            for(int i=0; i<debug.cols; i++)
-            {
-                for(int j=0; j<debug.rows; j++)
-                {
-                    int16_t input = mask.at<int16_t>(j,i);
-
-                    cv::Vec3b output;
-
-                    if(input == -1)
-                    {
-                        output = cv::Vec3b(0,0,0);
-                    }
-                    else if(input == -2)
-                    {
-                        output = cv::Vec3b(255,0,0);
-                    }
-                    else
-                    {
-                        int gamma = 255*input/(num_visible-1);
-                        output = cv::Vec3b(
-                            0,
-                            gamma,
-                            255-gamma);
-                    }
-
-                    debug.at<cv::Vec3b>(j,i) = output;
-                }
-            }
-
-            cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_B.png", debug);
-        }
-#endif
-
-        // visible landmark index --> corner index
-        std::vector<int> affectation(num_visible, -1);
-
-        for(int i=0; i<m_current_corners.size(); i++)
-        {
-            const int16_t value = mask.at<int16_t>(m_current_corners[i].pt);
-
-            if( value >= 0)
-            {
-                const int j = selection[value];
-
-                const cv::Vec2f delta = m_current_corners[i].pt - projected[value];
-
-                found[j] = true;
-
-                if( affectation[value] < 0 || cv::norm( m_current_descriptors.row(affectation[value]), m_landmarks[j].descriptor) > cv::norm( m_current_descriptors.row(i), m_landmarks[j].descriptor) )
-                {
-                    residuals(2*j+0) = delta[0];
-                    residuals(2*j+1) = delta[1];
-                    affectation[value] = i;
-                }
-            }
-        }
-
-        num_found = 0;
-
-        for(int i=0; i<num_landmarks; i++)
-        {
-            if(found[i])
-            {
-                num_found++;
-            }
-        }
-    }
-
-#ifdef SLAM_DEBUG
-    {
-        cv::Mat debug = m_current_image.refFrame().clone();
-        debug /= 2;
-        debug += m_previous_image.refFrame()/2;
-
-        for(int i=0; i<num_visible; i++)
-        {
-            const int j = affectation[i];
-
-            if( j >= 0)
-            {
-                cv::line( debug, m_current_corners[j].pt, projected[i], cv::Scalar(0,255,0), 2);
-            }
-        }
-
-        cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_C.png", debug);
-    }
-#endif
-*/
 
