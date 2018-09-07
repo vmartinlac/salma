@@ -7,6 +7,7 @@
 #include <QDebug>
 #include "SLAMEngineImpl.h"
 #include "SLAMPrimitives.h"
+#include "FinitePriorityQueue.h"
 #include "Tracker.h"
 
 #define SLAM_DEBUG
@@ -698,15 +699,49 @@ void SLAMEngineImpl::matchWithTemplates(
 
         if( (image_viewport | area) == image_viewport )
         {
+            FinitePriorityQueue<int,double> queue(2);
+
+            cv::Mat& landmark_template = m_landmarks[selection[i]].descriptor_or_template;
+
             cv::Mat result;
-            cv::matchTemplate(m_current_image.refFrame(), m_landmarks[selection[i]].descriptor_or_template, result, CV_TM_SQDIFF);
+            cv::matchTemplate(
+                m_current_image.refFrame()(area),
+                landmark_template,
+                result,
+                CV_TM_SQDIFF);
 
-            cv::Point pt;
-            cv::minMaxLoc(result, nullptr, nullptr, &pt, nullptr);
+            for(int a=0; a<result.rows; a++)
+            {
+                for(int b=0; b<result.cols; b++)
+                {
+                    queue.push(b + a*result.rows, -result.at<float>(a, b));
+                }
+            }
 
-            found[i] = true;
-            residuals(2*i+0) = pt.x - h(2*i+0);
-            residuals(2*i+1) = pt.y - h(2*i+1);
+            const int ind_1st = queue.top();
+            const double priority_1st = queue.top_priority();
+            queue.pop();
+            const int ind_2nd = queue.top();
+            const double priority_2nd = queue.top_priority();
+
+            if( (-priority_1st) < 0.5*(-priority_2nd) )
+            {
+                const int dy = ind_1st % result.rows;
+                const int dx = ind_1st / result.rows;
+
+                if( dx < 0 || dy < 0 || dx >= result.cols || dy >= result.rows )
+                {
+                    throw std::runtime_error("internal error");
+                }
+
+                cv::Point pt(
+                    area.x + landmark_template.cols/2 + dx,
+                    area.y + landmark_template.rows/2 + dy);
+
+                found[i] = true;
+                residuals(2*i+0) = pt.x - h(2*i+0);
+                residuals(2*i+1) = pt.y - h(2*i+1);
+            }
         }
         else
         {

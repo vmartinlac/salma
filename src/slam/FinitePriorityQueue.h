@@ -23,14 +23,18 @@ public:
         _priorities.resize( max_size );
         _max_size = max_size;
         _size = 0;
+        _weaker = 0;
+        _stronger = 0;
     }
 
     void clear()
     {
-        _size = 0;
-        _max_size = 0;
         _items.clear();
         _priorities.clear();
+        _max_size = 0;
+        _size = 0;
+        _weaker = 0;
+        _stronger = 0;
     }
 
     size_t size() { return _size; }
@@ -45,10 +49,17 @@ public:
             {
                 _items[_size] = item;
                 _priorities[_size] = priority;
-                if( _size == 0 || priority < _priorities[_weaker])
+
+                if( _size == 0 || priority < _priorities[_weaker] )
                 {
                     _weaker = _size;
                 }
+
+                if( _size == 0 || priority > _priorities[_stronger] )
+                {
+                    _stronger = _size;
+                }
+
                 _size++;
             }
             else if( priority > _priorities[_weaker] )
@@ -57,12 +68,75 @@ public:
                 _priorities[_weaker] = priority;;
 
                 _weaker = 0;
+                _stronger = 0;
+
                 for(size_t i=1; i<_size; i++)
                 {
-                    if(_priorities[i] < _priorities[_weaker])
+                    if( _priorities[i] < _priorities[_weaker] )
                     {
                         _weaker = i;
                     }
+                    if( _priorities[i] > _priorities[_stronger] )
+                    {
+                        _stronger = i;
+                    }
+                }
+            }
+        }
+    }
+
+    priority_type top_priority()
+    {
+        if( _size == 0 )
+        {
+            throw std::runtime_error("internal error");
+        }
+        else
+        {
+            return _priorities[_stronger];
+        }
+    }
+
+    item_type top()
+    {
+        if( _size == 0 )
+        {
+            throw std::runtime_error("internal error");
+        }
+        else
+        {
+            return _items[_stronger];
+        }
+    }
+
+    void pop()
+    {
+        if( _size == 0 )
+        {
+            throw std::runtime_error("internal error");
+        }
+        else
+        {
+            if( _stronger != _size-1 )
+            {
+                std::swap(_items[_stronger], _items[_size-1]);
+                std::swap(_priorities[_stronger], _priorities[_size-1]);
+            }
+
+            _size--;
+
+            _weaker = 0;
+            _stronger = 0;
+
+            for(size_t i=1; i<_size; i++)
+            {
+                if( _priorities[i] < _priorities[_weaker] )
+                {
+                    _weaker = i;
+                }
+                if( _priorities[i] > _priorities[_stronger] )
+                {
+                    _stronger = i;
                 }
             }
         }
@@ -85,5 +159,6 @@ protected:
     size_t _size;
     size_t _max_size;
     size_t _weaker;
+    size_t _stronger;
 };
 

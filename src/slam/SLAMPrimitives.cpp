@@ -199,32 +199,37 @@ void SLAMPrimitives::compute_h(
     {
         const Eigen::Vector3d in_camera_frame = camera_attitude.inverse() * ( X.segment<3>(13 + 3*i) - camera_position );
 
-        if( in_camera_frame.z() > 1.0e-6 && in_camera_frame.z() > min_distance_to_camera )
+        if( in_camera_frame.z() > 1.0e-7 && in_camera_frame.z() > min_distance_to_camera )
         {
             cv::Mat pixels = camera_matrix * ( cv::Mat_<float>(3,1) << in_camera_frame.x(), in_camera_frame.y(), in_camera_frame.z() );
 
-            cv::Point2f pt(
-                pixels.at<float>(0) / pixels.at<float>(3),
-                pixels.at<float>(1) / pixels.at<float>(3) );
-
-            if( viewport.contains(pt) )
+            if( std::fabs(pixels.at<float>(2)) > 1.0e-7 )
             {
-                visible_landmarks.push_back(i);
+                cv::Point2f pt(
+                    pixels.at<float>(0) / pixels.at<float>(2),
+                    pixels.at<float>(1) / pixels.at<float>(2) );
 
-                to_project.push_back( cv::Point3f(
-                    in_camera_frame.x(),
-                    in_camera_frame.y(),
-                    in_camera_frame.z() ));
+                if( viewport.contains(pt) )
+                {
+                    visible_landmarks.push_back(i);
+
+                    to_project.push_back( cv::Point3f(
+                        in_camera_frame.x(),
+                        in_camera_frame.y(),
+                        in_camera_frame.z() ));
+                }
             }
         }
     }
 
     const int num_visible = visible_landmarks.size();
 
+    if( to_project.size() != num_visible ) throw std::runtime_error("internal error");
+
     h.resize(2*num_visible);
 
-    J.resize(2*num_visible, dim);
     J.setZero();
+    J.resize(2*num_visible, dim);
     J.reserve(20*num_visible);
 
     if( num_visible > 0 )
@@ -251,7 +256,7 @@ void SLAMPrimitives::compute_h(
         /*
         for(int i=0; i<2*num_visible; i++)
             for(int j=0; j<15; j++)
-                if( std::fabs( J1(i,j) - jacobian.at<double>(i,j) ) > 1.0e-5 )
+                if( J1(i,j) != jacobian.at<double>(i,j) )
                     throw std::runtime_error("error "+std::to_string(i) + " " + std::to_string(j) );
         */
 
@@ -281,7 +286,6 @@ void SLAMPrimitives::compute_h(
                     J.insert(2*i+a, 13+3*j+b) = J3(a, 7+b);
             }
         }
-
     }
 
     J.makeCompressed();
