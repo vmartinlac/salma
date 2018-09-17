@@ -19,10 +19,9 @@ namespace target
 
         void setUnitLength(double length);
 
-        bool track(
-            const cv::Mat& image,
-            bool init);
+        bool track( const cv::Mat& image );
 
+        bool found();
         const std::vector<cv::Point3f>& objectPoints();
         const std::vector<cv::Point2f>& imagePoints();
         const std::vector<cv::KeyPoint>& imageKeyPoints();
@@ -163,6 +162,7 @@ namespace target
         std::vector<ConnectedComponent> m_connected_components;
         int m_biggest_connected_component;
 
+        bool m_found;
         std::vector<cv::Point3f> m_object_points;
         std::vector<cv::Point2f> m_image_points;
         std::vector<cv::KeyPoint> m_image_keypoints;
@@ -171,6 +171,11 @@ namespace target
     inline void Tracker::setUnitLength(double length)
     {
         m_unit_length = length;
+    }
+
+    inline bool Tracker::found()
+    {
+        return m_found;
     }
 
     inline const std::vector<cv::Point3f>& Tracker::objectPoints()

@@ -8,8 +8,6 @@ add_library(
     SLAMEngineImpl.cpp
     SLAMParameters.h
     SLAMParameters.cpp
-    SLAMPrimitives.h
-    SLAMPrimitives.cpp
     SLAMOutput.h
     SLAMOutput.cpp
     FinitePriorityQueue.h

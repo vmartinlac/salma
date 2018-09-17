@@ -22,9 +22,8 @@ protected:
 
     enum Mode
     {
-        MODE_INIT,
-        MODE_SLAM,
-        MODE_DEAD
+        MODE_LOST,
+        MODE_TRACKING
     };
 
     struct CameraState
@@ -35,92 +34,63 @@ protected:
         Eigen::Vector3d angular_velocity;
     };
 
-    struct Landmark
-    {
-        Eigen::Vector3d position;
-        cv::Mat descriptor_or_template;
-        int num_failed_detections;
-        int num_successful_detections;
-        int last_seen_frame;
-    };
-
-    struct CandidateLandmark
-    {
-        cv::Mat descriptor;
-        Eigen::Vector3d origin;
-        Eigen::Vector3d direction;
-    };
+    typedef Eigen::Matrix<double,13,1> BeliefMean;
+    typedef Eigen::Matrix<double,13,13> BeliefCovariance;
 
 protected:
 
     void setup();
 
-    void processImageInit();
-    void processImageSLAM();
-    void processImageDead();
+    void processImage();
+
+    void localizationPnP();
+
+    void localizationEKF();
 
     void writeOutput();
 
-    void EKFPredict(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
-    void EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
+    static void compute_f(
+        const BeliefMean& X,
+        double dt,
+        BeliefMean& f,
+        Eigen::SparseMatrix<double>& J);
 
-    void retrieveBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
-    void storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma);
-
-    void computeResiduals(
-        const Eigen::VectorXd& state_mu,
-        const Eigen::MatrixXd& state_sigma,
-        std::vector<int>& selection,
+    static void compute_h(
+        const BeliefMean& X,
+        const std::vector<cv::Point3f>& object_points,
+        const cv::Mat& camera_matrix,
+        const cv::Mat& distortion_coefficients,
         Eigen::VectorXd& h,
-        Eigen::SparseMatrix<double>& J,
-        Eigen::VectorXd& residuals);
+        Eigen::SparseMatrix<double>& J);
 
-    void matchWithTemplates(
-        const Eigen::VectorXd& state_mu,
-        const Eigen::MatrixXd& state_sigma,
-        const std::vector<int>& selection,
-        const Eigen::VectorXd& h,
-        const Eigen::SparseMatrix<double>& J,
-        Eigen::VectorXd& residuals,
-        std::vector<bool> found);
+    static void computeJacobianOfWorld2CameraTransformation(
+        const BeliefMean& X,
+        const cv::Point3f& object_point,
+        Eigen::Matrix<double, 3, 10>& J);
 
-    void matchWithDescriptors(
-        const Eigen::VectorXd& state_mu,
-        const Eigen::MatrixXd& state_sigma,
-        const std::vector<int>& selection,
-        const Eigen::VectorXd& h,
-        const Eigen::SparseMatrix<double>& J,
-        Eigen::VectorXd& residuals,
-        std::vector<bool> found);
-        
+    static void convertPose(
+        const cv::Mat& rodrigues,
+        const cv::Mat& t,
+        Eigen::Quaterniond& attitude,
+        Eigen::Vector3d& position);
 
 protected:
 
-    // TODO: put this into parameters.
-    enum
-    {
-        TRACKING_TEMPLATE=0,
-        TRACKING_DESCRIPTOR=1
-    };
-    int m_tracking_method;
+    // TODO: put the following parameter into appropriate data structure.
     double m_measurement_standard_deviation;
-    //
 
     cv::Mat m_calibration_matrix;
     cv::Mat m_distortion_coefficients;
 
+    target::Tracker m_tracker;
+
     Mode m_mode;
     Image m_current_image;
-    Image m_previous_image;
     double m_time_last_frame;
     int m_frame_id;
 
     CameraState m_camera_state;
-    std::vector<Landmark> m_landmarks;
-    Eigen::MatrixXd m_state_covariance;
-    std::vector<CandidateLandmark> m_candidate_landmarks;
-
-    target::Tracker m_tracker;
-    cv::Ptr<cv::Feature2D> m_feature;
+    BeliefMean m_belief_mean;
+    BeliefCovariance m_belief_covariance;
 };
 

@@ -6,7 +6,6 @@
 #include <QTime>
 #include <QDebug>
 #include "SLAMEngineImpl.h"
-#include "SLAMPrimitives.h"
 #include "FinitePriorityQueue.h"
 #include "Tracker.h"
 
@@ -14,18 +13,19 @@
 
 SLAMEngineImpl::SLAMEngineImpl()
 {
-    m_feature = cv::ORB::create();
 }
 
 void SLAMEngineImpl::run()
 {
-    std::cout << "=====================" << std::endl;
-    std::cout << " SLAM ENGINE STARTED " << std::endl;
-    std::cout << "=====================" << std::endl;
+    std::cout << "================" << std::endl;
+    std::cout << " ENGINE STARTED " << std::endl;
+    std::cout << "================" << std::endl;
 
     setup();
 
     m_camera->open();
+
+    bool first = true;
 
     while( isInterruptionRequested() == false )
     {
@@ -35,28 +35,18 @@ void SLAMEngineImpl::run()
         {
             std::cout << "-> Processing frame " << m_frame_id << std::endl;
 
-            switch(m_mode)
+            // we skip first frame so that m_time_last_frame is filled.
+            if( first )
             {
-            case MODE_INIT:
-                std::cout << "Mode is INIT" << std::endl;
-                processImageInit();
-                break;
-            case MODE_SLAM:
-                std::cout << "Mode is SLAM" << std::endl;
-                processImageSLAM();
-                break;
-            case MODE_DEAD:
-            default:
-                std::cout << "Mode is DEAD" << std::endl;
-                processImageDead();
-                break;
+                first = false;
+            }
+            else
+            {
+                processImage();
+                writeOutput();
             }
 
-            writeOutput();
-
-            // we assume that m_time_last_frame is not used in INIT mode, so we do not need to set its value before this point.
             m_time_last_frame = m_current_image.getTimestamp();
-            m_current_image.moveTo(m_previous_image);
             m_frame_id++;
         }
         else
@@ -68,15 +58,13 @@ void SLAMEngineImpl::run()
 
     m_camera->close();
 
-    std::cout << "SLAM ENGINE ENDED" << std::endl;
+    std::cout << "ENGINE ENDED" << std::endl;
 }
 
 void SLAMEngineImpl::setup()
 {
     // TODO
-    m_tracking_method = TRACKING_TEMPLATE;
     m_measurement_standard_deviation = 1.8/640.0;
-    //
 
     // check that we have a camera.
 
@@ -103,34 +91,45 @@ void SLAMEngineImpl::setup()
     m_calibration_matrix = K;
     m_distortion_coefficients = lens_distortion;
 
-    m_mode = MODE_INIT;
+    m_mode = MODE_LOST;
     m_current_image.setValid(false);
     m_time_last_frame = 0.0;
     m_frame_id = 0;
+
+    m_belief_mean.setZero();
+    m_belief_mean(3) = 1.0;
+
+    m_belief_covariance.setIdentity();
 
     m_camera_state.position.setZero();
     m_camera_state.attitude.setIdentity();
     m_camera_state.linear_velocity.setZero();
     m_camera_state.angular_velocity.setZero();
-    m_landmarks.clear();
-    m_state_covariance.resize(0, 0);
-    m_candidate_landmarks.clear();
 
     m_tracker.setUnitLength( m_parameters.initialization_target_scale );
 }
 
-void SLAMEngineImpl::processImageInit()
+void SLAMEngineImpl::processImage()
 {
-    bool ok;
+    m_tracker.track( m_current_image.refFrame() );
+
+    if( m_mode == MODE_TRACKING )
+    {
+        localizationEKF();
+    }
+
+    if( m_mode == MODE_LOST )
+    {
+        localizationPnP();
+    }
+}
+
+void SLAMEngineImpl::localizationPnP()
+{
     cv::Mat pnp_rodrigues;
     cv::Mat pnp_translation;
-    
-    ok = m_tracker.track( m_current_image.refFrame(), true );
 
-    if( ok )
-    {
-        ok = ( m_tracker.objectPoints().size() >= m_parameters.min_init_landmarks );
-    }
+    bool ok = m_tracker.found();
 
     if( ok )
     {
@@ -145,182 +144,42 @@ void SLAMEngineImpl::processImageInit()
             cv::SOLVEPNP_ITERATIVE );
     }
 
-    // initialize m_camera_state.
     if(ok)
     {
-        SLAMPrimitives::convertPose(
-            pnp_rodrigues, pnp_translation, m_camera_state.attitude, m_camera_state.position);
-
+        convertPose( pnp_rodrigues, pnp_translation, m_camera_state.attitude, m_camera_state.position );
         m_camera_state.linear_velocity.setZero();
         m_camera_state.angular_velocity.setZero();
+
+        m_mode = MODE_TRACKING;
     }
+}
+
+void SLAMEngineImpl::localizationEKF()
+{
+    bool ok = ( m_mode == MODE_TRACKING && m_tracker.found() );
+
+    // EKF prediction.
 
     if(ok)
     {
         const std::vector<cv::Point3f>& object_points = m_tracker.objectPoints();
         const std::vector<cv::Point2f>& image_points = m_tracker.imagePoints();
+    }
 
-        const int N = object_points.size();
+    // EKF update.
 
-        m_landmarks.clear();
-        m_landmarks.reserve( N );
+    if(ok)
+    {
+    }
 
-        std::vector<bool> has_descriptor_or_template;
-        cv::Mat descriptors;
-        std::vector<cv::Mat> templates;
-
-        if( m_tracking_method == TRACKING_DESCRIPTOR)
-        {
-            // TODO rather use cv::KeyPoint::class_id to store index of keypoint.
-
-            std::vector<cv::KeyPoint> original_keypoints = m_tracker.imageKeyPoints();
-            std::vector<cv::KeyPoint> keypoints = original_keypoints;
-
-            m_feature->compute(m_current_image.refFrame(), keypoints, descriptors);
-
-            if( keypoints.size() != original_keypoints.size() ) { throw std::runtime_error("error"); }
-
-            for(int i=0; i<N; i++)
-            {
-                if( cv::norm( keypoints[i].pt - original_keypoints[i].pt ) > 1.5 )
-                {
-                    throw std::runtime_error("error");
-                }
-            }
-
-            has_descriptor_or_template.assign(N, true);
-        }
-        else if( m_tracking_method == TRACKING_TEMPLATE )
-        {
-            has_descriptor_or_template.resize(N);
-            templates.resize(N);
-
-            cv::Rect viewport(
-                m_parameters.patch_size/2+1,
-                m_parameters.patch_size/2+1, 
-                m_current_image.width() - m_parameters.patch_size/2-1,
-                m_current_image.height() - m_parameters.patch_size/2-1 );
-
-            cv::Size size( m_parameters.patch_size, m_parameters.patch_size );
-
-            for(int i=0; i<N; i++)
-            {
-                if( viewport.contains(image_points[i]) )
-                {
-                    cv::getRectSubPix( m_current_image.refFrame(), size, image_points[i], templates[i] );
-                    has_descriptor_or_template[i] = true;
-                }
-                else
-                {
-                    has_descriptor_or_template[i] = false;
-                }
-            }
-        }
-        else
-        {
-            throw std::runtime_error("internal error");
-        }
-
-        for(int i=0; i<N; i++)
-        {
-            if( has_descriptor_or_template[i] )
-            {
-                m_landmarks.emplace_back();
-                Landmark& lm = m_landmarks.back();
-
-                lm.position.x() = object_points[i].x;
-                lm.position.y() = object_points[i].y;
-                lm.position.z() = object_points[i].z;
-
-                lm.num_failed_detections = 0;
-                lm.num_successful_detections = 1;
-                lm.last_seen_frame = m_frame_id;
-
-                switch( m_tracking_method )
-                {
-                case TRACKING_DESCRIPTOR:
-                    lm.descriptor_or_template = descriptors.row(i);
-                    break;
-                case TRACKING_TEMPLATE:
-                    lm.descriptor_or_template = templates[i];
-                    break;
-                default:
-                    throw std::runtime_error("internal error");
-                }
-            }
-        }
-
-        const int M = m_landmarks.size();
-
-        if( M >= m_parameters.min_init_landmarks )
-        {
-            m_state_covariance.resize( 13 + 3*M, 13 + 3*M );
-
-            m_state_covariance.setZero();
-
-            double mean_sigma_landmark = 0.0;
-
-            for(int i=0; i<M; i++)
-            {
-                Eigen::Vector3d in_camera_frame = m_camera_state.attitude.inverse() * (m_landmarks[i].position - m_camera_state.position);
-                const double depth = std::max( m_parameters.min_distance_to_camera, in_camera_frame.z() );
-                const double eps = double(m_current_image.width()) * 0.9 / 640.0;
-                const double sigma_landmark = eps * depth / std::max(m_parameters.fx, m_parameters.fy);
-                m_state_covariance.diagonal().segment(13+3*i, 3).fill(sigma_landmark*sigma_landmark);
-
-                mean_sigma_landmark += sigma_landmark;
-            }
-
-            mean_sigma_landmark /= double(M);
-
-            const double sigma_position = 0.8 * mean_sigma_landmark;
-            const double sigma_attitude = 0.015; // see misc/initial_state_variance.py.
-            const double sigma_linear_velocity = 0.0;
-            const double sigma_angular_velocity = 0.0;
-            m_state_covariance.diagonal().segment<3>(0).fill(sigma_position*sigma_position);
-            m_state_covariance.diagonal().segment<4>(3).fill(sigma_attitude*sigma_attitude);
-            m_state_covariance.diagonal().segment<3>(7).fill(sigma_linear_velocity*sigma_linear_velocity);
-            m_state_covariance.diagonal().segment<3>(10).fill(sigma_angular_velocity*sigma_angular_velocity);
-
-            m_mode = MODE_SLAM;
-
-            qInfo() << "Successful initialization.";
-            qInfo() << "Switching to SLAM mode.";
-        }
-        else
-        {
-            m_landmarks.clear();
-        }
+    if( ok == false )
+    {
+        m_mode = MODE_LOST;
     }
 }
 
-void SLAMEngineImpl::processImageSLAM()
-{
-    QTime chrono;
-    int time_prediction = 0;
-    int time_update = 0;
-
-    Eigen::VectorXd mu;
-    Eigen::MatrixXd sigma;
-
-    retrieveBelief(mu, sigma);
-
-    chrono.start();
-    EKFPredict(mu, sigma);
-    time_prediction = chrono.elapsed();
-
-    chrono.start();
-    EKFUpdate(mu, sigma);
-    time_update = chrono.elapsed();
-
-    storeBelief(mu, sigma);
-
-    std::cout << "prediction : update = " << time_prediction << " : " << time_update << std::endl;
-
-    // TODO: manage candidate landmarks.
-}
-
-void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
+/*
+void SLAMEngineImpl::EKFPredict()
 {
     const double dt = m_current_image.getTimestamp() - m_time_last_frame;
 
@@ -352,8 +211,10 @@ void SLAMEngineImpl::EKFPredict(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
     mu.swap(new_mu);
     sigma.swap(new_sigma);
 }
+*/
 
-void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
+/*
+void SLAMEngineImpl::EKFUpdate()
 {
     const int num_landmarks = m_landmarks.size();
 
@@ -413,408 +274,13 @@ void SLAMEngineImpl::EKFUpdate(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
         sigma.swap(new_sigma);
     }
 }
-
-void SLAMEngineImpl::computeResiduals(
-    const Eigen::VectorXd& state_mu,
-    const Eigen::MatrixXd& state_sigma,
-    std::vector<int>& selection,
-    Eigen::VectorXd& h,
-    Eigen::SparseMatrix<double>& J,
-    Eigen::VectorXd& residuals)
-{
-    const int num_landmarks = m_landmarks.size();
-
-    const int dim = 13 + 3*num_landmarks;
-
-    const int N = selection.size();
-    if( J.rows() != 2*N || h.size() != 2*N ) throw std::runtime_error("internal error");
-
-    std::vector<bool> found;
-
-    if( m_tracking_method == TRACKING_TEMPLATE )
-    {
-        matchWithTemplates( state_mu, state_sigma, selection, h, J, residuals, found);
-    }
-    else if( m_tracking_method == TRACKING_DESCRIPTOR )
-    {
-        matchWithDescriptors( state_mu, state_sigma, selection, h, J, residuals, found);
-    }
-    else
-    {
-        throw std::runtime_error("internal error");
-    }
-
-    if( found.size() != N || residuals.size() != 2*N ) throw std::runtime_error("internal error");
-
-#ifdef SLAM_DEBUG
-    {
-        cv::Mat debug = m_current_image.refFrame().clone();
-
-        for(int i=0; i<N; i++)
-        {
-            if( found[i] )
-            {
-                cv::Point2f measured_pt(h(2*i+0)+residuals(2*i+0), h(2*i+1)+residuals(2*i+1));
-                cv::Point2f predicted_pt(h(2*i+0), h(2*i+1));
-                // residual = measured - predicted
-                cv::line( debug, predicted_pt, measured_pt, cv::Scalar(0,255,0), 2);
-            }
-        }
-
-        cv::imwrite("debug_output/slam_residuals_"+std::to_string(m_frame_id)+".png", debug);
-    }
-#endif
-
-    {
-        int num_found = 0;
-        for(int i=0; i<N; i++)
-        {
-            if(found[i])
-            {
-                num_found++;
-            }
-        }
-
-        Eigen::SparseMatrix<double, Eigen::RowMajor> proj(2*num_found, 2*N);
-
-        std::vector<int> new_selection(N);
-
-        int j = 0;
-        for(int i=0; i<N; i++)
-        {
-            if(found[i])
-            {
-                if( j >= num_found ) throw std::runtime_error("internal error");
-
-                proj.insert(2*j, 2*i) = 1.0;
-                proj.insert(2*j+1, 2*i+1) = 1.0;
-                new_selection[j] = selection[i];
-                j++;
-            }
-        }
-
-        if( j != num_found ) throw std::runtime_error("internal error");
-
-        Eigen::SparseMatrix<double> new_J = proj * J;
-        Eigen::VectorXd new_residuals = proj * residuals;
-        Eigen::VectorXd new_h = proj * h;
-
-        selection.swap(new_selection);
-        h.swap(new_h);
-        J.swap(new_J);
-        residuals.swap(new_residuals);
-    }
-
-    /*
-    selection.clear();
-    h.resize(0);
-    J.resize(0, 13+3*num_landmarks);
-    residuals.resize(0);
-    */
-}
-
-void SLAMEngineImpl::matchWithDescriptors(
-    const Eigen::VectorXd& state_mu,
-    const Eigen::MatrixXd& state_sigma,
-    const std::vector<int>& selection,
-    const Eigen::VectorXd& h,
-    const Eigen::SparseMatrix<double>& J,
-    Eigen::VectorXd& residuals,
-    std::vector<bool> found)
-{
-    const int num_landmarks = m_landmarks.size();
-    const int dim = 13 + 3*num_landmarks;
-    const int N = selection.size();
-
-    found.assign(N, false);
-    residuals.resize(2*N);
-    residuals.setZero();
-
-    cv::Mat& image = m_current_image.refFrame();
-
-    cv::Mat mask( image.size(), CV_16S );
-    mask = -1;
-
-    const double measurement_sigma = m_measurement_standard_deviation*m_current_image.width();
-
-    Eigen::Matrix2d Q;
-    Q <<
-        measurement_sigma*measurement_sigma, 0.0,
-        0.0, measurement_sigma*measurement_sigma;
-
-    for(int i=0; i<N; i++)
-    {
-        Eigen::SparseMatrix<double> tmp = J.block(2*i, 0, 2, dim);
-
-        const Eigen::Matrix2d covar = tmp * state_sigma * tmp.transpose() + Q;
-
-        if( std::fabs( covar.determinant() ) > 1.0e-6 )
-        {
-            const Eigen::Matrix2d covar_inv = covar.inverse();
-
-            int radius = 4 * static_cast<int>( std::sqrt( std::max( covar(0,0), covar(1,1) ) ) );
-
-
-            // TODO TMP
-            radius = std::min(radius, 10*m_current_image.width()/640);
-            //
-
-            for(int da=-radius; da<=radius; da++)
-            {
-                for(int db=-radius; db<=radius; db++)
-                {
-                    const int a = cvRound(h(2*i+0)) + da;
-                    const int b = cvRound(h(2*i+1)) + db;
-
-                    if( 0 <= a && a < image.cols && 0 <= b && b < image.rows )
-                    {
-                        Eigen::Vector2d delta;
-                        delta.x() = double(da);
-                        delta.y() = double(db);
-
-                        const double deviation2 = ( delta.transpose() * covar_inv * delta );
-                        if( deviation2 >= 0 && deviation2 < 3.0*3.0 )
-                        {
-                            int16_t& value = mask.at<int16_t>(b, a);
-
-                            if(value == -1)
-                            {
-                                value = i;
-                            }
-                            else
-                            {
-                                value = -2;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-/*
-#ifdef SLAM_DEBUG
-    {
-        cv::Mat debug( image.size(), CV_8UC3 );
-
-        for(int i=0; i<debug.cols; i++)
-        {
-            for(int j=0; j<debug.rows; j++)
-            {
-                int16_t input = mask.at<int16_t>(j,i);
-
-                cv::Vec3b output;
-
-                if(input == -1)
-                {
-                    output = cv::Vec3b(0,0,0);
-                }
-                else if(input == -2)
-                {
-                    output = cv::Vec3b(255,0,0);
-                }
-                else
-                {
-                    int gamma = 255*input/(num_visible-1);
-                    output = cv::Vec3b(
-                        0,
-                        gamma,
-                        255-gamma);
-                }
-
-                debug.at<cv::Vec3b>(j,i) = output;
-            }
-        }
-
-        cv::imwrite("debug_output/slam_debug_"+std::to_string(m_frame_id)+"_B.png", debug);
-    }
-#endif
-    */
-
-    std::vector<cv::KeyPoint> corners;
-    cv::Mat descriptors;
-    m_feature->detectAndCompute(image, cv::Mat(), corners, descriptors);
-
-    std::vector<double> descriptor_distance(N, 0.0);
-
-    for(int i=0; i<corners.size(); i++)
-    {
-        const int16_t value = mask.at<int16_t>(corners[i].pt);
-
-        if( value >= 0)
-        {
-            const double dist = cv::norm( descriptors.row(i), m_landmarks[selection[value]].descriptor_or_template );
-
-            if( found[value] == false || dist < descriptor_distance[value] )
-            {
-                descriptor_distance[value] = dist;
-                residuals(2*value+0) = corners[i].pt.x - h(2*value+0);
-                residuals(2*value+1) = corners[i].pt.y - h(2*value+1);
-                found[value] = true;
-            }
-        }
-    }
-}
-
-void SLAMEngineImpl::matchWithTemplates(
-    const Eigen::VectorXd& state_mu,
-    const Eigen::MatrixXd& state_sigma,
-    const std::vector<int>& selection,
-    const Eigen::VectorXd& h,
-    const Eigen::SparseMatrix<double>& J,
-    Eigen::VectorXd& residuals,
-    std::vector<bool> found)
-{
-    const int num_landmarks = m_landmarks.size();
-    const int dim = 13 + 3*num_landmarks;
-    const int N = selection.size();
-
-    found.assign(N, false);
-    residuals.resize(2*N);
-    residuals.setZero();
-
-    cv::Rect image_viewport( 0, 0, m_current_image.width(), m_current_image.height() );
-
-    const double measurement_sigma = m_measurement_standard_deviation*m_current_image.width();
-
-    Eigen::Matrix2d Q;
-    Q <<
-        measurement_sigma*measurement_sigma, 0.0,
-        0.0, measurement_sigma*measurement_sigma;
-
-    for(int i=0; i<N; i++)
-    {
-        Eigen::SparseMatrix<double> tmp = J.block(2*i, 0, 2, dim);
-
-        Eigen::Matrix2d obs_sigma = tmp * state_sigma * tmp.transpose() + Q;
-
-        const int sx = 1 + static_cast<int>(std::ceil(std::sqrt( obs_sigma(0) ))) + m_parameters.patch_size;
-        const int sy = 1 + static_cast<int>(std::ceil(std::sqrt( obs_sigma(1) ))) + m_parameters.patch_size;
-
-        cv::Rect area(
-            h(2*i+0) - sx,
-            h(2*i+1) - sy,
-            2*sx,
-            2*sy);
-
-        if( (image_viewport | area) == image_viewport )
-        {
-            FinitePriorityQueue<int,double> queue(2);
-
-            cv::Mat& landmark_template = m_landmarks[selection[i]].descriptor_or_template;
-
-            cv::Mat result;
-            cv::matchTemplate(
-                m_current_image.refFrame()(area),
-                landmark_template,
-                result,
-                CV_TM_SQDIFF);
-
-            for(int a=0; a<result.rows; a++)
-            {
-                for(int b=0; b<result.cols; b++)
-                {
-                    queue.push(b + a*result.rows, -result.at<float>(a, b));
-                }
-            }
-
-            const int ind_1st = queue.top();
-            const double priority_1st = queue.top_priority();
-            queue.pop();
-            const int ind_2nd = queue.top();
-            const double priority_2nd = queue.top_priority();
-
-            if( (-priority_1st) < 0.5*(-priority_2nd) )
-            {
-                const int dy = ind_1st % result.rows;
-                const int dx = ind_1st / result.rows;
-
-                if( dx < 0 || dy < 0 || dx >= result.cols || dy >= result.rows )
-                {
-                    throw std::runtime_error("internal error");
-                }
-
-                cv::Point pt(
-                    area.x + landmark_template.cols/2 + dx,
-                    area.y + landmark_template.rows/2 + dy);
-
-                found[i] = true;
-                residuals(2*i+0) = pt.x - h(2*i+0);
-                residuals(2*i+1) = pt.y - h(2*i+1);
-            }
-        }
-        else
-        {
-            found[i] == false;
-            residuals(2*i+0) = 0.0;
-            residuals(2*i+1) = 0.0;
-        }
-    }
-}
-
-void SLAMEngineImpl::retrieveBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
-{
-    const int num_landmarks = m_landmarks.size();
-    const int dim = 13 + 3*num_landmarks;
-
-    mu.resize(dim);
-
-    mu.head<13>() <<
-        m_camera_state.position.x(),
-        m_camera_state.position.y(),
-        m_camera_state.position.z(),
-        m_camera_state.attitude.w(),
-        m_camera_state.attitude.x(),
-        m_camera_state.attitude.y(),
-        m_camera_state.attitude.z(),
-        m_camera_state.linear_velocity.x(),
-        m_camera_state.linear_velocity.y(),
-        m_camera_state.linear_velocity.z(),
-        m_camera_state.angular_velocity.x(),
-        m_camera_state.angular_velocity.y(),
-        m_camera_state.angular_velocity.z();
-
-    for(int i=0; i<num_landmarks; i++)
-    {
-        mu.segment<3>(13+3*i) = m_landmarks[i].position;
-    }
-
-    sigma = m_state_covariance; // we could swap, as m_state_covariance will not be used until next call to storeBelief().
-}
-
-void SLAMEngineImpl::storeBelief(Eigen::VectorXd& mu, Eigen::MatrixXd& sigma)
-{
-    m_camera_state.position = mu.segment<3>(0);
-    m_camera_state.attitude.w() = mu(3);
-    m_camera_state.attitude.vec() = mu.segment<3>(4);
-    m_camera_state.linear_velocity = mu.segment<3>(7);
-    m_camera_state.angular_velocity = mu.segment<3>(10);
-
-    m_camera_state.attitude.normalize();
-
-    const int num_landmarks = m_landmarks.size();
-
-    for(int i=0; i<num_landmarks; i++)
-    {
-        m_landmarks[i].position = mu.segment<3>(13+3*i);
-    }
-
-    m_state_covariance = sigma; // we could swap.
-}
-
-void SLAMEngineImpl::processImageDead()
-{
-    m_output->beginWrite();
-    m_output->image = m_current_image.refFrame().clone();
-    m_output->mode = "DEAD";
-    m_output->endWrite();
-    m_output->updated();
-}
+*/
 
 void SLAMEngineImpl::writeOutput()
 {
     cv::Mat output_image = m_current_image.refFrame().clone();
 
+    /*
     if( m_mode == MODE_SLAM)
     {
         for(const Landmark& lm : m_landmarks)
@@ -841,32 +307,11 @@ void SLAMEngineImpl::writeOutput()
             cv::circle(output_image, pt, radius, color, -1);
         }
 
-        // draw patches.
-
-        /*
-        cv::Rect image_rect( 0, 0, output_image.cols, output_image.rows );
-
-        int k = 0;
-        for(const Landmark& lm : m_landmarks)
-        {
-            const int s = m_parameters.patch_size;
-            const int mod = output_image.cols/s;
-            const int x = (k % mod) * s;
-            const int y = (k / mod) * s;
-
-            cv::Rect patch_rect(x, y, lm.patch.cols, lm.patch.rows);
-
-            if( (patch_rect | image_rect) == image_rect )
-            {
-                output_image(patch_rect) = lm.patch;
-            }
-
-            k++;
-        }
-        */
     }
+    */
 
     std::vector<SLAMOutputLandmark> output_landmarks;
+    /*
     output_landmarks.reserve( m_landmarks.size() );
     for(Landmark& lm : m_landmarks)
     {
@@ -875,19 +320,17 @@ void SLAMEngineImpl::writeOutput()
 
         output_landmarks.push_back(olm);
     }
+    */
 
     m_output->beginWrite();
 
     switch( m_mode )
     {
-    case MODE_INIT:
-        m_output->mode = "INIT";
+    case MODE_LOST:
+        m_output->mode = "LOST";
         break;
-    case MODE_SLAM:
-        m_output->mode = "SLAM";
-        break;
-    case MODE_DEAD:
-        m_output->mode = "DEAD";
+    case MODE_TRACKING:
+        m_output->mode = "TRACKING";
         break;
     default:
         throw std::runtime_error("internal error");
@@ -908,6 +351,365 @@ void SLAMEngineImpl::writeOutput()
     m_output->updated();
 }
 
+/*
+void SLAMPrimitives::compute_f(
+    const Eigen::Matrix<double, 13, 1>& X,
+    double dt,
+    Eigen::Matrix<double, 13, 1>& f,
+    Eigen::SparseMatrix<double>& J)
+{
+    const double x1 = X(0);
+    const double x2 = X(1);
+    const double x3 = X(2);
+
+    const double a0 = X(3);
+    const double a1 = X(4);
+    const double a2 = X(5);
+    const double a3 = X(6);
+
+    const double v1 = X(7);
+    const double v2 = X(8);
+    const double v3 = X(9);
+
+    double w1 = X(10);
+    double w2 = X(11);
+    double w3 = X(12);
+
+    // TODO: handle small rotations in a better way.
+
+    double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
+    double axis1;
+    double axis2;
+    double axis3;
+    const double theta = 0.5*norm_w*dt;
+    const double cos_theta = std::cos(theta);
+    const double sin_theta = std::sin(theta);
+    double sin_theta_over_norm_w;
+
+    if( norm_w < 1.0e-10 )
+    {
+        norm_w = 0.0;
+        axis1 = 1.0;
+        axis2 = 0.0;
+        axis3 = 0.0;
+        sin_theta_over_norm_w = 0.0;
+    }
+    else
+    {
+        axis1 = w1/norm_w;
+        axis2 = w2/norm_w;
+        axis3 = w3/norm_w;
+        sin_theta_over_norm_w = sin_theta / norm_w;
+    }
+
+    const double r0 = cos_theta;
+    const double r1 = sin_theta * axis1;
+    const double r2 = sin_theta * axis2;
+    const double r3 = sin_theta * axis3;
+
+    // fill f.
+
+    f.resize(dim);
+
+    f.head<13>() <<
+        x1 + dt*v1,
+        x2 + dt*v2,
+        x3 + dt*v3,
+        a0*r0 - a1*r1 - a2*r2 - a3*r3,
+        a0*r1 + r0*a1 + (a2*r3 - a3*r2),
+        a0*r2 + r0*a2 + (a3*r1 - a1*r3),
+        a0*r3 + r0*a3 + (a1*r2 - a2*r1),
+        v1,
+        v2,
+        v3,
+        w1,
+        w2,
+        w3;
+
+    // fill J.
+
+    Eigen::SparseMatrix<double, Eigen::RowMajor> Jrm;
+
+    Jrm.resize(13, 13);
+    Jrm.setZero();
+    Jrm.reserve(40);
+
+    // position.
+
+    Jrm.insert(0,0) = 1.0;
+    Jrm.insert(0,7) = dt;
+    Jrm.insert(1,1) = 1.0;
+    Jrm.insert(1,8) = dt;
+    Jrm.insert(2,2) = 1.0;
+    Jrm.insert(2,9) = dt;
+
+    // attitude.
+
+    // Generated automatically by python script system2.py.
+    // BEGIN
+    Jrm.insert(3,3) = r0;
+    Jrm.insert(3,4) = -r1;
+    Jrm.insert(3,5) = -r2;
+    Jrm.insert(3,6) = -r3;
+    Jrm.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    Jrm.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    Jrm.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    Jrm.insert(4,3) = r1;
+    Jrm.insert(4,4) = r0;
+    Jrm.insert(4,5) = r3;
+    Jrm.insert(4,6) = -r2;
+    Jrm.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    Jrm.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    Jrm.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    Jrm.insert(5,3) = r2;
+    Jrm.insert(5,4) = -r3;
+    Jrm.insert(5,5) = r0;
+    Jrm.insert(5,6) = r1;
+    Jrm.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
+    Jrm.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    Jrm.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    Jrm.insert(6,3) = r3;
+    Jrm.insert(6,4) = r2;
+    Jrm.insert(6,5) = -r1;
+    Jrm.insert(6,6) = r0;
+    Jrm.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
+    Jrm.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
+    Jrm.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
+    // END
+
+    // linear velocity.
+
+    Jrm.insert(7, 7) = 1.0;
+    Jrm.insert(8, 8) = 1.0;
+    Jrm.insert(9, 9) = 1.0;
+
+    // angular velocity.
+
+    Jrm.insert(10, 10) = 1.0;
+    Jrm.insert(11, 11) = 1.0;
+    Jrm.insert(12, 12) = 1.0;
+
+    Jrm.makeCompressed();
+
+    J = Jrm;
+}
+
+void SLAMPrimitives::compute_h(
+    const Eigen::Matrix<double,13,1>& X,
+    const cv::Mat& camera_matrix,
+    const cv::Mat& distortion_coefficients,
+    const std::vector<cv::Point3f>& object_points,
+    Eigen::VectorXd& h,
+    Eigen::SparseMatrix<double>& J)
+{
+    // retrieve state dimension and number of landmarks.
+
+    const int dim = X.size();
+
+    if( ( dim - 13) % 3 != 0 ) throw std::runtime_error("internal error");
+
+    const int num_landmarks = (dim - 13)/3;
+
+    // retrieve camera position and attitude.
+
+    const Eigen::Vector3d& camera_position = X.head<3>();
+
+    Eigen::Quaterniond camera_attitude;
+    camera_attitude.w() = X(3);
+    camera_attitude.vec() = X.segment<3>(4);
+
+    // prepare some data structures.
+
+    visible_landmarks.clear();
+    visible_landmarks.reserve(num_landmarks);
+
+    std::vector<cv::Point3f> to_project;
+    to_project.reserve(num_landmarks);
+
+    // find which points we will try to project.
+
+    for(int i=0; i<num_landmarks; i++)
+    {
+        const Eigen::Vector3d in_camera_frame = camera_attitude.inverse() * ( X.segment<3>(13 + 3*i) - camera_position );
+
+        if( in_camera_frame.z() > 1.0e-7 && in_camera_frame.z() > min_distance_to_camera )
+        {
+            cv::Mat pixels = camera_matrix * ( cv::Mat_<float>(3,1) << in_camera_frame.x(), in_camera_frame.y(), in_camera_frame.z() );
+
+            if( std::fabs(pixels.at<float>(2)) > 1.0e-7 )
+            {
+                cv::Point2f pt(
+                    pixels.at<float>(0) / pixels.at<float>(2),
+                    pixels.at<float>(1) / pixels.at<float>(2) );
+
+                if( viewport.contains(pt) )
+                {
+                    visible_landmarks.push_back(i);
+
+                    to_project.push_back( cv::Point3f(
+                        in_camera_frame.x(),
+                        in_camera_frame.y(),
+                        in_camera_frame.z() ));
+                }
+            }
+        }
+    }
+
+    const int num_visible = visible_landmarks.size();
+
+    if( to_project.size() != num_visible ) throw std::runtime_error("internal error");
+
+    h.resize(2*num_visible);
+
+    J.setZero();
+    J.resize(2*num_visible, dim);
+    J.reserve(20*num_visible);
+
+    if( num_visible > 0 )
+    {
+        std::vector<cv::Point2f> projected;
+        cv::Mat jacobian;
+
+        cv::projectPoints(
+            to_project,
+            cv::Mat::zeros(3, 1, CV_64F),
+            cv::Mat::zeros(3, 1, CV_64F),
+            camera_matrix,
+            distortion_coefficients,
+            projected,
+            jacobian);
+
+        if( jacobian.depth() != CV_64F ) throw std::runtime_error("internal error");
+        if( jacobian.channels() != 1 ) throw std::runtime_error("internal error");
+        if( jacobian.rows != 2*num_visible ) throw std::runtime_error("internal error");
+        if( projected.size() != num_visible) throw std::runtime_error("internal error");
+
+        Eigen::Map< Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> > J1( (double*) jacobian.ptr(), 2*num_visible, 15);
+
+        for(int i=0; i<num_visible; i++)
+        {
+            // check that visible_landmarks vector is sorted (if not, filling the sparse matrix would take a long time).
+            if( i > 0 && visible_landmarks[i-1] >= visible_landmarks[i] ) throw std::logic_error("internal error");
+
+            const int j = visible_landmarks[i];
+
+            // set jacobian coefficients.
+
+            Eigen::Matrix<double, 3, 10> J2;
+            computeJacobianOfWorld2CameraTransformation(X, j, J2 );
+
+            Eigen::Matrix<double, 2, 10> J3 = J1.block<2, 3>(2*i, 3) * J2;
+
+            for(int a=0; a<2; a++)
+            {
+                for(int b=0; b<3; b++)
+                    J.insert(2*i+a, b) = J3(a, b);
+
+                for(int b=0; b<4; b++)
+                    J.insert(2*i+a, 3+b) = J3(a, 3+b);
+
+                for(int b=0; b<3; b++)
+                    J.insert(2*i+a, 13+3*j+b) = J3(a, 7+b);
+            }
+        }
+    }
+
+    J.makeCompressed();
+}
+
+void SLAMPrimitives::computeJacobianOfWorld2CameraTransformation(
+    const Eigen::VectorXd& X,
+    int landmark,
+    Eigen::Matrix<double, 3, 10>& J)
+{
+    Eigen::Quaterniond camera_attitude;
+    camera_attitude.w() = X(3);
+    camera_attitude.vec() = X.segment<3>(4);
+
+    const Eigen::Matrix3d R = camera_attitude.inverse().toRotationMatrix();
+
+    const double x1 = X(0);
+    const double x2 = X(1);
+    const double x3 = X(2);
+
+    const double a0 = X(3);
+    const double a1 = X(4);
+    const double a2 = X(5);
+    const double a3 = X(6);
+
+    const double y1 = X(13+3*landmark+0);
+    const double y2 = X(13+3*landmark+1);
+    const double y3 = X(13+3*landmark+2);
+
+    J.block<3,3>(0, 0) = -R;
+
+    J(0, 3) = -2*a2*(-x3 + y3) + 2*a3*(-x2 + y2);
+    J(0, 4) = 2*a2*(-x2 + y2) + 2*a3*(-x3 + y3);
+    J(0, 5) = -2*a0*(-x3 + y3) + 2*a1*(-x2 + y2) - 4*a2*(-x1 + y1);
+    J(0, 6) = 2*a0*(-x2 + y2) + 2*a1*(-x3 + y3) - 4*a3*(-x1 + y1);
+
+    J(1, 3) = 2*a1*(-x3 + y3) - 2*a3*(-x1 + y1);
+    J(1, 4) = 2*a0*(-x3 + y3) - 4*a1*(-x2 + y2) + 2*a2*(-x1 + y1);
+    J(1, 5) = 2*a1*(-x1 + y1) + 2*a3*(-x3 + y3);
+    J(1, 6) = -2*a0*(-x1 + y1) + 2*a2*(-x3 + y3) - 4*a3*(-x2 + y2);
+
+    J(2, 3) = -2*a1*(-x2 + y2) + 2*a2*(-x1 + y1);
+    J(2, 4) = -2*a0*(-x2 + y2) - 4*a1*(-x3 + y3) + 2*a3*(-x1 + y1);
+    J(2, 5) = 2*a0*(-x1 + y1) - 4*a2*(-x3 + y3) + 2*a3*(-x2 + y2);
+    J(2, 6) = 2*a1*(-x1 + y1) + 2*a2*(-x2 + y2);
+
+    J.block<3,3>(0, 7) = R;
+}
+*/
+
+void SLAMEngineImpl::convertPose(
+    const cv::Mat& rodrigues,
+    const cv::Mat& t,
+    Eigen::Quaterniond& attitude,
+    Eigen::Vector3d& position)
+{
+    Eigen::Vector3d rodrigues_eigen;
+    if( rodrigues.type() == CV_32F )
+    {
+        rodrigues_eigen.x() = rodrigues.at<float>(0);
+        rodrigues_eigen.y() = rodrigues.at<float>(1);
+        rodrigues_eigen.z() = rodrigues.at<float>(2);
+    }
+    else if( rodrigues.type() == CV_64F )
+    {
+        rodrigues_eigen.x() = rodrigues.at<double>(0);
+        rodrigues_eigen.y() = rodrigues.at<double>(1);
+        rodrigues_eigen.z() = rodrigues.at<double>(2);
+    }
+
+    Eigen::Vector3d t_eigen;
+    if( t.type() == CV_32F )
+    {
+        t_eigen.x() = t.at<float>(0);
+        t_eigen.y() = t.at<float>(1);
+        t_eigen.z() = t.at<float>(2);
+    }
+    else if( t.type() == CV_64F )
+    {
+        t_eigen.x() = t.at<double>(0);
+        t_eigen.y() = t.at<double>(1);
+        t_eigen.z() = t.at<double>(2);
+    }
+
+    const double norm = rodrigues_eigen.norm();
+
+    if( norm > 1.0e-8 )
+    {
+        attitude.vec() = -sin(0.5*norm) * rodrigues_eigen / norm;
+        attitude.w() = cos(0.5*norm);
+    }
+    else
+    {
+        attitude.setIdentity();
+    }
+
+    position = -( attitude * t_eigen );
+}
 
 SLAMEngine* SLAMEngine::create()
 {

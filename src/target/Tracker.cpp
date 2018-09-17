@@ -16,9 +16,10 @@ namespace target {
     Tracker::Tracker() : m_kpl_adapter(&m_points)
     {
         m_unit_length = 1.0;
+        m_found = false;
     }
 
-    bool Tracker::track( const cv::Mat& image, bool init )
+    bool Tracker::track( const cv::Mat& image )
     {
         //std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
 
@@ -54,7 +55,7 @@ namespace target {
         // Computing connected components...
         compute_connected_components();
 
-        bool ret = save_results();
+        m_found = save_results();
 
         /*
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
@@ -65,7 +66,7 @@ namespace target {
         std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
         */
 
-        return ret;
+        return m_found;
     }
 
     void Tracker::build_kdtree()
