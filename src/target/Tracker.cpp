@@ -827,51 +827,67 @@ namespace target {
 #endif
     }
 
-    bool Tracker::find_cell(int point, std::array<int,4>& cell)
+    bool Tracker::find_cell_anticlockwise(int point, std::array<int,4>& cell)
     {
         SamplePoint& pt = m_points[point];
 
         bool ok = ( pt.connected_component == m_biggest_connected_component );
 
+        cell[0] = point;
+
         if(ok)
         {
-            cell[0] = point;
             cell[1] = pt.neighbors[0];
-            cell[3] = pt.neighbors[1];
-
-            ok = ( cell[1] >= 0 && cell[3] >= 0 );
+            ok = ( cell[1] >= 0 );
         }
 
         if(ok)
         {
-            const int trigonometric = m_points[cell[1]].neighbors[1];
-            const int clockwise = m_points[cell[3]].neighbors[0];
-
-            if( clockwise != trigonometric ) throw std::logic_error("internal error");
-
-            cell[2] = clockwise;
-
+            cell[2] = m_points[cell[1]].neighbors[1];
             ok = ( cell[2] >= 0 );
         }
 
-        // check that everything is OK.
         if(ok)
         {
-            const int dx[4] = { 0, 1, 1, 0 };
-            const int dy[4] = { 0, 0, 1, 1 };
-
-            for(int k=1; k<4; k++)
-            {
-                if(
-                    m_points[cell[k]].coords2d[0] != m_points[cell[0]].coords2d[0]+dx[k] ||
-                    m_points[cell[k]].coords2d[1] != m_points[cell[0]].coords2d[1]+dy[k] )
-                {
-                    throw std::logic_error("internal error");
-                }
-            }
+            cell[3] = m_points[cell[2]].neighbors[2];
+            ok = ( cell[3] >= 0 );
         }
-        
+
         return ok;
+    }
+
+    bool Tracker::find_cell_clockwise(int point, std::array<int,4>& cell)
+    {
+        SamplePoint& pt = m_points[point];
+
+        bool ok = ( pt.connected_component == m_biggest_connected_component );
+
+        cell[0] = point;
+
+        if(ok)
+        {
+            cell[3] = pt.neighbors[1];
+            ok = ( cell[3] >= 0 );
+        }
+
+        if(ok)
+        {
+            cell[2] = m_points[cell[3]].neighbors[0];
+            ok = ( cell[2] >= 0 );
+        }
+
+        if(ok)
+        {
+            cell[1] = m_points[cell[2]].neighbors[3];
+            ok = ( cell[1] >= 0 );
+        }
+
+        return ok;
+    }
+
+    bool Tracker::find_cell(int point, std::array<int,4>& cell)
+    {
+        return find_cell_clockwise(point, cell) || find_cell_anticlockwise(point, cell);
     }
 
     bool Tracker::filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H)

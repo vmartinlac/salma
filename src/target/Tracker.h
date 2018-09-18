@@ -136,6 +136,8 @@ namespace target
         void orient_my_neighbor(int idx, int neigh_id);
         void compute_absolute_orientation();
         bool find_cell(int point, std::array<int,4>& cell);
+        bool find_cell_anticlockwise(int point, std::array<int,4>& cell);
+        bool find_cell_clockwise(int point, std::array<int,4>& cell);
         bool filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H);
         bool save_results();
 
