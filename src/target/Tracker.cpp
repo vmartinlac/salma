@@ -1,4 +1,5 @@
-//#include <chrono>
+#include <chrono>
+#include <Eigen/Eigen>
 #include <cmath>
 #include <queue>
 #include <algorithm>
@@ -9,7 +10,7 @@
 #include <nanoflann.hpp>
 #include "Tracker.h"
 
-//#define TARGET_DETECTOR_DEBUG
+#define TARGET_DETECTOR_DEBUG
 
 namespace target {
 
@@ -21,7 +22,7 @@ namespace target {
 
     bool Tracker::track( const cv::Mat& image )
     {
-        //std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
+        std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
 
         m_image = &image;
 #ifdef TARGET_DETECTOR_DEBUG
@@ -55,16 +56,16 @@ namespace target {
         // Computing connected components...
         compute_connected_components();
 
+        // Compute absolute orientation.
+        compute_absolute_orientation();
+
         m_found = save_results();
 
-        /*
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
-
         const int dt = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
 
         std::cout << "Computation time: " << dt << " ms" << std::endl;
-        std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
-        */
+        //std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
 
         return m_found;
     }
@@ -316,7 +317,7 @@ namespace target {
         }
 
         const int total = white_left + black_left + white_right + black_right;
-        const float white_ratio = float(white_left+white_right) / float(total);
+        const float white_ratio = float(white_left + white_right) / float(total);
         const float white_ratio_left = float(white_left) / float(white_left + black_left);
         const float white_ratio_right = float(white_right) / float(white_right + black_right);
 
@@ -549,6 +550,8 @@ namespace target {
         const int pre = 0;
         const int post = 0;
 
+        //
+
         SamplePoint& pt = m_points[idx];
 
         if( pre != post )
@@ -703,6 +706,243 @@ namespace target {
         if( pt.neighbor_types[neigh_id] != LINE_NONE && pt.neighbor_types[neigh_id] != pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
         if( pt.neighbor_types[plus1] == pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
         if( pt.neighbor_types[plus3] == pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
+    }
+
+    void Tracker::compute_absolute_orientation()
+    {
+        std::vector<int> circles;
+        circles.reserve(3);
+
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::Mat debug = m_image->clone();
+#endif
+
+        for(int i=0; i<m_points.size(); i++)
+        {
+            std::array<int,4> cell;
+
+            if( find_cell(i, cell) )
+            {
+                Eigen::Matrix<double, 8, 9> M;
+
+                cv::Point2f roi_min(
+                    int(m_points[i].keypoint.pt.x),
+                    int(m_points[i].keypoint.pt.y));
+
+                cv::Point2f roi_max = roi_min;
+
+                for(int k=0; k<4; k++)
+                {
+                    roi_min.x = std::min(roi_min.x, m_points[cell[k]].keypoint.pt.x);
+                    roi_min.y = std::min(roi_min.y, m_points[cell[k]].keypoint.pt.y);
+                    roi_max.x = std::max(roi_max.x, m_points[cell[k]].keypoint.pt.x);
+                    roi_max.y = std::max(roi_max.y, m_points[cell[k]].keypoint.pt.y);
+
+                    const double pre_u = m_points[cell[k]].keypoint.pt.x;
+                    const double pre_v = m_points[cell[k]].keypoint.pt.y;
+
+                    const double post_u = double( m_points[cell[k]].coords2d[0] - m_points[cell[0]].coords2d[0] );
+                    const double post_v = double( m_points[cell[k]].coords2d[1] - m_points[cell[0]].coords2d[1] );
+
+                    M(2*k+0, 0) = 0.0;
+                    M(2*k+0, 1) = 0.0;
+                    M(2*k+0, 2) = 0.0;
+                    M(2*k+0, 3) = -pre_u;
+                    M(2*k+0, 4) = -pre_v;
+                    M(2*k+0, 5) = -1;
+                    M(2*k+0, 6) = pre_u*post_v;
+                    M(2*k+0, 7) = pre_v*post_v;
+                    M(2*k+0, 8) = post_v;
+
+                    M(2*k+1, 0) = pre_u;
+                    M(2*k+1, 1) = pre_v;
+                    M(2*k+1, 2) = 1.0;
+                    M(2*k+1, 3) = 0.0;
+                    M(2*k+1, 4) = 0.0;
+                    M(2*k+1, 5) = 0.0;
+                    M(2*k+1, 6) = -pre_u*post_u;
+                    M(2*k+1, 7) = -pre_v*post_u;
+                    M(2*k+1, 8) = -post_u;
+                }
+
+                Eigen::JacobiSVD<decltype(M)> solver;
+                solver.compute(M, Eigen::ComputeFullV);
+
+                Eigen::Matrix<double, 9, 1> coeffs = solver.matrixV().rightCols<1>();
+
+                Eigen::Matrix3d H;
+                H(0,0) = coeffs(0);
+                H(0,1) = coeffs(1);
+                H(0,2) = coeffs(2);
+                H(1,0) = coeffs(3);
+                H(1,1) = coeffs(4);
+                H(1,2) = coeffs(5);
+                H(2,0) = coeffs(6);
+                H(2,1) = coeffs(7);
+                H(2,2) = coeffs(8);
+
+                const bool found_circle = filter_circle(
+                    cv::Rect(roi_min, roi_max),
+                    H);
+
+                if( found_circle )
+                {
+                    circles.push_back(i);
+                }
+
+#ifdef TARGET_DETECTOR_DEBUG
+                {
+                    Eigen::Matrix3d inv_H = H.inverse();
+
+                    Eigen::Vector3d A = inv_H * Eigen::Vector3d{0.25, 0.5, 1.0};
+                    Eigen::Vector3d B = inv_H * Eigen::Vector3d{0.5, 0.5, 1.0};
+
+                    if( std::fabs(A(2)) > 1.0e-7 && std::fabs(B(2)) > 1.0e-7 )
+                    {
+                        A /= A(2);
+                        B /= B(2);
+
+                        const double radius = (A-B).norm();
+                        const cv::Point2f cen( B(0), B(1) );
+
+                        cv::Scalar color;
+                        if(found_circle)
+                        {
+                            color = cv::Scalar(0, 255, 0);
+                        }
+                        else
+                        {
+                            color = cv::Scalar(0, 0, 255);
+                        }
+
+                        cv::circle(debug, cen, radius, color, 2);
+                    }
+                }
+#endif
+            }
+        }
+
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::imwrite("debug_output/80_find_circles.png", debug);
+#endif
+    }
+
+    bool Tracker::find_cell(int point, std::array<int,4>& cell)
+    {
+        SamplePoint& pt = m_points[point];
+
+        bool ok = ( pt.connected_component == m_biggest_connected_component );
+
+        if(ok)
+        {
+            cell[0] = point;
+            cell[1] = pt.neighbors[0];
+            cell[3] = pt.neighbors[1];
+
+            ok = ( cell[1] >= 0 && cell[3] >= 0 );
+        }
+
+        if(ok)
+        {
+            const int trigonometric = m_points[cell[1]].neighbors[1];
+            const int clockwise = m_points[cell[3]].neighbors[0];
+
+            if( clockwise != trigonometric ) throw std::logic_error("internal error");
+
+            cell[2] = clockwise;
+
+            ok = ( cell[2] >= 0 );
+        }
+
+        // check that everything is OK.
+        if(ok)
+        {
+            const int dx[4] = { 0, 1, 1, 0 };
+            const int dy[4] = { 0, 0, 1, 1 };
+
+            for(int k=1; k<4; k++)
+            {
+                if(
+                    m_points[cell[k]].coords2d[0] != m_points[cell[0]].coords2d[0]+dx[k] ||
+                    m_points[cell[k]].coords2d[1] != m_points[cell[0]].coords2d[1]+dy[k] )
+                {
+                    throw std::logic_error("internal error");
+                }
+            }
+        }
+        
+        return ok;
+    }
+
+    bool Tracker::filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H)
+    {
+        int outside_white = 0;
+        int outside_black = 0;
+        int inside_white = 0;
+        int inside_black = 0;
+
+        for(int dx=0; dx<roi.width; dx++)
+        {
+            for(int dy=0; dy<roi.height; dy++)
+            {
+                //if( (dx+dy)%2 == 0 ) continue;
+
+                cv::Point2i pt(roi.x + dx, roi.y + dy);
+
+                Eigen::Vector3d pre;
+                pre(0) = pt.x;
+                pre(1) = pt.y;
+                pre(2) = 1.0;
+
+                Eigen::Vector3d post = H * pre;
+
+                if( std::fabs(post(2)) > 1.0e-7 )
+                {
+                    post /= post(2);
+
+                    const double du = post(0) - 0.5;
+                    const double dv = post(1) - 0.5;
+                    const double radius_squared = du*du + dv*dv;
+
+                    if( radius_squared < 1.0/36.0)
+                    {
+                        if( m_thresh.at<uint8_t>(pt) )
+                        {
+                            inside_white++;
+                        }
+                        else
+                        {
+                            inside_black++;
+                        }
+                    }
+                    else if( radius_squared < 1.0/9.0 )
+                    {
+                        if( m_thresh.at<uint8_t>(pt) )
+                        {
+                            outside_white++;
+                        }
+                        else
+                        {
+                            outside_black++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if( inside_white + inside_black < 15 || outside_white + outside_black < 15 )
+        {
+            return false;
+        }
+        else
+        {
+            const double r1 = double(inside_white) / double(inside_white + inside_black);
+            const double r2 = double(outside_white) / double(outside_white + outside_black);
+
+            const double eps = 0.12;
+
+            return (r1 < eps && r2 > 1.0-eps) || (r2 < eps && r1 > 1.0-eps);
+        }
     }
 
     bool Tracker::save_results()

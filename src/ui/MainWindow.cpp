@@ -87,7 +87,8 @@ MainWindow::MainWindow(SLAMEngine* slam, QWidget* parent) :
     connect(a_home, SIGNAL(triggered()), m_viewer, SLOT(home()));
 
     //TODO: tmp for debug
-    m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/data/smartphone/videos/video2.mp4") );
+    //m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/data/smartphone/videos/video2.mp4") );
+    m_camera.reset( new OpenCVVideoFile("/home/victor/developpement/slam/data/new_target/type1/VID_20180918_192729.mp4") );
     //
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <vector>
 #include <opencv2/core.hpp>
@@ -80,12 +81,6 @@ namespace target
             int coords2d[2]; // this field is filled if and only if connected_component >= 0.
         };
 
-        struct OldPoint
-        {
-            cv::Point2f image_point;
-            int coords2d[2];
-        };
-
         class PointListAdapter
         {
         public:
@@ -139,6 +134,9 @@ namespace target
         int find_connected_component(int seed, int component);
         void orient_myself(int idx); // requires point idx to have four neighbors.
         void orient_my_neighbor(int idx, int neigh_id);
+        void compute_absolute_orientation();
+        bool find_cell(int point, std::array<int,4>& cell);
+        bool filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H);
         bool save_results();
 
     protected:
