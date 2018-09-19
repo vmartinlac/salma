@@ -725,24 +725,13 @@ namespace target {
             {
                 Eigen::Matrix<double, 8, 9> M;
 
-                cv::Point2f roi_min(
-                    int(m_points[i].keypoint.pt.x),
-                    int(m_points[i].keypoint.pt.y));
-
-                cv::Point2f roi_max = roi_min;
-
                 for(int k=0; k<4; k++)
                 {
-                    roi_min.x = std::min(roi_min.x, m_points[cell[k]].keypoint.pt.x);
-                    roi_min.y = std::min(roi_min.y, m_points[cell[k]].keypoint.pt.y);
-                    roi_max.x = std::max(roi_max.x, m_points[cell[k]].keypoint.pt.x);
-                    roi_max.y = std::max(roi_max.y, m_points[cell[k]].keypoint.pt.y);
+                    const double pre_u = double( m_points[cell[k]].coords2d[0] - m_points[cell[0]].coords2d[0] );
+                    const double pre_v = double( m_points[cell[k]].coords2d[1] - m_points[cell[0]].coords2d[1] );
 
-                    const double pre_u = m_points[cell[k]].keypoint.pt.x;
-                    const double pre_v = m_points[cell[k]].keypoint.pt.y;
-
-                    const double post_u = double( m_points[cell[k]].coords2d[0] - m_points[cell[0]].coords2d[0] );
-                    const double post_v = double( m_points[cell[k]].coords2d[1] - m_points[cell[0]].coords2d[1] );
+                    const double post_u = m_points[cell[k]].keypoint.pt.x;
+                    const double post_v = m_points[cell[k]].keypoint.pt.y;
 
                     M(2*k+0, 0) = 0.0;
                     M(2*k+0, 1) = 0.0;
@@ -781,9 +770,7 @@ namespace target {
                 H(2,1) = coeffs(7);
                 H(2,2) = coeffs(8);
 
-                const bool found_circle = filter_circle(
-                    cv::Rect(roi_min, roi_max),
-                    H);
+                const bool found_circle = filter_circle(H);
 
                 if( found_circle )
                 {
@@ -792,10 +779,8 @@ namespace target {
 
 #ifdef TARGET_DETECTOR_DEBUG
                 {
-                    Eigen::Matrix3d inv_H = H.inverse();
-
-                    Eigen::Vector3d A = inv_H * Eigen::Vector3d{0.25, 0.5, 1.0};
-                    Eigen::Vector3d B = inv_H * Eigen::Vector3d{0.5, 0.5, 1.0};
+                    Eigen::Vector3d A = H * Eigen::Vector3d{0.25, 0.5, 1.0};
+                    Eigen::Vector3d B = H * Eigen::Vector3d{0.5, 0.5, 1.0};
 
                     if( std::fabs(A(2)) > 1.0e-7 && std::fabs(B(2)) > 1.0e-7 )
                     {
@@ -819,6 +804,105 @@ namespace target {
                     }
                 }
 #endif
+            }
+        }
+
+        if( circles.size() == 3 )
+        {
+            int origin = -1;
+            int samex[2] = {-1, -1};
+            int samey[2] = {-1, -1};
+            bool ok = true;
+
+            for(int i=0; ok && i<3; i++)
+            {
+                const int a = circles[ i ];
+                const int b = circles[ (i+1)%3 ];
+                const int c = circles[ (i+2)%3 ];
+
+                const int dx = m_points[c].coords2d[0] - m_points[b].coords2d[0];
+                const int dy = m_points[c].coords2d[1] - m_points[b].coords2d[1];
+
+                if( dx != 0 && dy != 0 )
+                {
+                    origin = a;
+                }
+                else if( dx != 0 && dy == 0 )
+                {
+                    samey[0] = b;
+                    samey[1] = c;
+                }
+                else if( dx == 0 && dy != 0 )
+                {
+                    samex[0] = b;
+                    samex[1] = c;
+                }
+                else
+                {
+                    ok = false;
+                }
+            }
+
+            if(ok)
+            {
+                ok = ok && origin >= 0 && samex[0] >= 0 && samex[1] >= 0 && samey[0] >= 0 && samey[1] >= 0;
+            }
+
+            if(ok)
+            {
+                if(samex[0] == origin)
+                {
+                    samex[0] = samex[1];
+                }
+
+                ok = (samex[0] != origin);
+            }
+
+            if(ok)
+            {
+                if(samey[0] == origin)
+                {
+                    samey[0] = samey[1];
+                }
+                
+                ok = (samey[0] != origin);
+            }
+
+            int vx = -1;
+            int vy = -1;
+
+            if(ok)
+            {
+                int oa[2];
+                oa[0] = m_points[samex[0]].coords2d[0] - m_points[origin].coords2d[0];
+                oa[1] = m_points[samex[0]].coords2d[1] - m_points[origin].coords2d[1];
+
+                int ob[2];
+                ob[0] = m_points[samey[0]].coords2d[0] - m_points[origin].coords2d[0];
+                ob[1] = m_points[samey[0]].coords2d[1] - m_points[origin].coords2d[1];
+
+                if( oa[0] == -ob[1] && oa[1] == ob[0] )
+                {
+                    vx = samey[0];
+                    vy = samex[0];
+                }
+                else if( oa[0] == ob[1] && oa[1] == -ob[0] )
+                {
+                    vx = samex[0];
+                    vy = samey[0];
+                }
+                else
+                {
+                    ok = false;
+                }
+            }
+
+            if(ok)
+            {
+                std::cout << origin << ' ' << vx << ' ' << vy << std::endl;
+                cv::putText( debug, "O", m_points[origin].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
+                cv::putText( debug, "X", m_points[vx].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
+                cv::putText( debug, "Y", m_points[vy].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
             }
         }
 
@@ -890,39 +974,64 @@ namespace target {
         return find_cell_clockwise(point, cell) || find_cell_anticlockwise(point, cell);
     }
 
-    bool Tracker::filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H)
+    bool Tracker::filter_circle(const Eigen::Matrix3d& H)
     {
+        const int M = 50;
+
         int outside_white = 0;
         int outside_black = 0;
         int inside_white = 0;
         int inside_black = 0;
 
-        for(int dx=0; dx<roi.width; dx++)
+        std::array<double, 4> cos_alpha;
+        std::array<double, 4> sin_alpha;
+
+        cos_alpha[0] = 1.0;
+        sin_alpha[0] = 0.0;
+
+        cos_alpha[1] = 0.0;
+        sin_alpha[1] = 1.0;
+
+        cos_alpha[2] = M_SQRT1_2;
+        sin_alpha[2] = M_SQRT1_2;
+
+        cos_alpha[3] = M_SQRT1_2;
+        sin_alpha[3] = -M_SQRT1_2;
+
+        for(int i=0; i<4; i++)
         {
-            for(int dy=0; dy<roi.height; dy++)
+            const double xfrom = 0.5 - cos_alpha[i]/3.0;
+            const double yfrom = 0.5 - sin_alpha[i]/3.0;
+            const double xto = 0.5 + cos_alpha[i]/3.0;
+            const double yto = 0.5 + sin_alpha[i]/3.0;
+
+            for(int j=0; j<M; j++)
             {
-                //if( (dx+dy)%2 == 0 ) continue;
+                const double alpha = double(j) / double(M-1);
+                const double beta = double(M-1-j) / double(M-1);
 
-                cv::Point2i pt(roi.x + dx, roi.y + dy);
+                Eigen::Vector3d A;
+                A(0) = alpha * xfrom + beta * xto;
+                A(1) = alpha * yfrom + beta * yto;
+                A(2) = 1.0;
 
-                Eigen::Vector3d pre;
-                pre(0) = pt.x;
-                pre(1) = pt.y;
-                pre(2) = 1.0;
+                Eigen::Vector3d B = H * A;
 
-                Eigen::Vector3d post = H * pre;
-
-                if( std::fabs(post(2)) > 1.0e-7 )
+                if( std::fabs(B(2)) > 1.0e-7 )
                 {
-                    post /= post(2);
+                    B /= B(2);
 
-                    const double du = post(0) - 0.5;
-                    const double dv = post(1) - 0.5;
+                    const bool is_white = ( m_thresh.at<uint8_t>(cv::Point2i( cvRound(B(0)), cvRound(B(1)) )) > 0);
+
+                    const double du = A(0) - 0.5;
+                    const double dv = A(1) - 0.5;
                     const double radius_squared = du*du + dv*dv;
 
-                    if( radius_squared < 1.0/36.0)
+                    const bool is_inside = (radius_squared < 1.0/36.0);
+
+                    if( is_inside )
                     {
-                        if( m_thresh.at<uint8_t>(pt) )
+                        if( is_white )
                         {
                             inside_white++;
                         }
@@ -931,9 +1040,9 @@ namespace target {
                             inside_black++;
                         }
                     }
-                    else if( radius_squared < 1.0/9.0 )
+                    else
                     {
-                        if( m_thresh.at<uint8_t>(pt) )
+                        if( is_white )
                         {
                             outside_white++;
                         }
@@ -946,8 +1055,9 @@ namespace target {
             }
         }
 
-        if( inside_white + inside_black < 15 || outside_white + outside_black < 15 )
+        if( inside_white + outside_white + inside_black + outside_black != 4*M )
         {
+            std::cout << "Failure" << std::endl;
             return false;
         }
         else

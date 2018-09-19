@@ -138,7 +138,7 @@ namespace target
         bool find_cell(int point, std::array<int,4>& cell);
         bool find_cell_anticlockwise(int point, std::array<int,4>& cell);
         bool find_cell_clockwise(int point, std::array<int,4>& cell);
-        bool filter_circle(const cv::Rect& roi, const Eigen::Matrix3d& H);
+        bool filter_circle(const Eigen::Matrix3d& H);
         bool save_results();
 
     protected:
