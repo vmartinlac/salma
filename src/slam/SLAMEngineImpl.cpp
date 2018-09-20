@@ -113,14 +113,13 @@ void SLAMEngineImpl::processImage()
 {
     m_tracker.track( m_current_image.refFrame() );
 
-    if( m_mode == MODE_TRACKING )
-    {
-        localizationEKF();
-    }
-
-    if( m_mode == MODE_LOST )
+    if( m_tracker.found() )
     {
         localizationPnP();
+    }
+    else
+    {
+        m_mode = MODE_TARGET_NOT_FOUND;
     }
 }
 
@@ -152,10 +151,15 @@ void SLAMEngineImpl::localizationPnP()
 
         m_mode = MODE_TRACKING;
     }
+    else
+    {
+        m_mode = MODE_LOST;
+    }
 }
 
 void SLAMEngineImpl::localizationEKF()
 {
+    /*
     bool ok = ( m_mode == MODE_TRACKING && m_tracker.found() );
 
     // EKF prediction.
@@ -176,6 +180,7 @@ void SLAMEngineImpl::localizationEKF()
     {
         m_mode = MODE_LOST;
     }
+    */
 }
 
 /*
@@ -311,6 +316,15 @@ void SLAMEngineImpl::writeOutput()
     */
 
     std::vector<SLAMOutputLandmark> output_landmarks;
+    if( m_tracker.found() )
+    {
+        for(cv::Point3f pt : m_tracker.objectPoints())
+        {
+            SLAMOutputLandmark olm;
+            olm.position << pt.x, pt.y, pt.z;
+            output_landmarks.push_back(olm);
+        }
+    }
     /*
     output_landmarks.reserve( m_landmarks.size() );
     for(Landmark& lm : m_landmarks)
@@ -326,6 +340,9 @@ void SLAMEngineImpl::writeOutput()
 
     switch( m_mode )
     {
+    case MODE_TARGET_NOT_FOUND:
+        m_output->mode = "TARGET_NOT_FOUND";
+        break;
     case MODE_LOST:
         m_output->mode = "LOST";
         break;

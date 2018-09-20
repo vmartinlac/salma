@@ -10,7 +10,7 @@
 #include <nanoflann.hpp>
 #include "Tracker.h"
 
-#define TARGET_DETECTOR_DEBUG
+//#define TARGET_DETECTOR_DEBUG
 
 namespace target {
 
@@ -20,7 +20,7 @@ namespace target {
         m_found = false;
     }
 
-    bool Tracker::track( const cv::Mat& image )
+    bool Tracker::track( const cv::Mat& image, bool absolute_pose )
     {
         std::chrono::time_point<std::chrono::system_clock> t0 = std::chrono::system_clock::now();
 
@@ -56,16 +56,13 @@ namespace target {
         // Computing connected components...
         compute_connected_components();
 
-        // Compute absolute orientation.
-        compute_absolute_orientation();
-
-        m_found = save_results();
+        // Compute absolute orientation and compute 3d coordinates.
+        m_found = (absolute_pose == false || compute_absolute_orientation()) && save_results();
 
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
         const int dt = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
 
         std::cout << "Computation time: " << dt << " ms" << std::endl;
-        //std::cout << "Framerate: " << 1.0e3f/float(dt) << " Hz" << std::endl;
 
         return m_found;
     }
@@ -708,8 +705,10 @@ namespace target {
         if( pt.neighbor_types[plus3] == pt.neighbor_types[plus2] ) throw std::logic_error("internal error");
     }
 
-    void Tracker::compute_absolute_orientation()
+    bool Tracker::compute_absolute_orientation()
     {
+        bool ret = false;
+
         std::vector<int> circles;
         circles.reserve(3);
 
@@ -868,8 +867,29 @@ namespace target {
                 ok = (samey[0] != origin);
             }
 
-            int vx = -1;
-            int vy = -1;
+            int rotation[2][2] = { {1,0}, {0,1} };
+            int translation[2] = { 0, 0 };
+
+            if(ok)
+            {
+                if(m_points[samey[0]].coords2d[0] > m_points[origin].coords2d[0])
+                {
+                    translation[0] = m_points[origin].coords2d[0] + 1;
+                }
+                else
+                {
+                    translation[0] = m_points[origin].coords2d[0];
+                }
+
+                if(m_points[samex[0]].coords2d[1] > m_points[origin].coords2d[1])
+                {
+                    translation[1] = m_points[origin].coords2d[1] + 1;
+                }
+                else
+                {
+                    translation[1] = m_points[origin].coords2d[1];
+                }
+            }
 
             if(ok)
             {
@@ -881,15 +901,24 @@ namespace target {
                 ob[0] = m_points[samey[0]].coords2d[0] - m_points[origin].coords2d[0];
                 ob[1] = m_points[samey[0]].coords2d[1] - m_points[origin].coords2d[1];
 
+                oa[0] = std::max(std::min(oa[0], 1), -1);
+                oa[1] = std::max(std::min(oa[1], 1), -1);
+                ob[0] = std::max(std::min(ob[0], 1), -1);
+                ob[1] = std::max(std::min(ob[1], 1), -1);
+
                 if( oa[0] == -ob[1] && oa[1] == ob[0] )
                 {
-                    vx = samey[0];
-                    vy = samex[0];
+                    rotation[0][0] = ob[0];
+                    rotation[1][0] = ob[1];
+                    rotation[0][1] = oa[0];
+                    rotation[1][1] = oa[1];
                 }
                 else if( oa[0] == ob[1] && oa[1] == -ob[0] )
                 {
-                    vx = samex[0];
-                    vy = samey[0];
+                    rotation[0][0] = oa[0];
+                    rotation[1][0] = oa[1];
+                    rotation[0][1] = ob[0];
+                    rotation[1][1] = ob[1];
                 }
                 else
                 {
@@ -897,18 +926,82 @@ namespace target {
                 }
             }
 
+            //std::cout << rotation[0][0] << ' ' << rotation[0][1] << std::endl;
+            //std::cout << rotation[1][0] << ' ' << rotation[1][1] << std::endl;
+            //std::cout << std::endl;
+
             if(ok)
             {
-                std::cout << origin << ' ' << vx << ' ' << vy << std::endl;
-                cv::putText( debug, "O", m_points[origin].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
-                cv::putText( debug, "X", m_points[vx].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
-                cv::putText( debug, "Y", m_points[vy].keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
+                if( rotation[0][0]*rotation[1][1] - rotation[0][1]*rotation[1][0] != 1 )
+                {
+                    ok = false;
+                }
+                else if( rotation[0][0]*rotation[0][0] + rotation[1][0]*rotation[1][0] != 1 )
+                {
+                    ok = false;
+                }
+                else if( rotation[1][0]*rotation[1][0] + rotation[1][1]*rotation[1][1] != 1 )
+                {
+                    ok = false;
+                }
+                else if( rotation[0][0]*rotation[0][1] + rotation[1][0]*rotation[1][1] != 0 )
+                {
+                    ok = false;
+                }
+                else if( rotation[0][0]*rotation[1][0] + rotation[0][1]*rotation[1][1] != 0 )
+                {
+                    ok = false;
+                }
+            }
+
+            if(ok)
+            {
+                for(SamplePoint& pt : m_points)
+                {
+                    if(pt.connected_component == m_biggest_connected_component)
+                    {
+                        int delta[2];
+                        delta[0] = pt.coords2d[0] - translation[0];
+                        delta[1] = pt.coords2d[1] - translation[1];
+
+                        int new_coords[2];
+                        new_coords[0] = rotation[0][0]*delta[0] + rotation[1][0]*delta[1];
+                        new_coords[1] = rotation[0][1]*delta[0] + rotation[1][1]*delta[1];
+
+                        pt.coords2d[0] = new_coords[0];
+                        pt.coords2d[1] = new_coords[1];
+                    }
+                }
+
+                ret = true;
             }
         }
 
 #ifdef TARGET_DETECTOR_DEBUG
         cv::imwrite("debug_output/80_find_circles.png", debug);
 #endif
+
+#ifdef TARGET_DETECTOR_DEBUG
+        {
+            cv::Mat debug = m_image->clone();
+
+            const int radius = 4*m_image->cols/640;
+
+            for( SamplePoint& pt : m_points )
+            {
+                if( pt.connected_component == m_biggest_connected_component )
+                {
+                    cv::circle(debug, pt.keypoint.pt, radius, cv::Scalar(0,255,0), -1);
+                    std::string text = std::to_string(pt.coords2d[0]) + " ; " + std::to_string(pt.coords2d[1]);
+                    cv::putText( debug, text, pt.keypoint.pt, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255,0,0), 2);
+                }
+            }
+
+            cv::imwrite("debug_output/90_corrected_coordinates.png", debug);
+        }
+#endif
+
+        return ret;
     }
 
     bool Tracker::find_cell_anticlockwise(int point, std::array<int,4>& cell)
@@ -1057,7 +1150,7 @@ namespace target {
 
         if( inside_white + outside_white + inside_black + outside_black != 4*M )
         {
-            std::cout << "Failure" << std::endl;
+            //std::cout << "Failure" << std::endl;
             return false;
         }
         else
@@ -1065,7 +1158,9 @@ namespace target {
             const double r1 = double(inside_white) / double(inside_white + inside_black);
             const double r2 = double(outside_white) / double(outside_white + outside_black);
 
-            const double eps = 0.12;
+            const double eps = 0.15;
+
+            //std::cout << r1 << ' ' << r2 << std::endl;
 
             return (r1 < eps && r2 > 1.0-eps) || (r2 < eps && r1 > 1.0-eps);
         }

@@ -20,7 +20,7 @@ namespace target
 
         void setUnitLength(double length);
 
-        bool track( const cv::Mat& image );
+        bool track( const cv::Mat& image, bool absolute_pose=true );
 
         bool found();
         const std::vector<cv::Point3f>& objectPoints();
@@ -134,7 +134,7 @@ namespace target
         int find_connected_component(int seed, int component);
         void orient_myself(int idx); // requires point idx to have four neighbors.
         void orient_my_neighbor(int idx, int neigh_id);
-        void compute_absolute_orientation();
+        bool compute_absolute_orientation();
         bool find_cell(int point, std::array<int,4>& cell);
         bool find_cell_anticlockwise(int point, std::array<int,4>& cell);
         bool find_cell_clockwise(int point, std::array<int,4>& cell);

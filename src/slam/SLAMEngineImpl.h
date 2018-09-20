@@ -22,6 +22,7 @@ protected:
 
     enum Mode
     {
+        MODE_TARGET_NOT_FOUND,
         MODE_LOST,
         MODE_TRACKING
     };
