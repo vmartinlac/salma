@@ -23,3 +23,4 @@ protected:
     SLAMOutput* m_slam;
     QLabel* m_label;
 };
+

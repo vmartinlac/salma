@@ -23,6 +23,7 @@ void SLAMEngineImpl::run()
 
     setup();
 
+    std::cout << "Camera is: " << m_camera->getHumanName() << std::endl;
     m_camera->open();
 
     bool first = true;
@@ -40,7 +41,7 @@ void SLAMEngineImpl::run()
             {
                 first = false;
             }
-            else
+            else if( m_current_image.getTimestamp() > m_time_last_frame )
             {
                 processImage();
                 writeOutput();
@@ -283,7 +284,25 @@ void SLAMEngineImpl::EKFUpdate()
 
 void SLAMEngineImpl::writeOutput()
 {
-    cv::Mat output_image = m_current_image.refFrame().clone();
+    cv::Mat output_image;
+
+    const int max_width = 480;
+
+    if( m_current_image.width() > max_width )
+    {
+        const double kappa = double(max_width) / double(m_current_image.width());
+        cv::resize(
+            m_current_image.refFrame(),
+            output_image,
+            cv::Size(),
+            kappa,
+            kappa);
+    }
+    else
+    {
+        output_image = m_current_image.refFrame().clone();
+    }
+
 
     /*
     if( m_mode == MODE_SLAM)

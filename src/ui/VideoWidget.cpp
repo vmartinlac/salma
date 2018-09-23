@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QLabel>
 #include <iostream>
+#include <opencv2/imgproc.hpp>
 #include "VideoWidget.h"
 
 VideoWidget::VideoWidget(SLAMOutput* slam, QWidget* parent) :
@@ -51,11 +52,14 @@ void VideoWidget::refresh()
 
     if( m_slam->image.type() != CV_8UC3 ) throw std::runtime_error("internal error");
 
+    cv::Mat rgb_converted;
+    cv::cvtColor( m_slam->image, rgb_converted, cv::COLOR_BGR2RGB );
+
     QImage image(
-        m_slam->image.ptr(),
-        m_slam->image.cols,
-        m_slam->image.rows,
-        static_cast<int>(m_slam->image.step),
+        rgb_converted.ptr(),
+        rgb_converted.cols,
+        rgb_converted.rows,
+        static_cast<int>(rgb_converted.step),
         QImage::Format_RGB888);
 
     m_label->setPixmap( QPixmap::fromImage(image) );

@@ -28,7 +28,7 @@ public:
 
 protected:
 
-    static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
+    //static void VMB_CALL frame_callback( const VmbHandle_t camera, VmbFrame_t* frame );
 
 protected:
 
@@ -39,13 +39,17 @@ protected:
     VmbAccessMode_t m_camera_permitted_access;
     std::string m_interface_id;
 
+    struct Frame
+    {
+        VmbFrame_t frame;
+        std::vector<uint8_t> buffer;
+    };
+
     bool m_is_open;
     VmbHandle_t m_handle;
-    VmbFrame_t m_frame;
-    std::vector<uint8_t> m_buffer;
-    std::mutex m_mutex;
-    Image m_newest_image;
     VmbInt64_t m_tick_frequency;
+    std::vector<Frame> m_frames;
+    int m_next_frame;
 };
 
 // declaration of VimbaCameraManagerImpl
@@ -75,6 +79,7 @@ protected:
 
 // VimbaCamera
 
+/*
 void VMB_CALL VimbaCamera::frame_callback( const VmbHandle_t handle, VmbFrame_t* frame )
 {
     if(
@@ -98,15 +103,10 @@ void VMB_CALL VimbaCamera::frame_callback( const VmbHandle_t handle, VmbFrame_t*
 
         camera->m_mutex.unlock();
     }
-    /*
-    else
-    {
-        std::cout << "error while receiving frame !" << std::endl;
-    }
-    */
 
     VmbCaptureFrameQueue( handle, frame, &VimbaCamera::frame_callback );
 }
+*/
 
 VimbaCamera::VimbaCamera(const VmbCameraInfo_t& infos)
 {
@@ -173,16 +173,21 @@ bool VimbaCamera::open()
 
         if(ok)
         {
-            m_buffer.resize(payload_size);
-            m_frame.buffer = &m_buffer.front();
-            m_frame.bufferSize = payload_size;
-            m_frame.context[0] = this;
-            m_frame.context[1] = nullptr;
-            m_frame.context[2] = nullptr;
-            m_frame.context[3] = nullptr;
+            m_frames.resize(2);
 
-            err = VmbFrameAnnounce(m_handle, &m_frame, sizeof(VmbFrame_t));
-            ok = (VmbErrorSuccess == err);
+            for(Frame& f : m_frames)
+            {
+                f.buffer.resize(payload_size);
+                f.frame.buffer = &f.buffer.front();
+                f.frame.bufferSize = payload_size;
+                f.frame.context[0] = nullptr;
+                f.frame.context[1] = nullptr;
+                f.frame.context[2] = nullptr;
+                f.frame.context[3] = nullptr;
+
+                err = VmbFrameAnnounce(m_handle, &f.frame, sizeof(VmbFrame_t));
+                ok = ok && (VmbErrorSuccess == err);
+            }
         }
 
         if(ok)
@@ -193,8 +198,13 @@ bool VimbaCamera::open()
 
         if(ok)
         {
-            err = VmbCaptureFrameQueue(m_handle, &m_frame, &VimbaCamera::frame_callback);
-            ok = (VmbErrorSuccess == err);
+            m_next_frame = 0;
+
+            for(Frame& f : m_frames)
+            {
+                err = VmbCaptureFrameQueue(m_handle, &f.frame, nullptr);
+                ok = ok && (VmbErrorSuccess == err);
+            }
         }
 
         if(ok)
@@ -232,7 +242,7 @@ void VimbaCamera::close()
 
         VmbCameraClose( m_handle );
 
-        m_buffer.clear();
+        m_frames.clear();
 
         m_is_open = false;
     }
@@ -240,17 +250,46 @@ void VimbaCamera::close()
 
 void VimbaCamera::read(Image& image)
 {
+    image.setValid(false);
+
     if( m_is_open )
     {
-        m_mutex.lock();
+        Frame& f = m_frames[m_next_frame];
 
-        m_newest_image.moveTo(image);
+        VmbError_t err = VmbCaptureFrameWait(m_handle, &f.frame, 10);
 
-        m_mutex.unlock();
-    }
-    else
-    {
-        image.setValid(false);
+        if(err == VmbErrorSuccess)
+        {
+            m_next_frame = (m_next_frame+1) % m_frames.size();
+
+            if(
+                (f.frame.receiveStatus == VmbFrameStatusComplete) &&
+                (f.frame.pixelFormat == VmbPixelFormatBgr8) &&
+                (f.frame.receiveFlags & VmbFrameFlagsTimestamp) &&
+                (f.frame.receiveFlags & VmbFrameFlagsDimension) )
+            {
+                cv::Mat wrapper(
+                    cv::Size(f.frame.width, f.frame.height),
+                    CV_8UC3,
+                    f.frame.buffer);
+
+                image.setTimestamp( double(f.frame.timestamp) / double(m_tick_frequency) );
+                image.refFrame() = wrapper.clone();
+                image.setValid(true);
+            }
+            /*
+            else
+            {
+                std::cout << "Ahh!" << std::endl;
+                std::cout << f.frame.receiveStatus << std::endl;
+                std::cout << f.frame.pixelFormat << std::endl;
+                std::cout << (f.frame.receiveFlags & VmbFrameFlagsTimestamp) << std::endl;
+                std::cout << (f.frame.receiveFlags & VmbFrameFlagsDimension) << std::endl;
+            }
+            */
+
+            VmbCaptureFrameQueue( m_handle, &f.frame, nullptr);
+        }
     }
 }
 
