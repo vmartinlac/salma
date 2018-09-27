@@ -10,7 +10,6 @@ add_library(
     SLAMParameters.cpp
     SLAMOutput.h
     SLAMOutput.cpp
-    FinitePriorityQueue.h
 )
 
 target_link_libraries(

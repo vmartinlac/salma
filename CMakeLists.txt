@@ -23,4 +23,5 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 #find_package(OpenMP REQUIRED)
 
 add_subdirectory(src)
+add_subdirectory(app)
 

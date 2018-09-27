@@ -6,7 +6,6 @@
 #include <QTime>
 #include <QDebug>
 #include "SLAMEngineImpl.h"
-#include "FinitePriorityQueue.h"
 #include "Tracker.h"
 
 #define SLAM_DEBUG
