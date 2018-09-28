@@ -10,6 +10,8 @@ add_library(
     SLAMParameters.cpp
     SLAMOutput.h
     SLAMOutput.cpp
+    Engine.cpp
+    PosePredictor.cpp
 )
 
 target_link_libraries(
