@@ -1,0 +1,19 @@
+
+add_executable(
+    capture-video-mono
+    WIN32
+    main.cpp
+    MainWindow.h
+    MainWindow.cpp
+    ParametersDialog.h
+    ParametersDialog.cpp
+    InformationWidget.h
+    InformationWidget.cpp
+    RecordingThread.h
+    RecordingThread.cpp
+    VideoWidget.h
+    VideoWidget.cpp
+)
+
+target_link_libraries(capture-video-mono PUBLIC camera Qt5::Core Qt5::Widgets)
+

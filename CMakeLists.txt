@@ -18,9 +18,15 @@ find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(OSG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
+#find_package(Curses REQUIRED)
 #find_package(Aravis REQUIRED)
 #find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
 #find_package(OpenMP REQUIRED)
+
+# create target for Curses
+#add_library(Curses INTERFACE)
+#target_include_directories(Curses INTERFACE ${CURSES_INCLUDE_DIRS})
+#target_link_libraries(Curses INTERFACE ${CURSES_LIBRARIES})
 
 add_subdirectory(src)
 add_subdirectory(app)

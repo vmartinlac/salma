@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
 class Image;
 
@@ -19,4 +20,6 @@ public:
 
     virtual void read(Image& image) = 0;
 };
+
+typedef std::shared_ptr<Camera> CameraPtr;
 

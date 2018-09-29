@@ -65,15 +65,15 @@ public:
 
     void finalize() override;
 
-    std::shared_ptr<Camera> getDefaultCamera() override;
+    CameraPtr getDefaultCamera() override;
 
     int getNumCameras() override;
 
-    std::shared_ptr<Camera> getCamera(int id) override;
+    CameraPtr getCamera(int id) override;
 
 protected:
 
-    std::vector< std::shared_ptr<Camera> > m_cameras;
+    std::vector< CameraPtr > m_cameras;
     static VimbaCameraManagerImpl m_instance;
 };
 
@@ -364,7 +364,7 @@ bool VimbaCameraManagerImpl::initialize()
 
 void VimbaCameraManagerImpl::finalize()
 {
-    for( std::shared_ptr<Camera>& camera : m_cameras)
+    for( CameraPtr& camera : m_cameras)
     {
         if(camera.use_count() != 1)
         {
@@ -377,11 +377,11 @@ void VimbaCameraManagerImpl::finalize()
     VmbShutdown();
 }
 
-std::shared_ptr<Camera> VimbaCameraManagerImpl::getDefaultCamera()
+CameraPtr VimbaCameraManagerImpl::getDefaultCamera()
 {
     if( m_cameras.empty() )
     {
-        return std::shared_ptr<Camera>();
+        return CameraPtr();
     }
     else
     {
@@ -394,8 +394,15 @@ int VimbaCameraManagerImpl::getNumCameras()
     return m_cameras.size();
 }
 
-std::shared_ptr<Camera> VimbaCameraManagerImpl::getCamera(int id)
+CameraPtr VimbaCameraManagerImpl::getCamera(int id)
 {
-    return m_cameras[id];
+    if( 0 <= id && id < m_cameras.size() )
+    {
+        return m_cameras[id];
+    }
+    else
+    {
+        return CameraPtr();
+    }
 }
 
