@@ -71,6 +71,8 @@ public:
 
     CameraPtr getCamera(int id) override;
 
+    StereoRigPtr createStereoRig(int left_camera, int right_camera) override;
+
 protected:
 
     std::vector< CameraPtr > m_cameras;
@@ -404,5 +406,48 @@ CameraPtr VimbaCameraManagerImpl::getCamera(int id)
     {
         return CameraPtr();
     }
+}
+
+///// for stereo
+
+class VimbaStereoRigCamera
+{
+public:
+
+    VimbaStereoRigCamera();
+};
+
+class VimbaStereoRig : public StereoRig
+{
+public:
+
+    VimbaStereoRig(
+        std::shared_ptr<VimbaStereoRigCamera> left_camera,
+        std::shared_ptr<VimbaStereoRigCamera> right_camera)
+    {
+        mLeftCamera = std::move(left_camera);
+        mRightCamera = std::move(right_camera);
+    }
+
+    bool open() override;
+    void close() override;
+
+    bool read(StereoImage& to) override;
+
+protected:
+
+    std::shared_ptr<VimbaStereoRigCamera> mLeftCamera;
+    std::shared_ptr<VimbaStereoRigCamera> mRightCamera;
+};
+
+StereoRigPtr VimbaCameraManagerImpl::createStereoRig(int left_camera, int right_camera)
+{
+    /*
+    std::shared_ptr<VimbaStereoRigCamera> left(new VimbaStereoRigCamera());
+    std::shared_ptr<VimbaStereoRigCamera> right(new VimbaStereoRigCamera());
+    */
+    // not implemented yet.
+    std::cout << "not implemented!" << std::endl;
+    return StereoRigPtr();
 }
 

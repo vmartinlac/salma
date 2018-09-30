@@ -3,6 +3,7 @@
 #include <memory>
 #include "Camera.h"
 #include "Image.h"
+#include "StereoRig.h"
 
 class VimbaCameraManager
 {
@@ -20,5 +21,7 @@ public:
     virtual int getNumCameras() = 0;
 
     virtual std::shared_ptr<Camera> getCamera(int id) = 0;
+
+    virtual StereoRigPtr createStereoRig(int left_camera, int right_camera) = 0;
 };
 

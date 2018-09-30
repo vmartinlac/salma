@@ -10,6 +10,9 @@ add_library(
     OpenCVCamera.cpp
     Image.h
     Image.cpp
+    StereoRig.h
+    StereoRig.cpp
+    StereoImage.h
 )
 
 target_link_libraries(camera PUBLIC Vimba opencv_core)
