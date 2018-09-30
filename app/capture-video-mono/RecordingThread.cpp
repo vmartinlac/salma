@@ -1,6 +1,7 @@
 #include "RecordingThread.h"
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
+#include <fstream>
 
 RecordingThread::RecordingThread(Parameters* parameters, Output* output, QObject* parent) : QThread(parent)
 {
@@ -27,6 +28,9 @@ void RecordingThread::run()
 
     if( params.camera )
     {
+        QString csv_path = params.output_directory.absoluteFilePath("recording.csv");
+        std::ofstream csv(csv_path.toLocal8Bit().data(), std::ofstream::out);
+
         params.camera->open();
 
         while(isInterruptionRequested() == false)
@@ -36,8 +40,12 @@ void RecordingThread::run()
 
             if(image.isValid())
             {
-                QString filename = params.output_directory.absoluteFilePath(QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0'));
-                //cv::imwrite(filename.toLocal8Bit().data(), image.refFrame());
+                QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
+                QString filename = params.output_directory.absoluteFilePath(basename);
+                cv::imwrite(filename.toLocal8Bit().data(), image.refFrame());
+
+                csv << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+
                 mNumFrames++;
 
                 mOutput->beginWrite();
@@ -50,6 +58,8 @@ void RecordingThread::run()
         }
 
         params.camera->close();
+
+        csv.close();
     }
 }
 
