@@ -13,7 +13,11 @@ add_executable(
     RecordingThread.cpp
     VideoWidget.h
     VideoWidget.cpp
+    Parameters.h
+    Output.h
+    Port.h
+    Port.cpp
 )
 
-target_link_libraries(capture-video-mono PUBLIC camera Qt5::Core Qt5::Widgets)
+target_link_libraries(capture-video-mono PUBLIC camera Qt5::Core Qt5::Widgets opencv_core opencv_imgproc opencv_imgcodecs)
 

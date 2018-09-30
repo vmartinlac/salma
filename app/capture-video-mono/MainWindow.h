@@ -1,8 +1,12 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QAction>
 #include "VideoWidget.h"
 #include "InformationWidget.h"
+#include "RecordingThread.h"
+#include "Output.h"
+#include "Parameters.h"
 
 class MainWindow : public QMainWindow
 {
@@ -14,8 +18,17 @@ public:
 
 protected:
 
+    QAction* mActionConfigure;
+    QAction* mActionStart;
+    QAction* mActionStop;
+    QAction* mActionAbout;
+
     VideoWidget* mVideoWidget;
     InformationWidget* mInformationWidget;
+
+    RecordingThread* mEngine;
+    Parameters* mParameters;
+    Output* mOutput;
 
 protected slots:
 
@@ -23,5 +36,8 @@ protected slots:
     void startRecording();
     void stopRecording();
     void about();
+
+    void engineStarted();
+    void engineStopped();
 };
 

@@ -2,17 +2,32 @@
 
 #include <QDialog>
 #include <QDir>
+#include <QLineEdit>
+#include <QComboBox>
 #include "Camera.h"
+#include "Parameters.h"
 
 class ParametersDialog : public QDialog
 {
+    Q_OBJECT
 public:
 
-    ParametersDialog(QWidget* parent=nullptr);
+    ParametersDialog(Parameters* parameters, QWidget* parent=nullptr);
+
+public slots:
+
+    int exec() override;
+
+protected slots:
+
+    void accept();
+    void selectOutputDirectory();
 
 protected:
 
-    QDir mOutputDirectory;
-    CameraPtr mCamera;
+    QLineEdit* mPath;
+    QComboBox* mCameraList;
+
+    Parameters* mParameters;
 };
 

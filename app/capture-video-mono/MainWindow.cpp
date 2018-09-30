@@ -1,14 +1,25 @@
 #include <QToolBar>
 #include <QScrollArea>
 #include <QMessageBox>
-#include <QAction>
 #include <QIcon>
+#include <QKeySequence>
 #include <QSplitter>
 #include "ParametersDialog.h"
 #include "MainWindow.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
+    // set up engine and other data structures.
+
+    {
+        mParameters = new Parameters(this);
+        mOutput = new Output(this);
+        mEngine = new RecordingThread(mParameters, mOutput, this);
+
+        QObject::connect(mEngine, SIGNAL(started()), this, SLOT(engineStarted()));
+        QObject::connect(mEngine, SIGNAL(finished()), this, SLOT(engineStopped()));
+    }
+
     // set up the toolbar.
 
     {
@@ -16,29 +27,33 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
         tb->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
-        QAction* aConfigure = tb->addAction("Configure");
-        QAction* aStart = tb->addAction("Start");
-        QAction* aStop = tb->addAction("Stop");
-        QAction* aAbout = tb->addAction("About");
+        mActionConfigure = tb->addAction("Configure");
+        mActionStart = tb->addAction("Start");
+        mActionStop = tb->addAction("Stop");
+        mActionAbout = tb->addAction("About");
 
-        aConfigure->setIcon(QIcon::fromTheme("document-properties"));
-        aStart->setIcon(QIcon::fromTheme("media-playback-start"));
-        aStop->setIcon(QIcon::fromTheme("media-playback-stop"));
-        aAbout->setIcon(QIcon::fromTheme("help-about"));
+        mActionConfigure->setIcon(QIcon::fromTheme("document-properties"));
+        mActionStart->setIcon(QIcon::fromTheme("media-playback-start"));
+        mActionStop->setIcon(QIcon::fromTheme("media-playback-stop"));
+        mActionAbout->setIcon(QIcon::fromTheme("help-about"));
 
-        QObject::connect(aConfigure, SIGNAL(triggered()), this, SLOT(configure()));
-        QObject::connect(aStart, SIGNAL(triggered()), this, SLOT(startRecording()));
-        QObject::connect(aStop, SIGNAL(triggered()), this, SLOT(stopRecording()));
-        QObject::connect(aAbout, SIGNAL(triggered()), this, SLOT(about()));
+        mActionConfigure->setShortcut(QKeySequence("Alt+C"));
+
+        QObject::connect(mActionConfigure, SIGNAL(triggered()), this, SLOT(configure()));
+        QObject::connect(mActionStart, SIGNAL(triggered()), this, SLOT(startRecording()));
+        QObject::connect(mActionStop, SIGNAL(triggered()), this, SLOT(stopRecording()));
+        QObject::connect(mActionAbout, SIGNAL(triggered()), this, SLOT(about()));
+
+        mActionStop->setEnabled(false);
     }
 
     // set up central widgets.
 
     {
 
-        mVideoWidget = new VideoWidget();
+        mVideoWidget = new VideoWidget(mOutput);
 
-        mInformationWidget = new InformationWidget();
+        mInformationWidget = new InformationWidget(mOutput);
 
         QScrollArea* scroll = new QScrollArea();
         scroll->setAlignment(Qt::AlignCenter);
@@ -58,23 +73,46 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
 void MainWindow::configure()
 {
-    ParametersDialog* dlg = new ParametersDialog(this);
+    ParametersDialog* dlg = new ParametersDialog(mParameters, this);
 
-    dlg->exec();
+    int ret = dlg->exec();
+
+    if(ret == QDialog::Accepted)
+    {
+        ;
+    }
 
     delete dlg;
 }
 
 void MainWindow::startRecording()
 {
+    mEngine->start();
+    mActionStart->setEnabled(false);
+    mActionStop->setEnabled(false);
 }
 
 void MainWindow::stopRecording()
 {
+    mEngine->requestInterruption();
+    mActionStart->setEnabled(false);
+    mActionStop->setEnabled(false);
 }
 
 void MainWindow::about()
 {
     QMessageBox::information(this, "About", "Tool to record a video. Written by Victor Martin Lac 2018.");
+}
+
+void MainWindow::engineStarted()
+{
+    mActionStart->setEnabled(false);
+    mActionStop->setEnabled(true);
+}
+
+void MainWindow::engineStopped()
+{
+    mActionStart->setEnabled(true);
+    mActionStop->setEnabled(false);
 }
 

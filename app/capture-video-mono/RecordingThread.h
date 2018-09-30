@@ -2,33 +2,22 @@
 #pragma once
 
 #include <QThread>
-#include <QDir>
-#include "Camera.h"
+#include "Parameters.h"
+#include "Output.h"
 #include "Image.h"
 
 class RecordingThread : public QThread
 {
 public:
 
-    RecordingThread()
-    {
-        mNumFrames = 0;
-    }
+    RecordingThread(Parameters* parameters, Output* output, QObject* parent=nullptr);
 
-    void setCamera(CameraPtr camera)
-    {
-        mCamera = camera;
-    }
-
-    void setOutputDirectoy(const QDir& dir)
-    {
-        mOutputDirectory = dir;
-    }
+    ~RecordingThread();
 
 protected:
 
-    CameraPtr mCamera;
-    QDir mOutputDirectory;
+    Parameters* mParameters;
+    Output* mOutput;
     int mNumFrames;
 
 protected:
