@@ -1,6 +1,6 @@
 
 add_executable(
-    capture-video-mono
+    camera-calibration-tool
     WIN32
     main.cpp
     MainWindow.h
@@ -19,5 +19,5 @@ add_executable(
     Port.cpp
 )
 
-target_link_libraries(capture-video-mono PUBLIC camera Qt5::Core Qt5::Widgets opencv_core opencv_imgproc opencv_imgcodecs)
+target_link_libraries(camera-calibration-tool PUBLIC camera Qt5::Core Qt5::Widgets opencv_core opencv_imgproc opencv_imgcodecs)
 
