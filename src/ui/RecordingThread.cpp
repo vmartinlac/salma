@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 
-RecordingThread::RecordingThread(Parameters* parameters, Output* output, QObject* parent) : QThread(parent)
+RecordingThread::RecordingThread(RecordingParameters* parameters, RecordingOutput* output, QObject* parent) : QThread(parent)
 {
     mParameters = parameters;
     mOutput = output;
@@ -21,7 +21,7 @@ RecordingThread::~RecordingThread()
 
 void RecordingThread::run()
 {
-    ParametersData params;
+    RecordingParametersData params;
     mParameters->read(params);
 
     mNumFrames = 0;

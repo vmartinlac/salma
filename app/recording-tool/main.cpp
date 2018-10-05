@@ -1,7 +1,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include "VimbaCamera.h"
-#include "MainWindow.h"
+#include "RecordingMainWindow.h"
 
 int main(int num_args, char** args)
 {
@@ -21,7 +21,7 @@ int main(int num_args, char** args)
     }
     else
     {
-        MainWindow* win = new MainWindow();
+        RecordingMainWindow* win = new RecordingMainWindow();
 
         win->show();
 

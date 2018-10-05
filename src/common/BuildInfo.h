@@ -9,6 +9,8 @@ public:
     static int getVersionMinor();
     static int getVersionRevision();
 
-    static std::string getReleaseName();
+    static std::string getBuildType();
+    static std::string getCompilerName();
+    static std::string getCompilationDate();
 };
 

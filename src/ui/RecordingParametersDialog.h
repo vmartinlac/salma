@@ -5,14 +5,14 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "Camera.h"
-#include "Parameters.h"
+#include "RecordingParameters.h"
 
-class ParametersDialog : public QDialog
+class RecordingParametersDialog : public QDialog
 {
     Q_OBJECT
 public:
 
-    ParametersDialog(Parameters* parameters, QWidget* parent=nullptr);
+    RecordingParametersDialog(RecordingParameters* parameters, QWidget* parent=nullptr);
 
 public slots:
 
@@ -28,6 +28,6 @@ protected:
     QLineEdit* mPath;
     QComboBox* mCameraList;
 
-    Parameters* mParameters;
+    RecordingParameters* mParameters;
 };
 

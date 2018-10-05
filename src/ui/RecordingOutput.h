@@ -4,7 +4,7 @@
 #include <opencv2/core.hpp>
 #include "Port.h"
 
-struct OutputData
+struct RecordingOutputData
 {
     cv::Mat image;
     QString camera_name;
@@ -12,5 +12,5 @@ struct OutputData
     int frame_count;
 };
 
-typedef Port<OutputData> Output;
+typedef Port<RecordingOutputData> RecordingOutput;
 

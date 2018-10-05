@@ -2,19 +2,19 @@
 
 #include <QMainWindow>
 #include <QAction>
-#include "VideoWidget.h"
-#include "InformationWidget.h"
+#include "RecordingVideoWidget.h"
+#include "RecordingInformationWidget.h"
 #include "RecordingThread.h"
-#include "Output.h"
-#include "Parameters.h"
+#include "RecordingOutput.h"
+#include "RecordingParameters.h"
 
-class MainWindow : public QMainWindow
+class RecordingMainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
 
-    MainWindow(QWidget* parent=nullptr);
+    RecordingMainWindow(QWidget* parent=nullptr);
 
 protected:
 
@@ -23,12 +23,12 @@ protected:
     QAction* mActionStop;
     QAction* mActionAbout;
 
-    VideoWidget* mVideoWidget;
-    InformationWidget* mInformationWidget;
+    RecordingVideoWidget* mVideoWidget;
+    RecordingInformationWidget* mInformationWidget;
 
     RecordingThread* mEngine;
-    Parameters* mParameters;
-    Output* mOutput;
+    RecordingParameters* mParameters;
+    RecordingOutput* mOutput;
 
 protected slots:
 

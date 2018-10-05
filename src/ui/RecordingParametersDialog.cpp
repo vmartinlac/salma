@@ -6,9 +6,9 @@
 #include <QFormLayout>
 #include <QComboBox>
 #include "VimbaCamera.h"
-#include "ParametersDialog.h"
+#include "RecordingParametersDialog.h"
 
-ParametersDialog::ParametersDialog(Parameters* params, QWidget* parent) : QDialog(parent)
+RecordingParametersDialog::RecordingParametersDialog(RecordingParameters* params, QWidget* parent) : QDialog(parent)
 {
     mParameters = params;
 
@@ -51,7 +51,7 @@ ParametersDialog::ParametersDialog(Parameters* params, QWidget* parent) : QDialo
     setWindowTitle("Parameters");
 }
 
-void ParametersDialog::accept()
+void RecordingParametersDialog::accept()
 {
     CameraPtr newcamera;
     QDir newoutputdirectory;
@@ -99,7 +99,7 @@ void ParametersDialog::accept()
     }
 }
 
-void ParametersDialog::selectOutputDirectory()
+void RecordingParametersDialog::selectOutputDirectory()
 {
     QString ret = QFileDialog::getExistingDirectory(this, "Select output directory", mPath->text());
 
@@ -109,7 +109,7 @@ void ParametersDialog::selectOutputDirectory()
     }
 }
 
-int ParametersDialog::exec()
+int RecordingParametersDialog::exec()
 {
     mParameters->beginRead();
     mPath->setText( mParameters->data().output_directory.path() );

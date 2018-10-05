@@ -4,16 +4,17 @@
 #include <QIcon>
 #include <QKeySequence>
 #include <QSplitter>
-#include "ParametersDialog.h"
-#include "MainWindow.h"
+#include "AboutDialog.h"
+#include "RecordingParametersDialog.h"
+#include "RecordingMainWindow.h"
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
+RecordingMainWindow::RecordingMainWindow(QWidget* parent) : QMainWindow(parent)
 {
     // set up engine and other data structures.
 
     {
-        mParameters = new Parameters(this);
-        mOutput = new Output(this);
+        mParameters = new RecordingParameters(this);
+        mOutput = new RecordingOutput(this);
         mEngine = new RecordingThread(mParameters, mOutput, this);
 
         QObject::connect(mEngine, SIGNAL(started()), this, SLOT(engineStarted()));
@@ -26,11 +27,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         QToolBar* tb = addToolBar("ToolBar");
 
         tb->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-
-        tb->addAction("Calibrate camera");
-        tb->addAction("Calibrate stereo-rig");
-        tb->addAction("Record video");
-        tb->addAction("Reconstruct");
 
         mActionConfigure = tb->addAction("Configure");
         mActionStart = tb->addAction("Start");
@@ -56,9 +52,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     {
 
-        mVideoWidget = new VideoWidget(mOutput);
+        mVideoWidget = new RecordingVideoWidget(mOutput);
 
-        mInformationWidget = new InformationWidget(mOutput);
+        mInformationWidget = new RecordingInformationWidget(mOutput);
 
         QScrollArea* scroll = new QScrollArea();
         scroll->setAlignment(Qt::AlignCenter);
@@ -76,9 +72,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     setWindowTitle("Video Recorder");
 }
 
-void MainWindow::configure()
+void RecordingMainWindow::configure()
 {
-    ParametersDialog* dlg = new ParametersDialog(mParameters, this);
+    RecordingParametersDialog* dlg = new RecordingParametersDialog(mParameters, this);
 
     int ret = dlg->exec();
 
@@ -90,32 +86,34 @@ void MainWindow::configure()
     delete dlg;
 }
 
-void MainWindow::startRecording()
+void RecordingMainWindow::startRecording()
 {
     mEngine->start();
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
 
-void MainWindow::stopRecording()
+void RecordingMainWindow::stopRecording()
 {
     mEngine->requestInterruption();
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
 
-void MainWindow::about()
+void RecordingMainWindow::about()
 {
-    QMessageBox::information(this, "About", "Tool to record a video. Written by Victor Martin Lac 2018.");
+    AboutDialog* dlg = new AboutDialog(this);
+    dlg->exec();
+    delete dlg;
 }
 
-void MainWindow::engineStarted()
+void RecordingMainWindow::engineStarted()
 {
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(true);
 }
 
-void MainWindow::engineStopped()
+void RecordingMainWindow::engineStopped()
 {
     mActionStart->setEnabled(true);
     mActionStop->setEnabled(false);

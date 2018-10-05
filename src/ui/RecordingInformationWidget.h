@@ -2,15 +2,15 @@
 
 #include <QWidget>
 #include <QLabel>
-#include "Output.h"
+#include "RecordingOutput.h"
 
-class InformationWidget : public QWidget
+class RecordingInformationWidget : public QWidget
 {
     Q_OBJECT
 
 public:
 
-    InformationWidget(Output* output, QWidget* parent=nullptr);
+    RecordingInformationWidget(RecordingOutput* output, QWidget* parent=nullptr);
 
 protected slots:
 
@@ -22,6 +22,6 @@ protected:
     QLabel* mLabelOutputDirectory;
     QLabel* mLabelNumFrames;
     QLabel* mLabelResolution;
-    Output* mOutput;
+    RecordingOutput* mOutput;
 };
 

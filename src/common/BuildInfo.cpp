@@ -15,18 +15,18 @@ int BuildInfo::getVersionRevision()
     return BI_VERSION_REVISION;
 }
 
-std::string BuildInfo::getReleaseName()
+std::string BuildInfo::getBuildType()
 {
-    return
-        "BI " +
-        std::to_string(BI_VERSION_MAJOR) +
-        "." +
-        std::to_string(BI_VERSION_MINOR) +
-        "." +
-        std::to_string(BI_VERSION_REVISION) +
-        " " +
-        std::string(BI_BUILD_TYPE) +
-        " compiled on " __DATE__ " " __TIME__ " "
-        "with " BI_CXX_COMPILER_ID " " BI_CXX_COMPILER_VERSION;
+    return std::string(BI_BUILD_TYPE);
+}
+
+std::string BuildInfo::getCompilationDate()
+{
+        return __DATE__ " " __TIME__;
+}
+
+std::string BuildInfo::getCompilerName()
+{
+        return BI_CXX_COMPILER_ID " " BI_CXX_COMPILER_VERSION;
 }
 

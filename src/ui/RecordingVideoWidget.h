@@ -1,15 +1,15 @@
 #pragma once
 
 #include <QWidget>
-#include "Output.h"
+#include "RecordingOutput.h"
 
-class VideoWidget : public QWidget
+class RecordingVideoWidget : public QWidget
 {
     Q_OBJECT
 
 public:
 
-    VideoWidget(Output* output, QWidget* parent=nullptr);
+    RecordingVideoWidget(RecordingOutput* output, QWidget* parent=nullptr);
 
 protected:
 
@@ -21,7 +21,7 @@ protected slots:
 
 protected:
 
-    Output* mOutput;
+    RecordingOutput* mOutput;
     QImage mImage;
 };
 

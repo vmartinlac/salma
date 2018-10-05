@@ -1,8 +1,8 @@
 #include <QPainter>
 #include <opencv2/imgproc.hpp>
-#include "VideoWidget.h"
+#include "RecordingVideoWidget.h"
 
-VideoWidget::VideoWidget(Output* output, QWidget* parent) : QWidget(parent)
+RecordingVideoWidget::RecordingVideoWidget(RecordingOutput* output, QWidget* parent) : QWidget(parent)
 {
     mOutput = output;
     setMinimumSize(320, 200);
@@ -13,7 +13,7 @@ VideoWidget::VideoWidget(Output* output, QWidget* parent) : QWidget(parent)
     mImage.fill(Qt::black);
 }
 
-void VideoWidget::paintEvent(QPaintEvent*)
+void RecordingVideoWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
 
@@ -24,11 +24,11 @@ void VideoWidget::paintEvent(QPaintEvent*)
         mImage);
 }
 
-void VideoWidget::refresh()
+void RecordingVideoWidget::refresh()
 {
     const int target_width = 400;
 
-    OutputData data;
+    RecordingOutputData data;
     mOutput->read(data);
 
     cv::Mat small;

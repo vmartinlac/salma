@@ -1,8 +1,8 @@
 #include <QFormLayout>
-#include "InformationWidget.h"
-#include "Parameters.h"
+#include "RecordingInformationWidget.h"
+#include "RecordingParameters.h"
 
-InformationWidget::InformationWidget(Output* output, QWidget* parent) : QWidget(parent)
+RecordingInformationWidget::RecordingInformationWidget(RecordingOutput* output, QWidget* parent) : QWidget(parent)
 {
     mOutput = output;
 
@@ -22,9 +22,9 @@ InformationWidget::InformationWidget(Output* output, QWidget* parent) : QWidget(
     QObject::connect(output, SIGNAL(updated()), this, SLOT(refresh()));
 }
 
-void InformationWidget::refresh()
+void RecordingInformationWidget::refresh()
 {
-    OutputData data;
+    RecordingOutputData data;
     mOutput->read(data);
 
     mLabelCamera->setText(data.camera_name);

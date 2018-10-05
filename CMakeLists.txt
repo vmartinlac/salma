@@ -30,4 +30,5 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 
 add_subdirectory(src)
 add_subdirectory(app)
+add_subdirectory(tst)
 

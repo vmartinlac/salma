@@ -4,11 +4,11 @@
 #include <QDir>
 #include "Camera.h"
 
-struct ParametersData
+struct RecordingParametersData
 {
     QDir output_directory;
     CameraPtr camera;
 };
 
-typedef Port<ParametersData> Parameters;
+typedef Port<RecordingParametersData> RecordingParameters;
 

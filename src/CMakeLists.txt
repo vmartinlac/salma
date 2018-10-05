@@ -1,7 +1,6 @@
 add_subdirectory(camera)
-add_subdirectory(slam)
+#add_subdirectory(slam)
 add_subdirectory(ui)
 add_subdirectory(target)
-add_subdirectory(test)
 add_subdirectory(features)
 add_subdirectory(common)
