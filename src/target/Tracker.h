@@ -6,6 +6,7 @@
 #include <vector>
 #include <opencv2/core.hpp>
 #include <nanoflann.hpp>
+#include <Eigen/Eigen>
 
 namespace target
 {

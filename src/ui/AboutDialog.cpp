@@ -8,7 +8,7 @@
 AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent)
 {
     QLabel* wtitle = new QLabel("<h1>SALM</h1>");
-    QLabel* wdescription = new QLabel("Victor MARTIN LAC 2018");
+    QLabel* wdescription = new QLabel("This software was written by Victor MARTIN LAC\nbetween august 2018 and october 2018.");
 
     const std::string version =
         std::to_string(BuildInfo::getVersionMajor()) + "." +

@@ -15,6 +15,6 @@ add_library(
     StereoImage.h
 )
 
-target_link_libraries(camera PUBLIC Vimba opencv_core)
+target_link_libraries(camera PUBLIC Vimba opencv_core opencv_videoio)
 target_include_directories(camera INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

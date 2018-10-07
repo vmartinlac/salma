@@ -1,7 +1,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include "VimbaCamera.h"
-#include "CameraCalibrationWindow.h"
+#include "CameraCalibrationMainWindow.h"
 
 int main(int num_args, char** args)
 {
@@ -21,7 +21,7 @@ int main(int num_args, char** args)
     }
     else
     {
-        CameraCalibrationWindow* win = new CameraCalibrationWindow();
+        CameraCalibrationMainWindow* win = new CameraCalibrationMainWindow();
 
         win->show();
 

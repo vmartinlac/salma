@@ -3,10 +3,15 @@
 #include <iostream>
 #include <fstream>
 
-RecordingThread::RecordingThread(RecordingParameters* parameters, RecordingOutput* output, QObject* parent) : QThread(parent)
+RecordingThread::RecordingThread(
+    RecordingParameters* parameters,
+    VideoInputPort* video,
+    RecordingStatsInputPort* stats,
+    QObject* parent) : QThread(parent)
 {
     mParameters = parameters;
-    mOutput = output;
+    mVideo = video;
+    mStats = stats;
     mNumFrames = 0;
 }
 
@@ -48,12 +53,17 @@ void RecordingThread::run()
 
                 mNumFrames++;
 
-                mOutput->beginWrite();
-                mOutput->data().camera_name = params.camera->getHumanName().c_str();
-                mOutput->data().output_directory = params.output_directory.path();
-                mOutput->data().image = image.refFrame();
-                mOutput->data().frame_count = mNumFrames;
-                mOutput->endWrite();
+                mStats->beginWrite();
+                mStats->data().camera_name = params.camera->getHumanName();
+                mStats->data().output_directory = params.output_directory.path().toStdString();
+                mStats->data().frame_count = mNumFrames;
+                mStats->data().image_width = image.refFrame().rows;
+                mStats->data().image_height = image.refFrame().cols;
+                mStats->endWrite();
+
+                mVideo->beginWrite();
+                mVideo->data().image = image.refFrame();
+                mVideo->endWrite();
             }
         }
 

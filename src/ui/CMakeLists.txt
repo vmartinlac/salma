@@ -6,22 +6,41 @@ add_library(
     AboutDialog.cpp
     Port.h
     Port.cpp
-    RecordingMainWindow.h
-    RecordingMainWindow.cpp
+    VideoWidget.h
+    VideoWidget.cpp
+    VideoInputDialog.h
+    VideoInputDialog.cpp
+    RecordingParameters.h
     RecordingParametersDialog.h
     RecordingParametersDialog.cpp
-    RecordingInformationWidget.h
-    RecordingInformationWidget.cpp
+    RecordingStatsWidget.h
+    RecordingStatsWidget.cpp
     RecordingThread.h
     RecordingThread.cpp
-    RecordingVideoWidget.h
-    RecordingVideoWidget.cpp
-    RecordingParameters.h
-    RecordingOutput.h
-    CameraCalibrationWindow.h
-    CameraCalibrationWindow.cpp
+    RecordingMainWindow.h
+    RecordingMainWindow.cpp
+    CameraCalibrationParameters.h
+    CameraCalibrationParametersDialog.h
+    CameraCalibrationParametersDialog.cpp
+    CameraCalibrationStatsWidget.h
+    CameraCalibrationStatsWidget.cpp
+    CameraCalibrationThread.h
+    CameraCalibrationThread.cpp
+    CameraCalibrationMainWindow.h
+    CameraCalibrationMainWindow.cpp
 )
 
-target_link_libraries(ui PUBLIC common camera Qt5::Widgets OpenSceneGraph opencv_core opencv_imgproc opencv_imgcodecs)
+target_link_libraries(
+    ui PUBLIC
+    common
+    camera
+    target
+    Qt5::Widgets
+    opencv_core
+    opencv_imgproc
+    opencv_imgcodecs
+    opencv_calib3d
+)
+
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

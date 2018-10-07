@@ -5,10 +5,10 @@
 #include <QKeySequence>
 #include <QSplitter>
 #include "AboutDialog.h"
-#include "RecordingParametersDialog.h"
-#include "RecordingMainWindow.h"
+#include "CameraCalibrationParametersDialog.h"
+#include "CameraCalibrationMainWindow.h"
 
-RecordingMainWindow::RecordingMainWindow(QWidget* parent) : QMainWindow(parent)
+CameraCalibrationMainWindow::CameraCalibrationMainWindow(QWidget* parent) : QMainWindow(parent)
 {
     // set up the toolbar.
 
@@ -30,8 +30,8 @@ RecordingMainWindow::RecordingMainWindow(QWidget* parent) : QMainWindow(parent)
         mActionConfigure->setShortcut(QKeySequence("Alt+C"));
 
         QObject::connect(mActionConfigure, SIGNAL(triggered()), this, SLOT(configure()));
-        QObject::connect(mActionStart, SIGNAL(triggered()), this, SLOT(startRecording()));
-        QObject::connect(mActionStop, SIGNAL(triggered()), this, SLOT(stopRecording()));
+        QObject::connect(mActionStart, SIGNAL(triggered()), this, SLOT(startCameraCalibration()));
+        QObject::connect(mActionStop, SIGNAL(triggered()), this, SLOT(stopCameraCalibration()));
         QObject::connect(mActionAbout, SIGNAL(triggered()), this, SLOT(about()));
 
         mActionStop->setEnabled(false);
@@ -42,7 +42,7 @@ RecordingMainWindow::RecordingMainWindow(QWidget* parent) : QMainWindow(parent)
     {
         mVideoWidget = new VideoWidget();
 
-        mStatsWidget = new RecordingStatsWidget();
+        mStatsWidget = new CameraCalibrationStatsWidget();
 
         QScrollArea* scroll = new QScrollArea();
         scroll->setAlignment(Qt::AlignCenter);
@@ -60,19 +60,19 @@ RecordingMainWindow::RecordingMainWindow(QWidget* parent) : QMainWindow(parent)
     // set up engine and other data structures.
 
     {
-        mParameters = new RecordingParameters(this);
-        mEngine = new RecordingThread(mParameters, mVideoWidget->getPort(), mStatsWidget->getPort(), this);
+        mParameters = new CameraCalibrationParameters(this);
+        mEngine = new CameraCalibrationThread(mParameters, mVideoWidget->getPort(), mStatsWidget->getPort(), this);
 
         QObject::connect(mEngine, SIGNAL(started()), this, SLOT(engineStarted()));
         QObject::connect(mEngine, SIGNAL(finished()), this, SLOT(engineStopped()));
     }
 
-    setWindowTitle("Video Recorder");
+    setWindowTitle("Camera Calibration");
 }
 
-void RecordingMainWindow::configure()
+void CameraCalibrationMainWindow::configure()
 {
-    RecordingParametersDialog* dlg = new RecordingParametersDialog(mParameters, this);
+    CameraCalibrationParametersDialog* dlg = new CameraCalibrationParametersDialog(mParameters, this);
 
     int ret = dlg->exec();
 
@@ -84,34 +84,34 @@ void RecordingMainWindow::configure()
     delete dlg;
 }
 
-void RecordingMainWindow::startRecording()
+void CameraCalibrationMainWindow::startCameraCalibration()
 {
     mEngine->start();
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
 
-void RecordingMainWindow::stopRecording()
+void CameraCalibrationMainWindow::stopCameraCalibration()
 {
     mEngine->requestInterruption();
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
 
-void RecordingMainWindow::about()
+void CameraCalibrationMainWindow::about()
 {
     AboutDialog* dlg = new AboutDialog(this);
     dlg->exec();
     delete dlg;
 }
 
-void RecordingMainWindow::engineStarted()
+void CameraCalibrationMainWindow::engineStarted()
 {
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(true);
 }
 
-void RecordingMainWindow::engineStopped()
+void CameraCalibrationMainWindow::engineStopped()
 {
     mActionStart->setEnabled(true);
     mActionStop->setEnabled(false);

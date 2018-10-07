@@ -1,19 +1,25 @@
 #include <QPainter>
 #include <opencv2/imgproc.hpp>
-#include "RecordingVideoWidget.h"
+#include "VideoWidget.h"
 
-RecordingVideoWidget::RecordingVideoWidget(RecordingOutput* output, QWidget* parent) : QWidget(parent)
+VideoWidget::VideoWidget(QWidget* parent) : QWidget(parent)
 {
-    mOutput = output;
-    setMinimumSize(320, 200);
+    mPort = new VideoInputPort(this);
 
-    QObject::connect(output, SIGNAL(updated()), this, SLOT(refresh()));
+    QObject::connect(mPort, SIGNAL(updated()), this, SLOT(refresh()));
 
     mImage = QImage(320, 200, QImage::Format_RGB888);
     mImage.fill(Qt::black);
+
+    setMinimumSize(320, 200);
 }
 
-void RecordingVideoWidget::paintEvent(QPaintEvent*)
+VideoInputPort* VideoWidget::getPort()
+{
+    return mPort;
+}
+
+void VideoWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
 
@@ -24,12 +30,12 @@ void RecordingVideoWidget::paintEvent(QPaintEvent*)
         mImage);
 }
 
-void RecordingVideoWidget::refresh()
+void VideoWidget::refresh()
 {
     const int target_width = 400;
 
-    RecordingOutputData data;
-    mOutput->read(data);
+    VideoInputData data;
+    mPort->read(data);
 
     cv::Mat small;
     cv::resize( data.image, small, cv::Size(target_width, data.image.rows*target_width/data.image.cols), cv::INTER_NEAREST );

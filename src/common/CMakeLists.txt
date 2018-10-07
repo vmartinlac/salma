@@ -4,9 +4,13 @@ add_library(
     STATIC
     BuildInfo.h
     BuildInfo.cpp
+    CalibrationData.h
+    CalibrationData.cpp
 )
 
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(common PUBLIC opencv_core Qt5::Core)
 
 target_compile_definitions(
     common PUBLIC
