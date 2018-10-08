@@ -3,11 +3,11 @@
 #include <opencv2/core.hpp>
 #include <string>
 
-class CalibrationData
+class CameraCalibrationData
 {
 public:
 
-    CalibrationData();
+    CameraCalibrationData();
 
     cv::Mat calibration_matrix;
     cv::Mat distortion_coefficients;

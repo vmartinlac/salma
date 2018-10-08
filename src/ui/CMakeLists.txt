@@ -32,14 +32,16 @@ add_library(
 
 target_link_libraries(
     ui PUBLIC
-    common
+    buildinfo
     camera
     target
     Qt5::Widgets
+    calibration
     opencv_core
     opencv_imgproc
     opencv_imgcodecs
     opencv_calib3d
+    Sophus::Sophus
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

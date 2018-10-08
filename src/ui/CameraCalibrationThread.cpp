@@ -5,7 +5,7 @@
 #include <fstream>
 #include "CameraCalibrationThread.h"
 #include "Tracker.h"
-#include "CalibrationData.h"
+#include "CameraCalibrationData.h"
 
 CameraCalibrationThread::CameraCalibrationThread(
     CameraCalibrationParameters* parameters,
@@ -130,7 +130,7 @@ void CameraCalibrationThread::run()
 
         if( can_calibrate )
         {
-            CalibrationData calibration;
+            CameraCalibrationData calibration;
 
             calibration.image_size = image_size;
 

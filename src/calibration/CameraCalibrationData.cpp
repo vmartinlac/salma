@@ -3,13 +3,13 @@
 #include <QJsonArray>
 #include <fstream>
 #include <iostream>
-#include "CalibrationData.h"
+#include "CameraCalibrationData.h"
 
-CalibrationData::CalibrationData()
+CameraCalibrationData::CameraCalibrationData()
 {
 }
 
-bool CalibrationData::saveToFile(const std::string& path)
+bool CameraCalibrationData::saveToFile(const std::string& path)
 {
     auto mat2json = [] (const cv::Mat& from) -> QJsonArray
     {
@@ -63,7 +63,7 @@ bool CalibrationData::saveToFile(const std::string& path)
     return true;
 }
 
-bool CalibrationData::loadFromFile(const std::string& path)
+bool CameraCalibrationData::loadFromFile(const std::string& path)
 {
     throw std::runtime_error("Not implemented!"); // TODO
 }
