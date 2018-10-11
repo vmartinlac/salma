@@ -1,3 +1,37 @@
+#include "CameraCalibrationOperation.h"
+
+CameraCalibrationOperation::CameraCalibrationOperation()
+{
+}
+
+CameraCalibrationOperation::~CameraCalibrationOperation()
+{
+}
+
+Operation::OperationName CameraCalibrationOperation::getOperation()
+{
+    return OPERATION_CAMERA_CALIBRATION;
+}
+
+CameraCalibrationOperation* CameraCalibrationOperation::cameraCalibration()
+{
+    return this;
+}
+
+void CameraCalibrationOperation::before()
+{
+}
+
+bool CameraCalibrationOperation::step()
+{
+    return false;
+}
+
+void CameraCalibrationOperation::after()
+{
+}
+
+/*
 #include <QTime>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>
@@ -158,3 +192,4 @@ void CameraCalibrationThread::run()
     }
 }
 
+*/

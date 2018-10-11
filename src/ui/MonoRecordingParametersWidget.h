@@ -5,6 +5,8 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "Camera.h"
+
+/*
 #include "RecordingParameters.h"
 
 class RecordingParametersDialog : public QDialog
@@ -30,4 +32,5 @@ protected:
 
     RecordingParameters* mParameters;
 };
+*/
 

@@ -1,3 +1,43 @@
+#include "OperationThread.h"
+
+OperationThread::OperationThread(
+    VideoInputPort* video,
+    StatsInputPort* stats,
+    QObject* parent) : QThread(parent)
+{
+    mVideoPort = video;
+    mStatsPort = stats;
+}
+
+OperationThread::~OperationThread()
+{
+}
+
+void OperationThread::setOperation(OperationPtr op)
+{
+    mOperation = std::move(op);
+}
+
+void OperationThread::run()
+{
+    if(mOperation)
+    {
+        mOperation->setPorts(mVideoPort, mStatsPort);
+
+        mOperation->before();
+
+        bool go_on = true;
+
+        while( go_on && isInterruptionRequested() == false )
+        {
+            go_on = mOperation->step();
+        }
+
+        mOperation->after();
+    }
+}
+
+/*
 #include "RecordingThread.h"
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
@@ -72,4 +112,5 @@ void RecordingThread::run()
         csv.close();
     }
 }
+*/
 

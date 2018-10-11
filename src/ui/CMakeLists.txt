@@ -2,32 +2,34 @@
 add_library(
     ui
     STATIC
-    AboutDialog.h
     AboutDialog.cpp
-    Port.h
+    AboutDialog.h
+    MainWindow.cpp
+    MainWindow.h
     Port.cpp
-    VideoWidget.h
-    VideoWidget.cpp
-    VideoInputDialog.h
+    Port.h
+    StatsWidget.cpp
+    StatsWidget.h
     VideoInputDialog.cpp
-    RecordingParameters.h
-    RecordingParametersDialog.h
-    RecordingParametersDialog.cpp
-    RecordingStatsWidget.h
-    RecordingStatsWidget.cpp
-    RecordingThread.h
-    RecordingThread.cpp
-    RecordingMainWindow.h
-    RecordingMainWindow.cpp
-    CameraCalibrationParameters.h
-    CameraCalibrationParametersDialog.h
-    CameraCalibrationParametersDialog.cpp
-    CameraCalibrationStatsWidget.h
-    CameraCalibrationStatsWidget.cpp
-    CameraCalibrationThread.h
-    CameraCalibrationThread.cpp
-    CameraCalibrationMainWindow.h
-    CameraCalibrationMainWindow.cpp
+    VideoInputDialog.h
+    VideoWidget.cpp
+    VideoWidget.h
+    Operation.h
+    Operation.cpp
+    OperationThread.h
+    OperationThread.cpp
+    OperationDialog.cpp
+    OperationDialog.h
+    OperationParametersWidget.cpp
+    OperationParametersWidget.h
+    CameraCalibrationOperation.cpp
+    CameraCalibrationOperation.h
+    CameraCalibrationParametersWidget.cpp
+    CameraCalibrationParametersWidget.h
+    MonoRecordingOperation.cpp
+    MonoRecordingOperation.h
+    MonoRecordingParametersWidget.cpp
+    MonoRecordingParametersWidget.h
 )
 
 target_link_libraries(

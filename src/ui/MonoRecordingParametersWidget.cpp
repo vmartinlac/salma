@@ -6,6 +6,8 @@
 #include <QFormLayout>
 #include <QComboBox>
 #include "VimbaCamera.h"
+
+/*
 #include "RecordingParametersDialog.h"
 
 RecordingParametersDialog::RecordingParametersDialog(RecordingParameters* params, QWidget* parent) : QDialog(parent)
@@ -116,4 +118,6 @@ int RecordingParametersDialog::exec()
     mParameters->endRead();
     return QDialog::exec();
 }
+
+*/
 

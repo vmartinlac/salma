@@ -6,6 +6,8 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "Camera.h"
+
+/*
 #include "CameraCalibrationParameters.h"
 
 class CameraCalibrationParametersDialog : public QDialog
@@ -32,4 +34,5 @@ protected:
 
     CameraCalibrationParameters* mParameters;
 };
+*/
 
