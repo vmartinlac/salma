@@ -6,6 +6,18 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "Camera.h"
+#include "OperationParametersWidget.h"
+
+class CameraCalibrationParametersWidget : public OperationParametersWidget
+{
+public:
+
+    CameraCalibrationParametersWidget(QWidget* parent=nullptr);
+
+    OperationPtr getOperation() override;
+
+    QString name() override;
+};
 
 /*
 #include "CameraCalibrationParameters.h"

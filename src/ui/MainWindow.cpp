@@ -35,6 +35,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         QObject::connect(mActionAbout, SIGNAL(triggered()), this, SLOT(about()));
 
         mActionStop->setEnabled(false);
+
+        mActionConfigure->setShortcut(QKeySequence("Alt+C"));
+        mActionStart->setShortcut(QKeySequence("F5"));
+        mActionStop->setShortcut(QKeySequence("Maj+F5"));
+        mActionAbout->setShortcut(QKeySequence("F1"));
     }
 
     // set up central widgets.
@@ -71,18 +76,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
 void MainWindow::configure()
 {
-    /*
-    ParametersDialog* dlg = new ParametersDialog(mParameters, this);
-
-    int ret = dlg->exec();
-
-    if(ret == QDialog::Accepted)
+    if( mThread->isRunning() == false )
     {
-        ;
-    }
+        OperationDialog* dlg = new OperationDialog(this);
 
-    delete dlg;
-    */
+        const int ret = dlg->exec();
+
+        if(ret == QDialog::Accepted)
+        {
+            mThread->setOperation( dlg->getOperation() );
+        }
+
+        delete dlg;
+    }
 }
 
 void MainWindow::startOperation()

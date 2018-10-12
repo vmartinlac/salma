@@ -12,26 +12,6 @@ void Operation::setPorts(
     mStatsPort = stats;
 }
 
-CameraCalibrationOperation* Operation::cameraCalibration()
-{
-    return nullptr;
-}
-
-StereoRigCalibrationOperation* Operation::stereoRigCalibration()
-{
-    return nullptr;
-}
-
-MonoRecordingOperation* Operation::monoRecording()
-{
-    return nullptr;
-}
-
-StereoRecordingOperation* Operation::stereoRecording()
-{
-    return nullptr;
-}
-
 void Operation::before()
 {
 }

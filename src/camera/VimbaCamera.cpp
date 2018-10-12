@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <mutex>
@@ -75,6 +76,7 @@ public:
 
 protected:
 
+    bool mMock;
     std::vector< CameraPtr > m_cameras;
     static VimbaCameraManagerImpl m_instance;
 };
@@ -295,6 +297,50 @@ void VimbaCamera::read(Image& image)
     }
 }
 
+// dummy camera.
+
+class VimbaMockCamera : public Camera
+{
+public:
+
+    VimbaMockCamera(const std::string& name)
+    {
+        mName = name;
+    }
+
+    ~VimbaMockCamera() override
+    {
+    }
+
+    std::string getHumanName() override
+    {
+        return mName;
+    }
+
+    bool open() override
+    {
+        mTime = 0.0;
+        return true;
+    }
+
+    void close() override
+    {
+    }
+
+    void read(Image& image) override
+    {
+        image.refFrame().create(640, 480, CV_8UC3);
+        image.refFrame() = cv::Scalar(0,0,0);
+        image.setTimestamp(mTime);
+        mTime += 1.0/30.0;
+    }
+
+protected:
+
+    std::string mName;
+    double mTime;
+};
+
 // definition of VimbaCameraManagerImpl
 
 VimbaCameraManagerImpl VimbaCameraManagerImpl::m_instance;
@@ -306,77 +352,99 @@ VimbaCameraManager& VimbaCameraManager::instance()
 
 bool VimbaCameraManagerImpl::initialize()
 {
-    bool ok = true;
-    VmbError_t err = VmbErrorSuccess;
-    VmbUint32_t count = 0;
-    std::vector<VmbCameraInfo_t> info;
+    mMock = (getenv("MOCK_CAMERA") != nullptr);
 
-    if(ok)
+    if( mMock )
     {
-        ok = (VmbErrorSuccess == VmbStartup());
+        m_cameras.resize(3);
+        m_cameras[0].reset(new VimbaMockCamera("Mock camera 0"));
+        m_cameras[1].reset(new VimbaMockCamera("Mock camera 1"));
+        m_cameras[2].reset(new VimbaMockCamera("Mock camera 2"));
+
+        return true;
     }
-
-    if(ok)
+    else
     {
-        bool gige;
-        ok =
-            ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
-    }
 
-    if(ok)
-    {
-        ok = (VmbErrorSuccess == VmbFeatureCommandRun(gVimbaHandle, "GeVDiscoveryAllOnce"));
-    }
+        bool ok = true;
+        VmbError_t err = VmbErrorSuccess;
+        VmbUint32_t count = 0;
+        std::vector<VmbCameraInfo_t> info;
 
-    // get number of cameras.
-
-    if(ok)
-    {
-        ok = (VmbErrorSuccess == VmbCamerasList(NULL, 0, &count, sizeof(VmbCameraInfo_t)));
-    }
-
-    // retrieve camera infos.
-
-    if( ok && count > 0 )
-    {
-        info.resize(count);
-        ok = (VmbErrorSuccess == VmbCamerasList(&info.front(), count, &count, sizeof(VmbCameraInfo_t)));
-    }
-
-    // create cameras.
-
-    if(ok && count > 0 )
-    {
-        m_cameras.resize(count);
-
-        for(int i=0; i<count; i++)
+        if(ok)
         {
-            m_cameras[i].reset( new VimbaCamera(info[i]) );
+            ok = (VmbErrorSuccess == VmbStartup());
         }
-    }
 
-    if(ok == false)
-    {
-        m_cameras.clear();
-        VmbShutdown();
-    }
+        if(ok)
+        {
+            bool gige;
+            ok =
+                ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
+        }
 
-    return ok;
+        if(ok)
+        {
+            ok = (VmbErrorSuccess == VmbFeatureCommandRun(gVimbaHandle, "GeVDiscoveryAllOnce"));
+        }
+
+        // get number of cameras.
+
+        if(ok)
+        {
+            ok = (VmbErrorSuccess == VmbCamerasList(NULL, 0, &count, sizeof(VmbCameraInfo_t)));
+        }
+
+        // retrieve camera infos.
+
+        if( ok && count > 0 )
+        {
+            info.resize(count);
+            ok = (VmbErrorSuccess == VmbCamerasList(&info.front(), count, &count, sizeof(VmbCameraInfo_t)));
+        }
+
+        // create cameras.
+
+        if(ok && count > 0 )
+        {
+            m_cameras.resize(count);
+
+            for(int i=0; i<count; i++)
+            {
+                m_cameras[i].reset( new VimbaCamera(info[i]) );
+            }
+        }
+
+        if(ok == false)
+        {
+            m_cameras.clear();
+            VmbShutdown();
+        }
+
+        return ok;
+    }
 }
 
 void VimbaCameraManagerImpl::finalize()
 {
-    for( CameraPtr& camera : m_cameras)
+    if(mMock)
     {
-        if(camera.use_count() != 1)
-        {
-            throw std::runtime_error("Attempted to release VimbaCameraManager while a VimbaCamera is still referenced.");
-        }
+        m_cameras.clear();
     }
+    else
+    {
+        for( CameraPtr& camera : m_cameras)
+        {
+            if(camera.use_count() != 1)
+            {
+                throw std::runtime_error("Attempted to release VimbaCameraManager while a VimbaCamera is still referenced.");
+            }
+        }
 
-    m_cameras.clear();
+        m_cameras.clear();
 
-    VmbShutdown();
+        VmbShutdown();
+    }
 }
 
 CameraPtr VimbaCameraManagerImpl::getDefaultCamera()

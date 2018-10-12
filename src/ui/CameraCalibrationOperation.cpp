@@ -8,16 +8,6 @@ CameraCalibrationOperation::~CameraCalibrationOperation()
 {
 }
 
-Operation::OperationName CameraCalibrationOperation::getOperation()
-{
-    return OPERATION_CAMERA_CALIBRATION;
-}
-
-CameraCalibrationOperation* CameraCalibrationOperation::cameraCalibration()
-{
-    return this;
-}
-
 void CameraCalibrationOperation::before()
 {
 }

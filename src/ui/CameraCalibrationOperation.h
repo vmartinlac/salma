@@ -13,10 +13,6 @@ public:
 
     ~CameraCalibrationOperation() override;
 
-    OperationName getOperation() override;
-
-    CameraCalibrationOperation* cameraCalibration() override;
-
     void before() override;
     bool step() override;
     void after() override;

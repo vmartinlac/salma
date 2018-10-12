@@ -7,6 +7,22 @@
 #include <QFormLayout>
 #include <QComboBox>
 #include "VimbaCamera.h"
+#include "CameraCalibrationParametersWidget.h"
+
+CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
+{
+}
+
+OperationPtr CameraCalibrationParametersWidget::getOperation()
+{
+    return OperationPtr();
+}
+
+QString CameraCalibrationParametersWidget::name()
+{
+    return "Camera calibration";
+}
+
 /*
 #include "CameraCalibrationParametersDialog.h"
 

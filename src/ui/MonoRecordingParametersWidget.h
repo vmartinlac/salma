@@ -5,6 +5,18 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "Camera.h"
+#include "OperationParametersWidget.h"
+
+class MonoRecordingParametersWidget : public OperationParametersWidget
+{
+public:
+
+    MonoRecordingParametersWidget(QWidget* parent=nullptr);
+
+    OperationPtr getOperation() override;
+
+    QString name() override;
+};
 
 /*
 #include "RecordingParameters.h"

@@ -8,16 +8,6 @@ MonoRecordingOperation::~MonoRecordingOperation()
 {
 }
 
-Operation::OperationName MonoRecordingOperation::getOperation()
-{
-    return OPERATION_MONO_RECORDING;
-}
-
-MonoRecordingOperation* MonoRecordingOperation::monoRecording()
-{
-    return this;
-}
-
 void MonoRecordingOperation::before()
 {
 }

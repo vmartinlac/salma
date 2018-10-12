@@ -6,6 +6,21 @@
 #include <QFormLayout>
 #include <QComboBox>
 #include "VimbaCamera.h"
+#include "MonoRecordingParametersWidget.h"
+
+MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
+{
+}
+
+OperationPtr MonoRecordingParametersWidget::getOperation()
+{
+    return OperationPtr();
+}
+
+QString MonoRecordingParametersWidget::name()
+{
+    return "Mono-recording";
+}
 
 /*
 #include "RecordingParametersDialog.h"

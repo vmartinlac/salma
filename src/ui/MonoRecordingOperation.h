@@ -13,10 +13,6 @@ public:
 
     ~MonoRecordingOperation() override;
 
-    OperationName getOperation() override;
-
-    MonoRecordingOperation* monoRecording() override;
-
     void before() override;
     bool step() override;
     void after() override;
