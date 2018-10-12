@@ -8,8 +8,9 @@ MonoRecordingOperation::~MonoRecordingOperation()
 {
 }
 
-void MonoRecordingOperation::before()
+bool MonoRecordingOperation::before()
 {
+    return true;
 }
 
 bool MonoRecordingOperation::step()

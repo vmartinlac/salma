@@ -24,9 +24,8 @@ void OperationThread::run()
     {
         mOperation->setPorts(mVideoPort, mStatsPort);
 
-        mOperation->before();
 
-        bool go_on = true;
+        bool go_on = mOperation->before();
 
         while( go_on && isInterruptionRequested() == false )
         {

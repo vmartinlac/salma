@@ -10,11 +10,11 @@ public:
 
     Operation();
 
-    virtual ~Operation() = 0;
+    virtual ~Operation();
 
     void setPorts( VideoInputPort* video, StatsInputPort* stats );
 
-    virtual void before();
+    virtual bool before();
     virtual bool step() = 0;
     virtual void after();
 

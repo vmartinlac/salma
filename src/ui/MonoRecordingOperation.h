@@ -13,7 +13,7 @@ public:
 
     ~MonoRecordingOperation() override;
 
-    void before() override;
+    bool before() override;
     bool step() override;
     void after() override;
 

@@ -1,10 +1,12 @@
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <mutex>
 #include <vector>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <VimbaC/Include/VimbaC.h>
 #include "VimbaCamera.h"
 
@@ -319,7 +321,7 @@ public:
 
     bool open() override
     {
-        mTime = 0.0;
+        mT0 = std::chrono::steady_clock::now();
         return true;
     }
 
@@ -329,16 +331,25 @@ public:
 
     void read(Image& image) override
     {
-        image.refFrame().create(640, 480, CV_8UC3);
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::steady_clock::now() - mT0 ).count();
+        const double seconds = double(elapsed) * 1.0e-3;
+
+        const double l = 100.0;
+        const double angle = M_PI*seconds/1.0;
+
+        image.refFrame().create(cv::Size(800, 600), CV_8UC3);
         image.refFrame() = cv::Scalar(0,0,0);
-        image.setTimestamp(mTime);
-        mTime += 1.0/30.0;
+        cv::circle(image.refFrame(), cv::Point2f(400.0 + l*cos(angle), 300 + l*sin(angle)), 50, cv::Scalar(0, 255, 0), -1);
+
+        image.setTimestamp(seconds);
+
+        image.setValid(true);
     }
 
 protected:
 
     std::string mName;
-    double mTime;
+    std::chrono::time_point<std::chrono::steady_clock> mT0;
 };
 
 // definition of VimbaCameraManagerImpl

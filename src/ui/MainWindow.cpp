@@ -74,6 +74,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     setWindowTitle("Calibration & Recording");
 }
 
+MainWindow::~MainWindow()
+{
+    if( mThread->isRunning() )
+    {
+        mThread->requestInterruption();
+        mThread->wait();
+    }
+}
+
 void MainWindow::configure()
 {
     if( mThread->isRunning() == false )

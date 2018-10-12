@@ -1,37 +1,18 @@
-#include <QPushButton>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QFileDialog>
-#include <QHBoxLayout>
-#include <QVBoxLayout>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QFormLayout>
-#include <QComboBox>
 #include "VimbaCamera.h"
 #include "CameraCalibrationParametersWidget.h"
+#include "CameraCalibrationOperation.h"
 
 CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
 {
-}
-
-OperationPtr CameraCalibrationParametersWidget::getOperation()
-{
-    return OperationPtr();
-}
-
-QString CameraCalibrationParametersWidget::name()
-{
-    return "Camera calibration";
-}
-
-/*
-#include "CameraCalibrationParametersDialog.h"
-
-CameraCalibrationParametersDialog::CameraCalibrationParametersDialog(CameraCalibrationParameters* params, QWidget* parent) : QDialog(parent)
-{
-    mParameters = params;
-
     mCameraList = new QComboBox();
+
     VimbaCameraManager& vimba = VimbaCameraManager::instance();
+
     for(int i=0; i<vimba.getNumCameras(); i++)
     {
         mCameraList->addItem(QString(vimba.getCamera(i)->getHumanName().c_str()), i);
@@ -51,26 +32,13 @@ CameraCalibrationParametersDialog::CameraCalibrationParametersDialog(CameraCalib
     form->addRow("Camera", mCameraList);
     form->addRow("Output path", pathwidget);
 
-    QPushButton* okbutton = new QPushButton("OK");
-    QPushButton* cancelbutton = new QPushButton("Cancel");
-
-    QObject::connect(okbutton, SIGNAL(clicked()), this, SLOT(accept()));
-    QObject::connect(cancelbutton, SIGNAL(clicked()), this, SLOT(reject()));
-
-    QHBoxLayout* buttonslay = new QHBoxLayout();
-    buttonslay->addWidget(okbutton);
-    buttonslay->addWidget(cancelbutton);
-
-    QVBoxLayout* mainlay = new QVBoxLayout();
-    mainlay->addLayout(form);
-    mainlay->addLayout(buttonslay);
-
-    setLayout(mainlay);
-    setWindowTitle("Parameters");
+    setLayout(form);
 }
 
-void CameraCalibrationParametersDialog::accept()
+OperationPtr CameraCalibrationParametersWidget::getOperation()
 {
+    OperationPtr ret;
+
     CameraPtr newcamera;
     QString newoutputpath;
 
@@ -105,19 +73,32 @@ void CameraCalibrationParametersDialog::accept()
 
     if(ok)
     {
-        mParameters->beginWrite();
-        mParameters->data().camera.swap(newcamera);
-        mParameters->data().output_path = newoutputpath.toStdString();
-        mParameters->endWrite();
-        QDialog::accept();
+        CameraCalibrationOperation* op = new CameraCalibrationOperation();
+        ret.reset(op);
+
+        op->mOutputPath = newoutputpath.toStdString();
+        op->mCamera.swap(newcamera);
     }
     else
     {
         QMessageBox::critical(this, "Error", error_message);
     }
+
+    return ret;
 }
 
-void CameraCalibrationParametersDialog::selectOutputPath()
+QString CameraCalibrationParametersWidget::name()
+{
+    return "Camera calibration";
+}
+
+/*
+void CameraCalibrationParametersDialog::accept()
+{
+}
+*/
+
+void CameraCalibrationParametersWidget::selectOutputPath()
 {
     QString ret = QFileDialog::getSaveFileName( this, "Select output file", mPath->text(), "JSON file (*.json)" );
 
@@ -126,15 +107,4 @@ void CameraCalibrationParametersDialog::selectOutputPath()
         mPath->setText(ret);
     }
 }
-
-int CameraCalibrationParametersDialog::exec()
-{
-    mParameters->beginRead();
-    mPath->setText( mParameters->data().output_path.c_str() );
-    mParameters->endRead();
-
-    return QDialog::exec();
-}
-
-*/
 

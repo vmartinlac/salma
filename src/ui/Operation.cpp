@@ -4,6 +4,10 @@ Operation::Operation()
 {
 }
 
+Operation::~Operation()
+{
+}
+
 void Operation::setPorts(
     VideoInputPort* video,
     StatsInputPort* stats)
@@ -12,8 +16,9 @@ void Operation::setPorts(
     mStatsPort = stats;
 }
 
-void Operation::before()
+bool Operation::before()
 {
+    return true;
 }
 
 void Operation::after()
