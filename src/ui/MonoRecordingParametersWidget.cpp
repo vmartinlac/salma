@@ -7,28 +7,10 @@
 #include <QComboBox>
 #include "VimbaCamera.h"
 #include "MonoRecordingParametersWidget.h"
+#include "MonoRecordingOperation.h"
 
 MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
 {
-}
-
-OperationPtr MonoRecordingParametersWidget::getOperation()
-{
-    return OperationPtr();
-}
-
-QString MonoRecordingParametersWidget::name()
-{
-    return "Mono-recording";
-}
-
-/*
-#include "RecordingParametersDialog.h"
-
-RecordingParametersDialog::RecordingParametersDialog(RecordingParameters* params, QWidget* parent) : QDialog(parent)
-{
-    mParameters = params;
-
     mCameraList = new QComboBox();
     VimbaCameraManager& vimba = VimbaCameraManager::instance();
     for(int i=0; i<vimba.getNumCameras(); i++)
@@ -50,26 +32,13 @@ RecordingParametersDialog::RecordingParametersDialog(RecordingParameters* params
     form->addRow("Camera", mCameraList);
     form->addRow("Output directory", pathwidget);
 
-    QPushButton* okbutton = new QPushButton("OK");
-    QPushButton* cancelbutton = new QPushButton("Cancel");
-
-    QObject::connect(okbutton, SIGNAL(clicked()), this, SLOT(accept()));
-    QObject::connect(cancelbutton, SIGNAL(clicked()), this, SLOT(reject()));
-
-    QHBoxLayout* buttonslay = new QHBoxLayout();
-    buttonslay->addWidget(okbutton);
-    buttonslay->addWidget(cancelbutton);
-
-    QVBoxLayout* mainlay = new QVBoxLayout();
-    mainlay->addLayout(form);
-    mainlay->addLayout(buttonslay);
-
-    setLayout(mainlay);
-    setWindowTitle("Parameters");
+    setLayout(form);
 }
 
-void RecordingParametersDialog::accept()
+OperationPtr MonoRecordingParametersWidget::getOperation()
 {
+    OperationPtr ret;
+
     CameraPtr newcamera;
     QDir newoutputdirectory;
 
@@ -104,19 +73,26 @@ void RecordingParametersDialog::accept()
 
     if(ok)
     {
-        mParameters->beginWrite();
-        mParameters->data().camera.swap(newcamera);
-        mParameters->data().output_directory = newoutputdirectory;
-        mParameters->endWrite();
-        QDialog::accept();
+        MonoRecordingOperation* op = new MonoRecordingOperation();
+        ret.reset(op);
+
+        op->mCamera.swap(newcamera);
+        op->mOutputDirectory = newoutputdirectory;
     }
     else
     {
         QMessageBox::critical(this, "Error", error_message);
     }
+
+    return ret;
 }
 
-void RecordingParametersDialog::selectOutputDirectory()
+QString MonoRecordingParametersWidget::name()
+{
+    return "Mono-recording";
+}
+
+void MonoRecordingParametersWidget::selectOutputDirectory()
 {
     QString ret = QFileDialog::getExistingDirectory(this, "Select output directory", mPath->text());
 
@@ -126,6 +102,11 @@ void RecordingParametersDialog::selectOutputDirectory()
     }
 }
 
+/*
+void RecordingParametersDialog::accept()
+{
+}
+
 int RecordingParametersDialog::exec()
 {
     mParameters->beginRead();
@@ -133,6 +114,5 @@ int RecordingParametersDialog::exec()
     mParameters->endRead();
     return QDialog::exec();
 }
-
 */
 

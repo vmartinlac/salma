@@ -9,6 +9,7 @@ public:
     bool open() override;
     void close() override;
 
+    bool trigger() override;
     bool read(StereoImage& to) override;
 
 protected:
@@ -23,6 +24,11 @@ bool StereoRecording::open()
 
 void StereoRecording::close()
 {
+}
+
+bool StereoRecording::trigger()
+{
+    return false;
 }
 
 bool StereoRecording::read(StereoImage& to)

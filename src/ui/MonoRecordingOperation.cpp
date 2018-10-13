@@ -1,4 +1,10 @@
+#include <QThread>
+#include <opencv2/imgcodecs.hpp>
+#include <sstream>
+#include <iostream>
+#include <fstream>
 #include "MonoRecordingOperation.h"
+#include "Image.h"
 
 MonoRecordingOperation::MonoRecordingOperation()
 {
@@ -10,92 +16,89 @@ MonoRecordingOperation::~MonoRecordingOperation()
 
 bool MonoRecordingOperation::before()
 {
-    return true;
+    bool ok = true;
+
+    mClock.start();
+    mNumFrames = 0;
+
+    if(ok)
+    {
+        ok = bool(mCamera);
+    }
+
+    if(ok)
+    {
+        const QString csv_path = mOutputDirectory.absoluteFilePath("recording.csv");
+        mOutputCSV.open( csv_path.toLocal8Bit().data(), std::ofstream::out );
+        ok = mOutputCSV.is_open();
+    }
+
+    if(ok)
+    {
+        ok = mCamera->open();
+    }
+
+    return ok;
 }
 
 bool MonoRecordingOperation::step()
 {
-    return false;
+    bool ret = true;
+
+    if( mCamera)
+    {
+        Image image;
+        mCamera->read(image);
+
+        if(image.isValid())
+        {
+            const QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
+            const QString filename = mOutputDirectory.absoluteFilePath(basename);
+
+            cv::imwrite(filename.toLocal8Bit().data(), image.refFrame());
+
+            mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+
+            mNumFrames++;
+
+            // write to ports.
+            {
+                std::stringstream s;
+
+                s << "Frame count: " << mNumFrames << std::endl;
+                s << "Image resolution: " << image.refFrame().cols << " x " << image.refFrame().rows << std::endl;
+                s << "Recording duration: " << double(mClock.elapsed())*1.0e-3 << std::endl;
+                s << std::endl;
+                s << "Camera name: " << mCamera->getHumanName() << std::endl;
+                s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
+
+                mStatsPort->beginWrite();
+                mStatsPort->data().text = s.str().c_str();
+                mStatsPort->endWrite();
+
+                mVideoPort->beginWrite();
+                mVideoPort->data().image = image.refFrame();
+                mVideoPort->endWrite();
+            }
+        }
+    }
+    else
+    {
+        ret = false;
+    }
+
+    QThread::msleep(1000/20);
+
+    return ret;
 }
 
 void MonoRecordingOperation::after()
 {
-}
-
-/*
-#include "RecordingThread.h"
-#include <opencv2/imgcodecs.hpp>
-#include <iostream>
-#include <fstream>
-
-RecordingThread::RecordingThread(
-    RecordingParameters* parameters,
-    VideoInputPort* video,
-    RecordingStatsInputPort* stats,
-    QObject* parent) : QThread(parent)
-{
-    mParameters = parameters;
-    mVideo = video;
-    mStats = stats;
-    mNumFrames = 0;
-}
-
-RecordingThread::~RecordingThread()
-{
-    if(isRunning())
+    if(mCamera)
     {
-        requestInterruption();
-        wait();
+        mCamera->close();
     }
+
+    mOutputCSV.close();
 }
-
-void RecordingThread::run()
-{
-    RecordingParametersData params;
-    mParameters->read(params);
-
-    mNumFrames = 0;
-
-    if( params.camera )
-    {
-        QString csv_path = params.output_directory.absoluteFilePath("recording.csv");
-        std::ofstream csv(csv_path.toLocal8Bit().data(), std::ofstream::out);
-
-        params.camera->open();
-
-        while(isInterruptionRequested() == false)
-        {
-            Image image;
-            params.camera->read(image);
-
-            if(image.isValid())
-            {
-                QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
-                QString filename = params.output_directory.absoluteFilePath(basename);
-                cv::imwrite(filename.toLocal8Bit().data(), image.refFrame());
-
-                csv << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
-
-                mNumFrames++;
-
-                mStats->beginWrite();
-                mStats->data().camera_name = params.camera->getHumanName();
-                mStats->data().output_directory = params.output_directory.path().toStdString();
-                mStats->data().frame_count = mNumFrames;
-                mStats->data().image_width = image.refFrame().rows;
-                mStats->data().image_height = image.refFrame().cols;
-                mStats->endWrite();
-
-                mVideo->beginWrite();
-                mVideo->data().image = image.refFrame();
-                mVideo->endWrite();
-            }
-        }
-
-        params.camera->close();
-
-        csv.close();
-    }
-}
-*/
 

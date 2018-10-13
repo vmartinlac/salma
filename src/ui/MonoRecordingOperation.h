@@ -1,7 +1,10 @@
 
 #pragma once
 
+#include <QTime>
 #include <QDir>
+#include <fstream>
+#include <iostream>
 #include "Camera.h"
 #include "Operation.h"
 
@@ -19,7 +22,13 @@ public:
 
 public:
 
-    QDir output_directory;
+    QDir mOutputDirectory;
     CameraPtr mCamera;
+
+protected:
+
+    QTime mClock;
+    int mNumFrames;
+    std::ofstream mOutputCSV;
 };
 

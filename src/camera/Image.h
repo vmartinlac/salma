@@ -40,14 +40,14 @@ inline void Image::moveTo(Image& o)
     o.m_mat = std::move(m_mat);
 
     m_valid = false;
-    m_timestamp = 0;
+    m_timestamp = 0.0;
     m_mat.release();
 }
 
 inline Image::Image()
 {
     m_valid = false;
-    m_timestamp = 0;
+    m_timestamp = 0.0;
 }
 
 inline void Image::setTimestamp(double t)

@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QApplication>
 #include <QScrollArea>
 #include <QMessageBox>
 #include <QIcon>
@@ -17,18 +18,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
         tb->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
+        mActionQuit = tb->addAction("Quit");
         mActionConfigure = tb->addAction("Configure");
         mActionStart = tb->addAction("Start");
         mActionStop = tb->addAction("Stop");
         mActionAbout = tb->addAction("About");
 
+        mActionQuit->setIcon(QIcon::fromTheme("application-exit"));
         mActionConfigure->setIcon(QIcon::fromTheme("document-properties"));
         mActionStart->setIcon(QIcon::fromTheme("media-playback-start"));
         mActionStop->setIcon(QIcon::fromTheme("media-playback-stop"));
         mActionAbout->setIcon(QIcon::fromTheme("help-about"));
 
-        mActionConfigure->setShortcut(QKeySequence("Alt+C"));
-
+        QObject::connect(mActionQuit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
         QObject::connect(mActionConfigure, SIGNAL(triggered()), this, SLOT(configure()));
         QObject::connect(mActionStart, SIGNAL(triggered()), this, SLOT(startOperation()));
         QObject::connect(mActionStop, SIGNAL(triggered()), this, SLOT(stopOperation()));
@@ -36,6 +38,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
         mActionStop->setEnabled(false);
 
+        mActionQuit->setShortcut(QKeySequence("Esc"));
         mActionConfigure->setShortcut(QKeySequence("Alt+C"));
         mActionStart->setShortcut(QKeySequence("F5"));
         mActionStop->setShortcut(QKeySequence("Maj+F5"));

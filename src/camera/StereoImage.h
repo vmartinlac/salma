@@ -6,7 +6,10 @@ class StereoImage
 {
 public:
 
+    StereoImage();
+
     bool isValid();
+    void setValid(bool s);
 
     double getTimestamp();
 
@@ -19,10 +22,31 @@ public:
 protected:
 
     bool mValid;
+
     double mTimestamp;
+
     cv::Mat mLeftImage;
-    cv::Mat mRightImage;
     double mLeftTimestamp;
+
+    cv::Mat mRightImage;
     double mRightTimestamp;
 };
+
+inline StereoImage::StereoImage()
+{
+    mValid = false;
+    mTimestamp = 0.0;
+    mLeftTimestamp = 0.0;
+    mRightTimestamp = 0.0;
+}
+
+inline bool StereoImage::isValid()
+{
+    return mValid;
+}
+
+inline void StereoImage::setValid(bool val)
+{
+    mValid = val;
+}
 

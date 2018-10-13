@@ -18,6 +18,7 @@ public:
 
 protected:
 
+    QAction* mActionQuit;
     QAction* mActionConfigure;
     QAction* mActionStart;
     QAction* mActionStop;

@@ -9,6 +9,8 @@
 
 class MonoRecordingParametersWidget : public OperationParametersWidget
 {
+    Q_OBJECT
+
 public:
 
     MonoRecordingParametersWidget(QWidget* parent=nullptr);
@@ -16,33 +18,14 @@ public:
     OperationPtr getOperation() override;
 
     QString name() override;
-};
-
-/*
-#include "RecordingParameters.h"
-
-class RecordingParametersDialog : public QDialog
-{
-    Q_OBJECT
-public:
-
-    RecordingParametersDialog(RecordingParameters* parameters, QWidget* parent=nullptr);
-
-public slots:
-
-    int exec() override;
 
 protected slots:
 
-    void accept();
     void selectOutputDirectory();
 
 protected:
 
     QLineEdit* mPath;
     QComboBox* mCameraList;
-
-    RecordingParameters* mParameters;
 };
-*/
 

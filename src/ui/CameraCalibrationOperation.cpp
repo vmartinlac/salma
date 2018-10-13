@@ -30,7 +30,17 @@ bool CameraCalibrationOperation::before()
     mImageSize = cv::Size(-1, -1);
     mClock.start();
 
-    bool ok = mCamera->open();
+    bool ok = true;
+    
+    if(ok)
+    {
+        ok = bool(mCamera);
+    }
+
+    if(ok)
+    {
+        ok = mCamera->open();
+    }
 
     if(ok)
     {
@@ -58,7 +68,16 @@ bool CameraCalibrationOperation::step()
     bool can_calibrate = false;
 
     Image image;
-    mCamera->read(image);
+    image.setValid(false);
+
+    if( mCamera )
+    {
+        mCamera->read(image);
+    }
+    else
+    {
+        ret = false;
+    }
 
     if( image.isValid() )
     {
@@ -158,7 +177,10 @@ bool CameraCalibrationOperation::step()
 
 void CameraCalibrationOperation::after()
 {
-    mCamera->close();
+    if(mCamera)
+    {
+        mCamera->close();
+    }
 }
 
 void CameraCalibrationOperation::writeOutputText()
