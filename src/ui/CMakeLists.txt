@@ -26,16 +26,24 @@ add_library(
     CameraCalibrationOperation.h
     CameraCalibrationParametersWidget.cpp
     CameraCalibrationParametersWidget.h
+    StereoRigCalibrationOperation.cpp
+    StereoRigCalibrationOperation.h
+    StereoRigCalibrationParametersWidget.cpp
+    StereoRigCalibrationParametersWidget.h
     MonoRecordingOperation.cpp
     MonoRecordingOperation.h
     MonoRecordingParametersWidget.cpp
     MonoRecordingParametersWidget.h
+    StereoRecordingOperation.cpp
+    StereoRecordingOperation.h
+    StereoRecordingParametersWidget.cpp
+    StereoRecordingParametersWidget.h
 )
 
 target_link_libraries(
     ui PUBLIC
     buildinfo
-    camera
+    video
     target
     Qt5::Widgets
     calibration

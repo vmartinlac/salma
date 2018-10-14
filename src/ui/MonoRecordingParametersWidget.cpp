@@ -102,17 +102,3 @@ void MonoRecordingParametersWidget::selectOutputDirectory()
     }
 }
 
-/*
-void RecordingParametersDialog::accept()
-{
-}
-
-int RecordingParametersDialog::exec()
-{
-    mParameters->beginRead();
-    mPath->setText( mParameters->data().output_directory.path() );
-    mParameters->endRead();
-    return QDialog::exec();
-}
-*/
-

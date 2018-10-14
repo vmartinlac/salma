@@ -15,7 +15,7 @@ add_library(
 target_link_libraries(
     slam
     PUBLIC
-    camera
+    video
     target
     Qt5::Core
     Vimba

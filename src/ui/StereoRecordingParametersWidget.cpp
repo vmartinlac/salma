@@ -1,18 +1,18 @@
-#include <QFileInfo>
-#include <QFileDialog>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QFormLayout>
+#include <QComboBox>
 #include "VimbaCamera.h"
-#include "CameraCalibrationParametersWidget.h"
-#include "CameraCalibrationOperation.h"
+#include "StereoRecordingParametersWidget.h"
+#include "StereoRecordingOperation.h"
 
-CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
+StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent)
 {
     mCameraList = new QComboBox();
-
     VimbaCameraManager& vimba = VimbaCameraManager::instance();
-
     for(int i=0; i<vimba.getNumCameras(); i++)
     {
         mCameraList->addItem(QString(vimba.getCamera(i)->getHumanName().c_str()), i);
@@ -26,21 +26,27 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
     pathlay->addWidget(btnselectpath);
     QWidget* pathwidget = new QWidget();
     pathwidget->setLayout(pathlay);
-    QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputPath()));
+    QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputDirectory()));
+
+    mMaxFrameRate = new QSpinBox();
+    mMaxFrameRate->setMinimum(1);
+    mMaxFrameRate->setMaximum(1000);
+    mMaxFrameRate->setValue(25);
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
-    form->addRow("Output path", pathwidget);
+    form->addRow("Output directory", pathwidget);
+    form->addRow("Max frame rate", mMaxFrameRate);
 
     setLayout(form);
 }
 
-OperationPtr CameraCalibrationParametersWidget::getOperation()
+OperationPtr StereoRecordingParametersWidget::getOperation()
 {
     OperationPtr ret;
 
     CameraPtr newcamera;
-    QString newoutputpath;
+    QDir newoutputdirectory;
 
     bool ok = true;
     const char* error_message;
@@ -66,18 +72,18 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputpath = (mPath->text());
-        ok = (newoutputpath.isEmpty() == false);
-        error_message = "Please set an output filename!";
+        newoutputdirectory = QDir(mPath->text());
+        ok = newoutputdirectory.mkpath(".");
+        error_message = "Failed to create output directory!";
     }
 
     if(ok)
     {
-        CameraCalibrationOperation* op = new CameraCalibrationOperation();
+        StereoRecordingOperation* op = new StereoRecordingOperation();
         ret.reset(op);
 
-        op->mOutputPath = newoutputpath.toStdString();
         op->mCamera.swap(newcamera);
+        op->mOutputDirectory = newoutputdirectory;
     }
     else
     {
@@ -87,14 +93,14 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
     return ret;
 }
 
-QString CameraCalibrationParametersWidget::name()
+QString StereoRecordingParametersWidget::name()
 {
-    return "Camera calibration";
+    return "Stereo-recording";
 }
 
-void CameraCalibrationParametersWidget::selectOutputPath()
+void StereoRecordingParametersWidget::selectOutputDirectory()
 {
-    QString ret = QFileDialog::getSaveFileName( this, "Select output file", mPath->text(), "JSON file (*.json)" );
+    QString ret = QFileDialog::getExistingDirectory(this, "Select output directory", mPath->text());
 
     if(ret.isEmpty() == false)
     {

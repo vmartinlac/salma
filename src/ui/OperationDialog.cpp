@@ -6,7 +6,9 @@
 #include "OperationDialog.h"
 
 #include "CameraCalibrationParametersWidget.h"
+#include "StereoRigCalibrationParametersWidget.h"
 #include "MonoRecordingParametersWidget.h"
+#include "StereoRecordingParametersWidget.h"
 
 OperationDialog::OperationDialog(QWidget* parent) : QDialog(parent)
 {
@@ -56,7 +58,9 @@ void OperationDialog::createOperationParametersWidgets()
     // This is the one and only place where to add operation parameters widgets so that they and their corresponding operations are available in the ui.
 
     mOperationParametersWidgets.push_back( new CameraCalibrationParametersWidget() );
+    mOperationParametersWidgets.push_back( new StereoRigCalibrationParametersWidget() );
     mOperationParametersWidgets.push_back( new MonoRecordingParametersWidget() );
+    mOperationParametersWidgets.push_back( new StereoRecordingParametersWidget() );
 }
 
 OperationPtr OperationDialog::getOperation()

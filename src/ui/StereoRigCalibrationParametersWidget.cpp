@@ -4,10 +4,10 @@
 #include <QMessageBox>
 #include <QFormLayout>
 #include "VimbaCamera.h"
-#include "CameraCalibrationParametersWidget.h"
-#include "CameraCalibrationOperation.h"
+#include "StereoRigCalibrationParametersWidget.h"
+#include "StereoRigCalibrationOperation.h"
 
-CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
+StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
 {
     mCameraList = new QComboBox();
 
@@ -35,7 +35,7 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
     setLayout(form);
 }
 
-OperationPtr CameraCalibrationParametersWidget::getOperation()
+OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 {
     OperationPtr ret;
 
@@ -73,7 +73,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        CameraCalibrationOperation* op = new CameraCalibrationOperation();
+        StereoRigCalibrationOperation* op = new StereoRigCalibrationOperation();
         ret.reset(op);
 
         op->mOutputPath = newoutputpath.toStdString();
@@ -87,12 +87,12 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
     return ret;
 }
 
-QString CameraCalibrationParametersWidget::name()
+QString StereoRigCalibrationParametersWidget::name()
 {
-    return "Camera calibration";
+    return "Stereo rig calibration";
 }
 
-void CameraCalibrationParametersWidget::selectOutputPath()
+void StereoRigCalibrationParametersWidget::selectOutputPath()
 {
     QString ret = QFileDialog::getSaveFileName( this, "Select output file", mPath->text(), "JSON file (*.json)" );
 
