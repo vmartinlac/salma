@@ -1,4 +1,5 @@
 /build
+/program/build
 *.swp
 *.swa
 *.jpg
