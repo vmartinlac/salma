@@ -1,88 +1,38 @@
 #pragma once
 
 #include <array>
+#include <vector>
+#include <stdexcept>
+#include <algorithm>
 #include <opencv2/core.hpp>
 
 class Image
 {
-
 public:
 
     Image();
 
-    Image(const Image&) = delete;
-    Image& operator=(const Image&) = delete;
+    void setInvalid();
 
-    void moveTo(Image& other);
+    void setValid(double timestamp, const cv::Mat& frame);
+
+    void setValid(double timestamp, const cv::Mat& left_frame, const cv::Mat& right_frame);
+
+    void setValid(double timestamp, const std::vector<cv::Mat>& frames);
 
     bool isValid();
-    void setValid(bool v);
+
+    int getNumberOfFrames();
 
     double getTimestamp();
-    void setTimestamp(double t);
 
-    int width();
-    int height();
-
-    cv::Mat& refFrame();
+    cv::Mat& getFrame(int idx=0);
 
 protected:
 
-    bool m_valid;
-    double m_timestamp;
-    cv::Mat m_mat;
+    bool mValid;
+    double mTimestamp;
+    int mNumberOfFrames;
+    std::array<cv::Mat, 2> mFrames;
 };
-
-
-inline void Image::moveTo(Image& o)
-{
-    o.m_valid = m_valid;
-    o.m_timestamp = m_timestamp;
-    o.m_mat = std::move(m_mat);
-
-    m_valid = false;
-    m_timestamp = 0.0;
-    m_mat.release();
-}
-
-inline Image::Image()
-{
-    m_valid = false;
-    m_timestamp = 0.0;
-}
-
-inline void Image::setTimestamp(double t)
-{
-    m_timestamp = t;
-}
-
-inline int Image::width() 
-{
-    return m_mat.cols;
-}
-
-inline int Image::height() 
-{
-    return m_mat.rows;
-}
-
-inline cv::Mat& Image::refFrame() 
-{
-    return m_mat;
-}
-
-inline double Image::getTimestamp()
-{
-    return m_timestamp;
-}
-
-inline void Image::setValid(bool v)
-{
-    m_valid = v;
-}
-
-inline bool Image::isValid()
-{
-    return m_valid;
-}
 

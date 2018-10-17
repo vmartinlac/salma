@@ -2,14 +2,18 @@
 add_library(
     video
     STATIC
-    Camera.h
-    Camera.cpp
-    VimbaCamera.h
-    VimbaCamera.cpp
-    OpenCVCamera.h
-    OpenCVCamera.cpp
     Image.h
     Image.cpp
+    Camera.h
+    Camera.cpp
+    Trigger.h
+    Trigger.cpp
+    VideoSource.h
+    VideoSource.cpp
+    AssembledVideoSource.h
+    AssembledVideoSource.cpp
+    GeneralVideoSource.h
+    GeneralVideoSource.cpp
     VideoSystem.h
     VideoSystem.cpp
 )
