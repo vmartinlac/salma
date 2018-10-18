@@ -3,7 +3,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <QFormLayout>
-#include "VimbaCamera.h"
+#include "VideoSystem.h"
 #include "CameraCalibrationParametersWidget.h"
 #include "CameraCalibrationOperation.h"
 
@@ -11,11 +11,11 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
 {
     mCameraList = new QComboBox();
 
-    VimbaCameraManager& vimba = VimbaCameraManager::instance();
+    VideoSystem* vs = VideoSystem::instance();
 
-    for(int i=0; i<vimba.getNumCameras(); i++)
+    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
     {
-        mCameraList->addItem(QString(vimba.getCamera(i)->getHumanName().c_str()), i);
+        mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
     }
 
     mPath = new QLineEdit();
@@ -39,7 +39,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 {
     OperationPtr ret;
 
-    CameraPtr newcamera;
+    VideoSourcePtr newcamera;
     QString newoutputpath;
 
     bool ok = true;
@@ -49,14 +49,14 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
     {
         QVariant data = mCameraList->currentData();
 
-        VimbaCameraManager& vimba = VimbaCameraManager::instance();
+        VideoSystem* vs = VideoSystem::instance();
 
         if(data.isValid())
         {
             int id = data.toInt();
-            if( 0 <= id && id < vimba.getNumCameras() )
+            if( 0 <= id && id < vs->getNumberOfAvtCameras() )
             {
-                newcamera = vimba.getCamera(id);
+                newcamera = vs->createMonoAvtVideoSource(id);
             }
         }
         

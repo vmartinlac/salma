@@ -5,17 +5,17 @@
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QComboBox>
-#include "VimbaCamera.h"
+#include "VideoSystem.h"
 #include "StereoRecordingParametersWidget.h"
 #include "StereoRecordingOperation.h"
 
 StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent)
 {
     mCameraList = new QComboBox();
-    VimbaCameraManager& vimba = VimbaCameraManager::instance();
-    for(int i=0; i<vimba.getNumCameras(); i++)
+    VideoSystem* vs = VideoSystem::instance();
+    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
     {
-        mCameraList->addItem(QString(vimba.getCamera(i)->getHumanName().c_str()), i);
+        mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
     }
 
     mPath = new QLineEdit();
@@ -45,7 +45,7 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
 {
     OperationPtr ret;
 
-    CameraPtr newcamera;
+    VideoSourcePtr newcamera;
     QDir newoutputdirectory;
 
     bool ok = true;
@@ -55,14 +55,14 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
     {
         QVariant data = mCameraList->currentData();
 
-        VimbaCameraManager& vimba = VimbaCameraManager::instance();
+        VideoSystem* vs = VideoSystem::instance();
 
         if(data.isValid())
         {
             int id = data.toInt();
-            if( 0 <= id && id < vimba.getNumCameras() )
+            if( 0 <= id && id < vs->getNumberOfAvtCameras() )
             {
-                newcamera = vimba.getCamera(id);
+                newcamera = vs->createMonoAvtVideoSource(id);
             }
         }
         

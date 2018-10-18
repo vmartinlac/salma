@@ -32,7 +32,7 @@ void VideoWidget::paintEvent(QPaintEvent*)
 
 void VideoWidget::refresh()
 {
-    const int target_width = 400;
+    const int target_width = 600;
 
     VideoInputData data;
     mPort->read(data);

@@ -6,14 +6,15 @@
 #include <atomic>
 #include <opencv2/core.hpp>
 #include "VideoSource.h"
+#include "AvtCamera.h"
 
 class VideoSystem
 {
 public:
 
-    bool initialize();
-    void finalize();
-    static VideoSystem& instance();
+    static bool initialize();
+    static void finalize();
+    static VideoSystem* instance();
 
 public:
 
@@ -26,14 +27,23 @@ public:
     VideoSourcePtr createOpenCVVideoSource(int id);
     VideoSourcePtr createVideoSourceFromMonoRecording(const std::string& path);
     VideoSourcePtr createVideoSourceFromStereoRecording(const std::string& path);
+    VideoSourcePtr createMockMonoVideoSource();
+    VideoSourcePtr createMockStereoVideoSource();
     VideoSourcePtr assembleVideoSources(const std::vector<VideoSourcePtr>& video_sources);
 
-    void detectAvtCameras();
+    bool detectAvtCameras();
     int getNumberOfAvtCameras();
     std::string getNameOfAvtCamera(int idx);
 
 private:
 
     static std::unique_ptr<VideoSystem> mInstance;
+    std::vector<AvtCameraPtr> mAvtCameras;
+
+protected:
+
+    bool doInitialize();
+    void doFinalize();
+    void clearAvtCameras();
 };
 

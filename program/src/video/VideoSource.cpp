@@ -4,3 +4,7 @@ VideoSource::VideoSource()
 {
 }
 
+VideoSource::~VideoSource()
+{
+}
+

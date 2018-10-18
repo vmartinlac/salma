@@ -10,11 +10,11 @@ class GeneralVideoSource : public VideoSource
 public:
 
     GeneralVideoSource();
-    ~GeneralVideoSource();
+    ~GeneralVideoSource() override;
 
-    void set(CameraPtr camera, TriggerPtr trigger = TriggerPtr());
-    void set(CameraPtr camera0, CameraPtr camera1, TriggerPtr trigger = TriggerPtr());
-    void set(CameraPtr camera0, CameraPtr camera1, CameraPtr camera2, TriggerPtr trigger = TriggerPtr());
+    void set(CameraPtr camera, TriggerPtr trigger);
+    void set(CameraPtr camera0, CameraPtr camera1, TriggerPtr trigger);
+    void set(CameraPtr camera0, CameraPtr camera1, CameraPtr camera2, TriggerPtr trigger);
 
     std::string getHumanName() override;
 
@@ -31,4 +31,6 @@ protected:
     std::vector<CameraPtr> mCameras;
     TriggerPtr mTrigger;
 };
+
+typedef std::shared_ptr<GeneralVideoSource> GeneralVideoSourcePtr;
 

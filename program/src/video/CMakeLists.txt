@@ -16,6 +16,12 @@ add_library(
     GeneralVideoSource.cpp
     VideoSystem.h
     VideoSystem.cpp
+    MockCamera.h
+    MockCamera.cpp
+    AvtCamera.h
+    AvtCamera.cpp
+    ArduinoTrigger.h
+    ArduinoTrigger.cpp
 )
 
 target_link_libraries(video PUBLIC Vimba opencv_core opencv_videoio opencv_imgproc)

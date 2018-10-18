@@ -15,9 +15,9 @@ bool CameraCalibrationData::saveToFile(const std::string& path)
     {
         QJsonArray to;
 
-        for(int i=0; i<3; i++)
+        for(int i=0; i<from.rows; i++)
         {
-            for(int j=0; j<3; j++)
+            for(int j=0; j<from.cols; j++)
             {
                 to.push_back(from.at<double>(i,j));
             }

@@ -4,3 +4,7 @@ Camera::Camera()
 {
 }
 
+Camera::~Camera()
+{
+}
+

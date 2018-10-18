@@ -10,8 +10,6 @@ add_library(
     Port.h
     StatsWidget.cpp
     StatsWidget.h
-    VideoInputDialog.cpp
-    VideoInputDialog.h
     VideoWidget.cpp
     VideoWidget.h
     Operation.h

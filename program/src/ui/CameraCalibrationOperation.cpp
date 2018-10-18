@@ -58,6 +58,11 @@ bool CameraCalibrationOperation::before()
         }
     }
 
+    if(ok)
+    {
+        mCamera->trigger();
+    }
+
     return ok;
 }
 
@@ -68,11 +73,12 @@ bool CameraCalibrationOperation::step()
     bool can_calibrate = false;
 
     Image image;
-    image.setValid(false);
+    image.setInvalid();
 
     if( mCamera )
     {
         mCamera->read(image);
+        mCamera->trigger();
     }
     else
     {
@@ -83,7 +89,7 @@ bool CameraCalibrationOperation::step()
     {
         if( mObjectPoints.empty() || mClock.elapsed() > mMillisecondsTemporisation )
         {
-            const int target_found = mTracker.track(image.refFrame(), false);
+            const int target_found = mTracker.track(image.getFrame(), false);
 
             if( target_found )
             {
@@ -94,7 +100,7 @@ bool CameraCalibrationOperation::step()
 
                 mClock.start();
 
-                mImageSize = image.refFrame().size();
+                mImageSize = image.getFrame().size();
                 can_calibrate = (mObjectPoints.size() >= mRequestedSuccessfulFrameCount );
             }
 
@@ -104,7 +110,7 @@ bool CameraCalibrationOperation::step()
         mFrameCount++;
 
         mVideoPort->beginWrite();
-        mVideoPort->data().image = image.refFrame();
+        mVideoPort->data().image = image.getFrame();
         mVideoPort->endWrite();
 
         writeOutputText();
@@ -118,6 +124,10 @@ bool CameraCalibrationOperation::step()
 
         std::vector<cv::Mat> rotations;
         std::vector<cv::Mat> translations;
+
+        mStatsPort->beginWrite();
+        mStatsPort->data().text = "Computing calibration data ...";
+        mStatsPort->endWrite();
 
         const double err = cv::calibrateCamera(
             mObjectPoints,
@@ -134,26 +144,42 @@ bool CameraCalibrationOperation::step()
         {
             std::stringstream s;
 
+            auto write_mat = [&s] (const cv::Mat& m, bool matrixlayout)
+            {
+                for(int i=0; i<m.rows; i++)
+                {
+                    for(int j=0; j<m.cols; j++)
+                    {
+                        s << m.at<double>(i,j);
+
+                        if( matrixlayout )
+                        {
+                            if( j+1 == m.cols )
+                            {
+                                s << std::endl;
+                            }
+                            else
+                            {
+                                s << ' ';
+                            }
+                        }
+                        else
+                        {
+                            s << std::endl;
+                        }
+                    }
+                }
+            };
+
             s << "Reprojection error: " << err << std::endl;
             s << std::endl;
 
             s << "Camera matrix:" << std::endl;
-            s << calibration.calibration_matrix.at<double>(0,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(0,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(0,2) << std::endl;
-            s << calibration.calibration_matrix.at<double>(1,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(1,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(1,2) << std::endl;
-            s << calibration.calibration_matrix.at<double>(2,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(2,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(2,2) << std::endl;
+            write_mat( calibration.calibration_matrix, true );
             s << std::endl;
 
             s << "Distortion coefficients:" << std::endl;
-            for(int i=0; i<calibration.distortion_coefficients.rows; i++)
-            {
-                s << calibration.distortion_coefficients.at<double>(i,0) << std::endl;
-            }
+            write_mat( calibration.distortion_coefficients, false );
             s << std::endl;
 
             mStatsPort->beginWrite();

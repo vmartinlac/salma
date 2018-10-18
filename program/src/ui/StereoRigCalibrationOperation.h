@@ -6,7 +6,7 @@
 #include <QDir>
 #include <QTime>
 #include "Tracker.h"
-#include "Camera.h"
+#include "VideoSource.h"
 #include "Operation.h"
 
 class StereoRigCalibrationOperation : public Operation
@@ -24,7 +24,7 @@ public:
 public:
 
     std::string mOutputPath;
-    CameraPtr mCamera;
+    VideoSourcePtr mCamera;
     int mRequestedSuccessfulFrameCount;
     int mMillisecondsTemporisation;
 

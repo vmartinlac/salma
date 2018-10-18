@@ -5,7 +5,7 @@
 #include <QDir>
 #include <fstream>
 #include <iostream>
-#include "Camera.h"
+#include "VideoSource.h"
 #include "Operation.h"
 
 class StereoRecordingOperation : public Operation
@@ -23,7 +23,7 @@ public:
 public:
 
     QDir mOutputDirectory;
-    CameraPtr mCamera;
+    VideoSourcePtr mCamera;
     int mMaxFrameRate;
 
 protected:

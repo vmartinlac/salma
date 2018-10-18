@@ -3,16 +3,14 @@
 #include <memory>
 #include <string>
 #include "Image.h"
+#include "Trigger.h"
 
-class Camera
+class Camera : public Trigger
 {
 public:
 
     Camera();
     virtual ~Camera();
-
-    virtual bool open() = 0;
-    virtual void close() = 0;
 
     virtual std::string getHumanName() = 0;
     virtual void read(Image& image) = 0;

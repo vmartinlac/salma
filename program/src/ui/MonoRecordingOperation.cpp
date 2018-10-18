@@ -55,7 +55,7 @@ bool MonoRecordingOperation::step()
             const QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
             const QString filename = mOutputDirectory.absoluteFilePath(basename);
 
-            cv::imwrite(filename.toLocal8Bit().data(), image.refFrame());
+            cv::imwrite(filename.toLocal8Bit().data(), image.getFrame());
 
             mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
 
@@ -66,7 +66,7 @@ bool MonoRecordingOperation::step()
                 std::stringstream s;
 
                 s << "Frame count: " << mNumFrames << std::endl;
-                s << "Image resolution: " << image.refFrame().cols << " x " << image.refFrame().rows << std::endl;
+                s << "Image resolution: " << image.getFrame().cols << " x " << image.getFrame().rows << std::endl;
                 s << "Recording duration: " << double(mClock.elapsed())*1.0e-3 << std::endl;
                 s << std::endl;
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
@@ -77,7 +77,7 @@ bool MonoRecordingOperation::step()
                 mStatsPort->endWrite();
 
                 mVideoPort->beginWrite();
-                mVideoPort->data().image = image.refFrame();
+                mVideoPort->data().image = image.getFrame();
                 mVideoPort->endWrite();
             }
         }

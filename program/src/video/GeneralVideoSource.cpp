@@ -100,6 +100,13 @@ void GeneralVideoSource::trigger()
     {
         mTrigger->trigger();
     }
+    else
+    {
+        for(CameraPtr& cam : mCameras)
+        {
+            cam->trigger();
+        }
+    }
 }
 
 void GeneralVideoSource::read(Image& image)
