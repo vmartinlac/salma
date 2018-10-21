@@ -1,6 +1,8 @@
 #include "GeneralVideoSource.h"
 #include "VideoSystem.h"
 
+#define TEST_WITHOUT_VIMBA
+
 std::unique_ptr<VideoSystem> VideoSystem::mInstance;
 
 bool VideoSystem::initialize()
@@ -40,6 +42,7 @@ bool VideoSystem::doInitialize()
 {
     bool ok = true;
 
+#ifndef TEST_WITHOUT_VIMBA
     if(ok)
     {
         ok = (VmbErrorSuccess == VmbStartup());
@@ -55,6 +58,7 @@ bool VideoSystem::doInitialize()
     {
         detectAvtCameras();
     }
+#endif
 
     return ok;
 }
@@ -62,7 +66,9 @@ bool VideoSystem::doInitialize()
 void VideoSystem::doFinalize()
 {
     clearAvtCameras();
+#ifndef TEST_WITHOUT_VIMBA
     VmbShutdown();
+#endif
 }
 
 void VideoSystem::clearAvtCameras()
@@ -85,6 +91,8 @@ bool VideoSystem::detectAvtCameras()
     std::vector<VmbCameraInfo_t> info;
 
     clearAvtCameras();
+
+#ifndef TEST_WITHOUT_VIMBA
 
     // discover.
 
@@ -119,6 +127,7 @@ bool VideoSystem::detectAvtCameras()
             mAvtCameras[i].reset( new AvtCamera(info[i], AvtCamera::TRIGGER_ETHERNET) );
         }
     }
+#endif
 
     if(ok == false)
     {

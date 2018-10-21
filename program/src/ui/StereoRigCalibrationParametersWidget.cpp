@@ -9,28 +9,32 @@
 
 StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
 {
-    mCameraList = new QComboBox();
+    mLeftCamera = new QComboBox();
+    mRightCamera = new QComboBox();
 
     VideoSystem* vs = VideoSystem::instance();
 
     for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
     {
-        mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
+        QString name = QString(vs->getNameOfAvtCamera(i).c_str());
+        mLeftCamera->addItem(name, i);
+        mRightCamera->addItem(name, i);
     }
 
-    mPath = new QLineEdit();
+    mOutputPath = new QLineEdit();
     QPushButton* btnselectpath = new QPushButton("Select");
     QHBoxLayout* pathlay = new QHBoxLayout();
     pathlay->setContentsMargins(0, 0, 0, 0);
-    pathlay->addWidget(mPath);
+    pathlay->addWidget(mOutputPath);
     pathlay->addWidget(btnselectpath);
     QWidget* pathwidget = new QWidget();
     pathwidget->setLayout(pathlay);
     QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputPath()));
 
     QFormLayout* form = new QFormLayout();
-    form->addRow("Camera", mCameraList);
-    form->addRow("Output path", pathwidget);
+    form->addRow("Left camera", mLeftCamera);
+    form->addRow("Right camera", mRightCamera);
+    form->addRow("Output JSON file", pathwidget);
 
     setLayout(form);
 }
@@ -47,16 +51,18 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        QVariant data = mCameraList->currentData();
+        QVariant left_data = mLeftCamera->currentData();
+        QVariant right_data = mRightCamera->currentData();
 
         VideoSystem* vs = VideoSystem::instance();
 
-        if(data.isValid())
+        if( left_data.isValid() && right_data.isValid() )
         {
-            int id = data.toInt();
-            if( 0 <= id && id < vs->getNumberOfAvtCameras() )
+            int left_id = left_data.toInt();
+            int right_id = right_data.toInt();
+            if( 0 <= left_id && left_id < vs->getNumberOfAvtCameras() && 0 <= right_id && right_id < vs->getNumberOfAvtCameras() )
             {
-                newcamera = vs->createMonoAvtVideoSource(id);
+                newcamera = vs->createStereoAvtVideoSource(left_id, right_id);
             }
         }
         
@@ -66,7 +72,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputpath = (mPath->text());
+        newoutputpath = (mOutputPath->text());
         ok = (newoutputpath.isEmpty() == false);
         error_message = "Please set an output filename!";
     }
@@ -94,11 +100,11 @@ QString StereoRigCalibrationParametersWidget::name()
 
 void StereoRigCalibrationParametersWidget::selectOutputPath()
 {
-    QString ret = QFileDialog::getSaveFileName( this, "Select output file", mPath->text(), "JSON file (*.json)" );
+    QString ret = QFileDialog::getSaveFileName( this, "Select output file", mOutputPath->text(), "JSON file (*.json)" );
 
     if(ret.isEmpty() == false)
     {
-        mPath->setText(ret);
+        mOutputPath->setText(ret);
     }
 }
 

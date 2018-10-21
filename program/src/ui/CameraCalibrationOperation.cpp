@@ -31,16 +31,6 @@ bool CameraCalibrationOperation::before()
     mClock.start();
 
     bool ok = true;
-    
-    if(ok)
-    {
-        ok = bool(mCamera);
-    }
-
-    if(ok)
-    {
-        ok = mCamera->open();
-    }
 
     if(ok)
     {
@@ -56,6 +46,16 @@ bool CameraCalibrationOperation::before()
             ok = false;
             std::cout << "Could not open output file!" << std::endl; // TODO: put this message on the UI.
         }
+    }
+    
+    if(ok)
+    {
+        ok = bool(mCamera);
+    }
+
+    if(ok)
+    {
+        ok = mCamera->open();
     }
 
     if(ok)
@@ -89,7 +89,7 @@ bool CameraCalibrationOperation::step()
     {
         if( mObjectPoints.empty() || mClock.elapsed() > mMillisecondsTemporisation )
         {
-            const int target_found = mTracker.track(image.getFrame(), false);
+            const bool target_found = mTracker.track(image.getFrame(), false);
 
             if( target_found )
             {

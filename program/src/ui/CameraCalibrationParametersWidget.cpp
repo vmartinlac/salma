@@ -30,7 +30,7 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
-    form->addRow("Output path", pathwidget);
+    form->addRow("Output JSON file", pathwidget);
 
     setLayout(form);
 }

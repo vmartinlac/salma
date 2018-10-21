@@ -23,7 +23,8 @@ protected slots:
 
 protected:
 
-    QLineEdit* mPath;
-    QComboBox* mCameraList;
+    QComboBox* mLeftCamera;
+    QComboBox* mRightCamera;
+    QLineEdit* mOutputPath;
 };
 

@@ -11,12 +11,14 @@ int main(int num_args, char** args)
     {
         QMessageBox::critical(nullptr, "Error", "Could not initialize Vimba!");
     }
+/*
     else if( VideoSystem::instance()->getNumberOfAvtCameras() == 0 )
     {
         QMessageBox::critical(nullptr, "Error", "No Allied Vision Technologies camera were detected!");
 
         VideoSystem::finalize();
     }
+*/
     else
     {
         MainWindow* win = new MainWindow();

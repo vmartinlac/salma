@@ -1,8 +1,11 @@
 #include <iostream>
+#include <future>
+#include <thread>
 #include <sstream>
 #include <fstream>
 #include <QThread>
 #include <QTime>
+#include <sophus/average.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>
 #include "Image.h"
@@ -12,8 +15,8 @@
 
 StereoRigCalibrationOperation::StereoRigCalibrationOperation()
 {
-    mRequestedSuccessfulFrameCount = 40;
-    mMillisecondsTemporisation = 700;
+    mNumberOfCalibrationPoses = 20;
+    mMillisecondsOfTemporisation = 700;
 }
 
 StereoRigCalibrationOperation::~StereoRigCalibrationOperation()
@@ -22,26 +25,11 @@ StereoRigCalibrationOperation::~StereoRigCalibrationOperation()
 
 bool StereoRigCalibrationOperation::before()
 {
-    /*
     mFrameCount = 0;
-    mSuccessfulFrameCount = 0;
-    mAttemptedFrameCount = 0;
-    mObjectPoints.clear();
-    mImagePoints.clear();
-    mImageSize = cv::Size(-1, -1);
     mClock.start();
+    mPoses.clear();
 
     bool ok = true;
-    
-    if(ok)
-    {
-        ok = bool(mCamera);
-    }
-
-    if(ok)
-    {
-        ok = mCamera->open();
-    }
 
     if(ok)
     {
@@ -58,22 +46,33 @@ bool StereoRigCalibrationOperation::before()
             std::cout << "Could not open output file!" << std::endl; // TODO: put this message on the UI.
         }
     }
+    
+    if(ok)
+    {
+        ok = bool(mCamera);
+    }
+
+    if(ok)
+    {
+        ok = mCamera->open();
+    }
+
+    if(ok)
+    {
+        mCamera->trigger();
+    }
 
     return ok;
-    */
-
-    return true;
 }
 
 bool StereoRigCalibrationOperation::step()
 {
-    /*
     bool ret = true;
 
     bool can_calibrate = false;
 
     Image image;
-    image.setValid(false);
+    image.setInvalid();
 
     if( mCamera )
     {
@@ -86,30 +85,35 @@ bool StereoRigCalibrationOperation::step()
 
     if( image.isValid() )
     {
-        if( mObjectPoints.empty() || mClock.elapsed() > mMillisecondsTemporisation )
+        if( mPoses.empty() || mClock.elapsed() > mMillisecondsOfTemporisation )
         {
-            const int target_found = mTracker.track(image.refFrame(), false);
+			std::future<bool> left_target_found = std::async( std::launch::async, [this, &image] () -> bool
+			{
+				return mLeftTracker.track(image.getFrame(0), true);
+			});
 
-            if( target_found )
+			std::future<bool> right_target_found = std::async( std::launch::async, [this, &image] () -> bool
+			{
+				return mRightTracker.track(image.getFrame(1), true);
+			});
+
+			if( left_target_found.get() && right_target_found.get() )
             {
-                mImagePoints.push_back( mTracker.imagePoints() );
-                mObjectPoints.push_back( mTracker.objectPoints() );
 
-                mSuccessfulFrameCount++;
+				/*
+				TODO: compute geometric configuration.
+				*/
 
                 mClock.start();
 
-                mImageSize = image.refFrame().size();
-                can_calibrate = (mObjectPoints.size() >= mRequestedSuccessfulFrameCount );
+                can_calibrate = ( mPoses.size() >= mNumberOfCalibrationPoses );
             }
-
-            mAttemptedFrameCount++;
         }
 
         mFrameCount++;
 
         mVideoPort->beginWrite();
-        mVideoPort->data().image = image.refFrame();
+        mVideoPort->data().image = image.getFrame(0); // TODO: output both frames.
         mVideoPort->endWrite();
 
         writeOutputText();
@@ -117,48 +121,43 @@ bool StereoRigCalibrationOperation::step()
 
     if( can_calibrate )
     {
+		Sophus::optional< Sophus::SE3<double> > right_camera_to_left_camera;
         StereoRigCalibrationData calibration;
+		const char* error_message = "";
+		bool ok = true;
 
-        calibration.image_size = mImageSize;
+		if(ok)
+		{
+			right_camera_to_left_camera = Sophus::average( mPoses );
+			ok = bool(right_camera_to_left_camera);
+			error_message = "Could average calibration data.";
+		}
 
-        std::vector<cv::Mat> rotations;
-        std::vector<cv::Mat> translations;
+		if(ok)
+		{
+			// TODO: compute calibration.left_camera_to_world and calibration.right_camera_to_world.
 
-        const double err = cv::calibrateCamera(
-            mObjectPoints,
-            mImagePoints,
-            mImageSize,
-            calibration.calibration_matrix,
-            calibration.distortion_coefficients,
-            rotations,
-            translations);
+			// TODO: compute standard deviation on attitude and position.
+			throw;
+		}
         
-        const bool save_ret = calibration.saveToFile(mOutputPath);
+		if(ok)
+		{
+			ok = calibration.saveToFile(mOutputPath);
+			error_message = "Error while saving calibration data to file.";
+		}
 
-        if(save_ret)
+        if(ok)
         {
             std::stringstream s;
 
-            s << "Reprojection error: " << err << std::endl;
+            s << "Left camera to world transformation:" << std::endl;
             s << std::endl;
 
-            s << "Camera matrix:" << std::endl;
-            s << calibration.calibration_matrix.at<double>(0,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(0,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(0,2) << std::endl;
-            s << calibration.calibration_matrix.at<double>(1,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(1,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(1,2) << std::endl;
-            s << calibration.calibration_matrix.at<double>(2,0) << ' ';
-            s << calibration.calibration_matrix.at<double>(2,1) << ' ';
-            s << calibration.calibration_matrix.at<double>(2,2) << std::endl;
+            s << "Right camera to world transformation:" << std::endl;
             s << std::endl;
 
-            s << "Distortion coefficients:" << std::endl;
-            for(int i=0; i<calibration.distortion_coefficients.rows; i++)
-            {
-                s << calibration.distortion_coefficients.at<double>(i,0) << std::endl;
-            }
+            s << "Standard deviation on attitude: " << std::endl;
             s << std::endl;
 
             mStatsPort->beginWrite();
@@ -168,7 +167,7 @@ bool StereoRigCalibrationOperation::step()
         else
         {
             mStatsPort->beginWrite();
-            mStatsPort->data().text = "Could not save calibration data to file!";
+            mStatsPort->data().text = error_message;
             mStatsPort->endWrite();
         }
 
@@ -178,22 +177,14 @@ bool StereoRigCalibrationOperation::step()
     QThread::msleep(5);
 
     return ret;
-    */
-
-    mStatsPort->beginWrite();
-    mStatsPort->data().text = "Not implemented ";
-    mStatsPort->endWrite();
-    return false;
 }
 
 void StereoRigCalibrationOperation::after()
 {
-    /*
     if(mCamera)
     {
         mCamera->close();
     }
-    */
 }
 
 void StereoRigCalibrationOperation::writeOutputText()

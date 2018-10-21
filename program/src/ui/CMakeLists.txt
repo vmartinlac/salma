@@ -50,6 +50,7 @@ target_link_libraries(
     opencv_imgcodecs
     opencv_calib3d
     Sophus::Sophus
+    Threads::Threads
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 #include <QDir>
 #include <QTime>
+#include <sophus/se3.hpp>
 #include "Tracker.h"
 #include "VideoSource.h"
 #include "Operation.h"
@@ -23,10 +24,10 @@ public:
 
 public:
 
-    std::string mOutputPath;
     VideoSourcePtr mCamera;
-    int mRequestedSuccessfulFrameCount;
-    int mMillisecondsTemporisation;
+    int mNumberOfCalibrationPoses;
+    int mMillisecondsOfTemporisation;
+    std::string mOutputPath;
 
 protected:
 
@@ -34,15 +35,10 @@ protected:
 
 protected:
 
-    /*
-    target::Tracker mTracker;
+    target::Tracker mLeftTracker;
+    target::Tracker mRightTracker;
     int mFrameCount;
-    int mAttemptedFrameCount;
-    int mSuccessfulFrameCount;
-    std::vector< std::vector<cv::Point3f> > mObjectPoints;
-    std::vector< std::vector<cv::Point2f> > mImagePoints;
-    cv::Size mImageSize;
     QTime mClock;
-    */
+    std::vector< Sophus::SE3<double> > mPoses;
 };
 
