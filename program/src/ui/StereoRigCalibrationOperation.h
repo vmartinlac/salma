@@ -42,12 +42,12 @@ protected:
     static void convertPoseFromOpenCVToSophus(
         const cv::Mat& rodrigues,
         const cv::Mat& t,
-        Sophus::SE3<double>& camera_to_object);
+        Sophus::SE3d& camera_to_object);
 
     static bool computePose(
         target::Tracker& tracker,
         CameraCalibrationData& calibration,
-        Sophus::SE3<double>& camera_to_target);
+        Sophus::SE3d& camera_to_target);
 
 protected:
 
@@ -55,6 +55,6 @@ protected:
     target::Tracker mRightTracker;
     int mFrameCount;
     QTime mClock;
-    std::vector< Sophus::SE3<double> > mPoses;
+    std::vector<Sophus::SE3d> mPoses;
 };
 

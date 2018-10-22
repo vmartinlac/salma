@@ -23,22 +23,14 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
         mRightCamera->addItem(name, i);
     }
 
-    mOutputPath = new QLineEdit();
-    QPushButton* btnselectpath = new QPushButton("Select");
-    QHBoxLayout* pathlay = new QHBoxLayout();
-    pathlay->setContentsMargins(0, 0, 0, 0);
-    pathlay->addWidget(mOutputPath);
-    pathlay->addWidget(btnselectpath);
-    QWidget* pathwidget = new QWidget();
-    pathwidget->setLayout(pathlay);
-    QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputPath()));
+    mOutputPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Left camera", mLeftCamera);
     form->addRow("Left camera calibration data", mPathToLeftCalibrationData);
     form->addRow("Right camera", mRightCamera);
     form->addRow("Right camera calibration data", mPathToRightCalibrationData);
-    form->addRow("Output JSON file", pathwidget);
+    form->addRow("Output JSON file", mOutputPath);
 
     setLayout(form);
 }
@@ -90,7 +82,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputpath = (mOutputPath->text());
+        newoutputpath = (mOutputPath->path());
         ok = (newoutputpath.isEmpty() == false);
         error_message = "Please set an output filename!";
     }
@@ -116,15 +108,5 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 QString StereoRigCalibrationParametersWidget::name()
 {
     return "Stereo rig calibration";
-}
-
-void StereoRigCalibrationParametersWidget::selectOutputPath()
-{
-    QString ret = QFileDialog::getSaveFileName( this, "Select output file", mOutputPath->text(), "JSON file (*.json)" );
-
-    if(ret.isEmpty() == false)
-    {
-        mOutputPath->setText(ret);
-    }
 }
 

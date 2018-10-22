@@ -16,6 +16,8 @@ PathWidget::PathWidget(Mode mode, QWidget* parent) : QWidget(parent)
     lay->addWidget(btn);
 
     setLayout(lay);
+
+    QObject::connect(btn, SIGNAL(clicked()), this, SLOT(selectFile()));
 }
 
 void PathWidget::selectFile()
@@ -28,11 +30,11 @@ void PathWidget::selectFile()
         ret = QFileDialog::getExistingDirectory(this, "Select directory");
         break;
     case GET_SAVE_FILENAME:
-        ret = QFileDialog::getSaveFileName(this, "Select directory");
+        ret = QFileDialog::getSaveFileName(this, "Select output file");
         break;
     case GET_OPEN_FILENAME:
     default:
-        ret = QFileDialog::getOpenFileName(this, "Select file");
+        ret = QFileDialog::getOpenFileName(this, "Select input file");
         break;
     }
 

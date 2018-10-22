@@ -18,16 +18,12 @@ public:
 
     QString name() override;
 
-protected slots:
-
-    void selectOutputPath();
-
 protected:
 
     PathWidget* mPathToLeftCalibrationData;
     PathWidget* mPathToRightCalibrationData;
     QComboBox* mLeftCamera;
     QComboBox* mRightCamera;
-    QLineEdit* mOutputPath;
+    PathWidget* mOutputPath;
 };
 

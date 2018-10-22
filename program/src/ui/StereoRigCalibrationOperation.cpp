@@ -69,8 +69,8 @@ bool StereoRigCalibrationOperation::before()
 
 bool StereoRigCalibrationOperation::step()
 {
-    Sophus::SE3<double> left_camera_to_target;
-    Sophus::SE3<double> right_camera_to_target;
+    Sophus::SE3d left_camera_to_target;
+    Sophus::SE3d right_camera_to_target;
 
     bool ret = true;
 
@@ -134,7 +134,7 @@ bool StereoRigCalibrationOperation::step()
 
     if( go_on )
     {
-        Sophus::SE3<double> right_camera_to_left_camera = left_camera_to_target.inverse() * right_camera_to_target;
+        Sophus::SE3d right_camera_to_left_camera = left_camera_to_target.inverse() * right_camera_to_target;
 
         mPoses.push_back( right_camera_to_left_camera );
 
@@ -183,7 +183,7 @@ void StereoRigCalibrationOperation::writeOutputText()
     */
 }
 
-bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, CameraCalibrationData& calibration, Sophus::SE3<double>& camera_to_target)
+bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, CameraCalibrationData& calibration, Sophus::SE3d& camera_to_target)
 {
     cv::Mat pnp_rodrigues;
     cv::Mat pnp_translation;
@@ -218,7 +218,7 @@ bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, Camera
 
 void StereoRigCalibrationOperation::calibrate()
 {
-    Sophus::optional< Sophus::SE3<double> > right_camera_to_left_camera;
+    Sophus::optional< Sophus::SE3d > right_camera_to_left_camera;
     StereoRigCalibrationData calibration;
     const char* error_message = "";
     bool ok = true;
@@ -232,10 +232,10 @@ void StereoRigCalibrationOperation::calibrate()
 
     if(ok)
     {
-        //Sophus::interpolate( Sophus::SE3<double>(), right_camera_to_world, 0.5 );
+        //Sophus::interpolate( Sophus::SE3d(), right_camera_to_world, 0.5 );
         // TODO: world should be half-way between left and right cameras.
 
-        calibration.left_camera_to_world = Sophus::SE3<double>();
+        calibration.left_camera_to_world = Sophus::SE3d();
         calibration.right_camera_to_world = *right_camera_to_left_camera;
     }
     
@@ -275,7 +275,7 @@ void StereoRigCalibrationOperation::calibrate()
 void StereoRigCalibrationOperation::convertPoseFromOpenCVToSophus(
     const cv::Mat& rodrigues,
     const cv::Mat& t,
-    Sophus::SE3<double>& camera_to_object)
+    Sophus::SE3d& camera_to_object)
 {
     Eigen::Vector3d rodrigues_eigen;
 

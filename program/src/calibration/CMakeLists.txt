@@ -2,6 +2,8 @@
 add_library(
     calibration
     STATIC
+    Serialization.h
+    Serialization.cpp
     CameraCalibrationData.h
     CameraCalibrationData.cpp
     StereoRigCalibrationData.h
