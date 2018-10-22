@@ -6,9 +6,11 @@
 #include <QDir>
 #include <QTime>
 #include <sophus/se3.hpp>
+#include "PathWidget.h"
 #include "Tracker.h"
 #include "VideoSource.h"
 #include "Operation.h"
+#include "CameraCalibrationData.h"
 
 class StereoRigCalibrationOperation : public Operation
 {
@@ -24,14 +26,28 @@ public:
 
 public:
 
+    CameraCalibrationData mLeftCalibrationData;
+    CameraCalibrationData mRightCalibrationData;
     VideoSourcePtr mCamera;
-    int mNumberOfCalibrationPoses;
+    int mNumberOfPosesForCalibration;
     int mMillisecondsOfTemporisation;
     std::string mOutputPath;
 
 protected:
 
     void writeOutputText();
+
+    void calibrate();
+
+    static void convertPoseFromOpenCVToSophus(
+        const cv::Mat& rodrigues,
+        const cv::Mat& t,
+        Sophus::SE3<double>& camera_to_object);
+
+    static bool computePose(
+        target::Tracker& tracker,
+        CameraCalibrationData& calibration,
+        Sophus::SE3<double>& camera_to_target);
 
 protected:
 

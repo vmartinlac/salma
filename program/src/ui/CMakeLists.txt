@@ -2,6 +2,8 @@
 add_library(
     ui
     STATIC
+    PathWidget.h
+    PathWidget.cpp
     AboutDialog.cpp
     AboutDialog.h
     MainWindow.cpp

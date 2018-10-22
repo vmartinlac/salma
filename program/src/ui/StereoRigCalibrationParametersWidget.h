@@ -4,6 +4,7 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include "OperationParametersWidget.h"
+#include "PathWidget.h"
 
 class StereoRigCalibrationParametersWidget : public OperationParametersWidget
 {
@@ -23,6 +24,8 @@ protected slots:
 
 protected:
 
+    PathWidget* mPathToLeftCalibrationData;
+    PathWidget* mPathToRightCalibrationData;
     QComboBox* mLeftCamera;
     QComboBox* mRightCamera;
     QLineEdit* mOutputPath;

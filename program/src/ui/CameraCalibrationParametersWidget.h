@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <QLineEdit>
 #include <QComboBox>
+#include "PathWidget.h"
 #include "OperationParametersWidget.h"
 
 class CameraCalibrationParametersWidget : public OperationParametersWidget
@@ -17,13 +17,9 @@ public:
 
     QString name() override;
 
-protected slots:
-
-    void selectOutputPath();
-
 protected:
 
-    QLineEdit* mPath;
+    PathWidget* mPath;
     QComboBox* mCameraList;
 };
 

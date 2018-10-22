@@ -18,19 +18,11 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
         mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
     }
 
-    mPath = new QLineEdit();
-    QPushButton* btnselectpath = new QPushButton("Select");
-    QHBoxLayout* pathlay = new QHBoxLayout();
-    pathlay->setContentsMargins(0, 0, 0, 0);
-    pathlay->addWidget(mPath);
-    pathlay->addWidget(btnselectpath);
-    QWidget* pathwidget = new QWidget();
-    pathwidget->setLayout(pathlay);
-    QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputPath()));
+    mPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
-    form->addRow("Output JSON file", pathwidget);
+    form->addRow("Output JSON file", mPath);
 
     setLayout(form);
 }
@@ -66,7 +58,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputpath = (mPath->text());
+        newoutputpath = (mPath->path());
         ok = (newoutputpath.isEmpty() == false);
         error_message = "Please set an output filename!";
     }
@@ -90,15 +82,5 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 QString CameraCalibrationParametersWidget::name()
 {
     return "Camera calibration";
-}
-
-void CameraCalibrationParametersWidget::selectOutputPath()
-{
-    QString ret = QFileDialog::getSaveFileName( this, "Select output file", mPath->text(), "JSON file (*.json)" );
-
-    if(ret.isEmpty() == false)
-    {
-        mPath->setText(ret);
-    }
 }
 
