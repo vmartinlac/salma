@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <VimbaC/Include/VimbaC.h>
 #include "Camera.h"
 
@@ -8,13 +9,7 @@ class AvtCamera : public Camera
 {
 public:
 
-    enum TriggerMode
-    {
-        TRIGGER_IO,
-        TRIGGER_ETHERNET
-    };
-
-    AvtCamera(const VmbCameraInfo_t& caminfos, TriggerMode trigger_mode);
+    AvtCamera(const VmbCameraInfo_t& caminfos);
     ~AvtCamera() override;
 
     bool open() override;
@@ -24,6 +19,10 @@ public:
 
     void read(Image& image) override;
     void trigger() override;
+
+protected:
+
+    static void VMB_CALL callback( const VmbHandle_t camera, VmbFrame_t* frame );
 
 protected:
 
@@ -40,14 +39,13 @@ protected:
         std::vector<uint8_t> buffer;
     };
 
-    bool m_is_open;
-    VmbHandle_t m_handle;
+    bool mIsOpen;
+    VmbHandle_t mHandle;
     VmbInt64_t m_tick_frequency;
-    std::vector<Frame> m_frames;
-    int m_next_frame;
+    std::vector<Frame> mFrames;
 
-    int m_max_wait_milliseconds;
-    TriggerMode m_trigger_mode;
+    std::mutex mMutex;
+    Image mNewImage;
 };
 
 typedef std::shared_ptr<AvtCamera> AvtCameraPtr;

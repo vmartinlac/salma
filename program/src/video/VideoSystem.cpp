@@ -1,7 +1,7 @@
 #include "GeneralVideoSource.h"
 #include "VideoSystem.h"
 
-#define TEST_WITHOUT_VIMBA
+//#define TEST_WITHOUT_VIMBA
 
 std::unique_ptr<VideoSystem> VideoSystem::mInstance;
 
@@ -124,7 +124,7 @@ bool VideoSystem::detectAvtCameras()
 
         for(int i=0; i<count; i++)
         {
-            mAvtCameras[i].reset( new AvtCamera(info[i], AvtCamera::TRIGGER_ETHERNET) );
+            mAvtCameras[i].reset( new AvtCamera(info[i]) );
         }
     }
 #endif
@@ -154,7 +154,7 @@ VideoSourcePtr VideoSystem::createStereoAvtVideoSource(int left_camera_idx, int 
 {
     GeneralVideoSourcePtr ret;
 
-    if( 0 <= left_camera_idx && left_camera_idx < mAvtCameras.size() && 0 <= right_camera_idx && right_camera_idx < mAvtCameras.size() )
+    if( left_camera_idx != right_camera_idx && 0 <= left_camera_idx && left_camera_idx < mAvtCameras.size() && 0 <= right_camera_idx && right_camera_idx < mAvtCameras.size() )
     {
         ret.reset(new GeneralVideoSource());
         ret->set( mAvtCameras[left_camera_idx], mAvtCameras[right_camera_idx], TriggerPtr() );

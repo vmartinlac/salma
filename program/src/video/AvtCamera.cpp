@@ -1,23 +1,20 @@
 #include <iostream>
 #include "AvtCamera.h"
 
-AvtCamera::AvtCamera(const VmbCameraInfo_t& infos, TriggerMode trigger_mode)
+AvtCamera::AvtCamera(const VmbCameraInfo_t& infos)
 {
-    m_trigger_mode = trigger_mode;
-    m_max_wait_milliseconds = 1000;
-
     m_camera_id = infos.cameraIdString;
     m_camera_name = infos.cameraName;
     m_camera_model = infos.modelName;
     m_camera_serial = infos.serialString;
     m_camera_permitted_access = infos.permittedAccess;
     m_interface_id = infos.interfaceIdString;
-    m_is_open = false;
+    mIsOpen = false;
 }
 
 AvtCamera::~AvtCamera()
 {
-    if( m_is_open )
+    if( mIsOpen )
     {
         close();
     }
@@ -29,90 +26,88 @@ bool AvtCamera::open()
     VmbInt64_t payload_size = 0;
     bool ok = true;
 
-    if( m_is_open == false )
+    if( mIsOpen == false )
     {
         if(ok)
         {
-            err = VmbCameraOpen(m_camera_id.c_str(), VmbAccessModeFull, &m_handle);
+            err = VmbCameraOpen(m_camera_id.c_str(), VmbAccessModeFull, &mHandle);
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            err = VmbFeatureIntGet(m_handle, "PayloadSize", &payload_size);
+            err = VmbFeatureIntGet(mHandle, "PayloadSize", &payload_size);
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            err = VmbFeatureIntGet(m_handle, "GevTimestampTickFrequency", &m_tick_frequency);
+            err = VmbFeatureIntGet(mHandle, "GevTimestampTickFrequency", &m_tick_frequency);
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            err = VmbFeatureEnumSet(m_handle, "AcquisitionMode", "Continuous");
+            err = VmbFeatureEnumSet(mHandle, "AcquisitionMode", "Continuous");
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            err = VmbFeatureEnumSet(m_handle, "TriggerSource", "Software");
+            err = VmbFeatureEnumSet(mHandle, "TriggerSource", "Software");
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            err = VmbFeatureEnumSet(m_handle, "PixelFormat", "BGR8Packed");
+            err = VmbFeatureEnumSet(mHandle, "PixelFormat", "BGR8Packed");
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            m_frames.resize(1);
+            mFrames.resize(10);
 
-            for(Frame& f : m_frames)
+            for(Frame& f : mFrames)
             {
                 f.buffer.resize(payload_size);
                 f.vimba_frame.buffer = &f.buffer.front();
                 f.vimba_frame.bufferSize = payload_size;
-                f.vimba_frame.context[0] = nullptr;
+                f.vimba_frame.context[0] = this;
                 f.vimba_frame.context[1] = nullptr;
                 f.vimba_frame.context[2] = nullptr;
                 f.vimba_frame.context[3] = nullptr;
 
-                err = VmbFrameAnnounce(m_handle, &f.vimba_frame, sizeof(VmbFrame_t));
+                err = VmbFrameAnnounce(mHandle, &f.vimba_frame, sizeof(VmbFrame_t));
                 ok = ok && (VmbErrorSuccess == err);
             }
         }
 
         if(ok)
         {
-            err = VmbCaptureStart(m_handle);
+            err = VmbCaptureStart(mHandle);
             ok = (VmbErrorSuccess == err);
         }
 
         if(ok)
         {
-            m_next_frame = 0;
-
-            for(Frame& f : m_frames)
+            for(Frame& f : mFrames)
             {
-                err = VmbCaptureFrameQueue(m_handle, &f.vimba_frame, nullptr);
+                err = VmbCaptureFrameQueue(mHandle, &f.vimba_frame, callback);
                 ok = ok && (VmbErrorSuccess == err);
             }
         }
 
         if(ok)
         {
-            err = VmbFeatureCommandRun(m_handle, "AcquisitionStart");
+            err = VmbFeatureCommandRun(mHandle, "AcquisitionStart");
             ok = (VmbErrorSuccess == err);
         }
     }
 
     if(ok)
     {
-        m_is_open = true;
+        mIsOpen = true;
     }
     else
     {
@@ -126,43 +121,38 @@ bool AvtCamera::open()
 
 void AvtCamera::close()
 {
-    if( m_is_open )
+    if( mIsOpen )
     {
-        VmbFeatureCommandRun(m_handle, "AcquisitionStop");
+        VmbFeatureCommandRun(mHandle, "AcquisitionStop");
 
-        VmbCaptureEnd( m_handle );
+        VmbCaptureEnd( mHandle );
 
-        VmbCaptureQueueFlush( m_handle );
+        VmbCaptureQueueFlush( mHandle );
 
-        VmbFrameRevokeAll( m_handle );
+        VmbFrameRevokeAll( mHandle );
 
-        VmbCameraClose( m_handle );
+        VmbCameraClose( mHandle );
 
-        m_frames.clear();
+        mFrames.clear();
 
-        m_is_open = false;
+        mIsOpen = false;
     }
 }
 
+/*
 void AvtCamera::read(Image& image)
 {
     image.setInvalid();
 
-    if( m_is_open )
+    if( mIsOpen )
     {
-        Frame& f = m_frames[m_next_frame];
+        Frame& f = mFrames[m_next_frame];
 
-        VmbError_t err = VmbCaptureFrameWait(m_handle, &f.vimba_frame, m_max_wait_milliseconds);
+        VmbError_t err = VmbCaptureFrameWait(mHandle, &f.vimba_frame, m_max_wait_milliseconds);
 
         if(err == VmbErrorSuccess)
         {
-            m_next_frame = (m_next_frame+1) % m_frames.size();
-
-            std::cout << f.vimba_frame.receiveStatus << ' ';
-            std::cout << (f.vimba_frame.pixelFormat == VmbPixelFormatBgr8) << ' ';
-            std::cout << bool(f.vimba_frame.receiveFlags & VmbFrameFlagsTimestamp) << ' ';
-            std::cout << bool(f.vimba_frame.receiveFlags & VmbFrameFlagsDimension) << std::endl;
-            std::cout << std::endl;
+            m_next_frame = (m_next_frame+1) % mFrames.size();
 
             if(
                 (f.vimba_frame.receiveStatus == VmbFrameStatusComplete) &&
@@ -184,14 +174,23 @@ void AvtCamera::read(Image& image)
                 std::cerr << "Incorrect frame received!" << std::endl;
             }
 
-            VmbCaptureFrameQueue( m_handle, &f.vimba_frame, nullptr);
+            VmbCaptureFrameQueue( mHandle, &f.vimba_frame, nullptr);
         }
     }
+}
+*/
+
+void AvtCamera::read(Image& image)
+{
+    mMutex.lock();
+    image = mNewImage;
+    mNewImage.setInvalid();
+    mMutex.unlock();
 }
 
 void AvtCamera::trigger()
 {
-    VmbError_t err = VmbFeatureCommandRun(m_handle, "TriggerSoftware");
+    VmbError_t err = VmbFeatureCommandRun(mHandle, "TriggerSoftware");
 
     if( VmbErrorSuccess != err )
     {
@@ -202,5 +201,35 @@ void AvtCamera::trigger()
 std::string AvtCamera::getHumanName()
 {
     return m_camera_id + " on " + m_interface_id;
+}
+
+void VMB_CALL AvtCamera::callback( const VmbHandle_t handle, VmbFrame_t* frame )
+{
+    if(
+        (VmbFrameStatusComplete == frame->receiveStatus) &&
+        (frame->pixelFormat == VmbPixelFormatBgr8) &&
+        (frame->receiveFlags & VmbFrameFlagsTimestamp) &&
+        (frame->receiveFlags & VmbFrameFlagsDimension) )
+    {
+        AvtCamera* camera = static_cast<AvtCamera*>(frame->context[0]);
+
+        cv::Mat wrapper(
+            cv::Size(frame->width, frame->height),
+            CV_8UC3,
+            frame->buffer);
+
+        camera->mMutex.lock();
+
+        const double timestamp = double(frame->timestamp) / double(camera->m_tick_frequency);
+        camera->mNewImage.setValid(timestamp, wrapper.clone());
+
+        camera->mMutex.unlock();
+    }
+    else
+    {
+        std::cout << "error while receiving frame !" << std::endl;
+    }
+
+    VmbCaptureFrameQueue( handle, frame, callback );
 }
 

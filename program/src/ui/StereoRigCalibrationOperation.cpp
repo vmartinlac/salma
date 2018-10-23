@@ -64,6 +64,7 @@ bool StereoRigCalibrationOperation::before()
     if(ok)
     {
         mCamera->trigger();
+        mTriggerClock.start();
     }
 
     return ok;
@@ -85,6 +86,7 @@ bool StereoRigCalibrationOperation::step()
     {
         if( mCamera )
         {
+            std::cout << "Try to read" << std::endl;
             mCamera->read(image);
         }
         else
@@ -94,17 +96,25 @@ bool StereoRigCalibrationOperation::step()
         }
     }
 
+    if(image.isValid() || mTriggerClock.elapsed() > 500)
+    {
+        std::cout << "Trigger" << std::endl;
+        mCamera->trigger();
+        mTriggerClock.start();
+    }
+
     if( image.isValid() )
     {
         cv::Mat left = image.getFrame(0);
         cv::Mat right = image.getFrame(1);
 
         cv::Size output_size( left.cols + right.cols, std::max(left.rows, right.rows) );
+        std::cout << output_size.width << ", " << output_size.height << std::endl;
 
         cv::Mat output( output_size, CV_8UC3);
 
-        output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) = left;
-        output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) = right;
+        left.copyTo( output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) );
+        right.copyTo( output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) );
 
         mVideoPort->beginWrite();
         mVideoPort->data().image = output;
@@ -130,18 +140,22 @@ bool StereoRigCalibrationOperation::step()
             return mRightTracker.track(image.getFrame(1), true);
         });
 
-        go_on = ( left_target_found.get() && right_target_found.get() );
+        const bool left_one = left_target_found.get();
+        const bool right_one = right_target_found.get();
+        go_on = left_one && right_one;
+        std::cout << "Found: " << left_one << ' ' << right_one << std::endl;
     }
 
     if( go_on )
     {
         go_on = computePose(mLeftTracker, mLeftCalibrationData, left_camera_to_target);
-        
+        std::cout << "Left pose: " << go_on << std::endl;
     }
 
     if( go_on )
     {
         go_on = computePose(mRightTracker, mRightCalibrationData, right_camera_to_target);
+        std::cout << "Right pose: " << go_on << std::endl;
     }
 
     if( go_on )
@@ -164,7 +178,7 @@ bool StereoRigCalibrationOperation::step()
         writeOutputText();
     }
 
-    QThread::msleep(5);
+    QThread::msleep(10);
 
     return ret;
 }
@@ -179,20 +193,17 @@ void StereoRigCalibrationOperation::after()
 
 void StereoRigCalibrationOperation::writeOutputText()
 {
-    /*
     std::stringstream s;
     s << "Frame count: " << mFrameCount << std::endl;
-    s << "Attempted frame count: " << mAttemptedFrameCount << std::endl;
-    s << "Successful frame count: " << mSuccessfulFrameCount << std::endl;
-    s << "Successful frames left: " << mRequestedSuccessfulFrameCount - mSuccessfulFrameCount << std::endl;
+    s << "Number of computed poses: " << mPoses.size() << std::endl;
+    s << "Number of poses left: " << mNumberOfPosesForCalibration - mPoses.size() << std::endl;
     s << std::endl;
-    s << "Camera name: " << mCamera->getHumanName() << std::endl;
+    s << "Video input: " << mCamera->getHumanName() << std::endl;
     s << "Output file: " << mOutputPath << std::endl;
 
     mStatsPort->beginWrite();
     mStatsPort->data().text = s.str().c_str();
     mStatsPort->endWrite();
-    */
 }
 
 bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, CameraCalibrationData& calibration, Sophus::SE3d& camera_to_target)

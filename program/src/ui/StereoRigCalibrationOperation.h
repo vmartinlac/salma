@@ -55,6 +55,7 @@ protected:
     target::Tracker mRightTracker;
     int mFrameCount;
     QTime mClock;
+    QTime mTriggerClock;
     std::vector<Sophus::SE3d> mPoses;
 };
 

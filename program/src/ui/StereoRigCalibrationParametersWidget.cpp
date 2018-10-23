@@ -77,7 +77,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         }
         
         ok = bool(newcamera);
-        error_message = "Please select a camera!";
+        error_message = "Incorrect camera!";
     }
 
     if(ok)
