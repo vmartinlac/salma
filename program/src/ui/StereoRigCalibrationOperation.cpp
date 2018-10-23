@@ -44,14 +44,16 @@ bool StereoRigCalibrationOperation::before()
         }
         else
         {
+            mStatsPort->beginWrite();
+            mStatsPort->data().text = "Could not open output file!";
+            mStatsPort->endWrite();
             ok = false;
-            std::cout << "Could not open output file!" << std::endl; // TODO: put this message on the UI.
         }
     }
     
     if(ok)
     {
-        ok = bool(mCamera);
+        ok = bool(mCamera) && (mCamera->getNumberOfCameras() == 2);
     }
 
     if(ok)
@@ -94,8 +96,18 @@ bool StereoRigCalibrationOperation::step()
 
     if( image.isValid() )
     {
+        cv::Mat left = image.getFrame(0);
+        cv::Mat right = image.getFrame(1);
+
+        cv::Size output_size( left.cols + right.cols, std::max(left.rows, right.rows) );
+
+        cv::Mat output( output_size, CV_8UC3);
+
+        output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) = left;
+        output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) = right;
+
         mVideoPort->beginWrite();
-        mVideoPort->data().image = image.getFrame(0); // TODO: output both frames.
+        mVideoPort->data().image = output;
         mVideoPort->endWrite();
 
         mFrameCount++;
@@ -227,7 +239,7 @@ void StereoRigCalibrationOperation::calibrate()
     {
         right_camera_to_left_camera = Sophus::average( mPoses );
         ok = bool(right_camera_to_left_camera);
-        error_message = "Could average calibration data.";
+        error_message = "Could not average calibration data.";
     }
 
     if(ok)
@@ -250,15 +262,24 @@ void StereoRigCalibrationOperation::calibrate()
         std::stringstream s;
 
         s << "Left camera to world transformation:" << std::endl;
-        // TODO: print left camera pose.
+        s << "left_x = " << calibration.left_camera_to_world.translation().x() << std::endl;
+        s << "left_y = " << calibration.left_camera_to_world.translation().y() << std::endl;
+        s << "left_z = " << calibration.left_camera_to_world.translation().z() << std::endl;
+        s << "left_qx = " << calibration.left_camera_to_world.unit_quaternion().x() << std::endl;
+        s << "left_qy = " << calibration.left_camera_to_world.unit_quaternion().y() << std::endl;
+        s << "left_qz = " << calibration.left_camera_to_world.unit_quaternion().z() << std::endl;
+        s << "left_qw = " << calibration.left_camera_to_world.unit_quaternion().w() << std::endl;
         s << std::endl;
 
         s << "Right camera to world transformation:" << std::endl;
-        // TODO: print right camera pose.
+        s << "right_x = " << calibration.right_camera_to_world.translation().x() << std::endl;
+        s << "right_y = " << calibration.right_camera_to_world.translation().y() << std::endl;
+        s << "right_z = " << calibration.right_camera_to_world.translation().z() << std::endl;
+        s << "right_qx = " << calibration.right_camera_to_world.unit_quaternion().x() << std::endl;
+        s << "right_qy = " << calibration.right_camera_to_world.unit_quaternion().y() << std::endl;
+        s << "right_qz = " << calibration.right_camera_to_world.unit_quaternion().z() << std::endl;
+        s << "right_qw = " << calibration.right_camera_to_world.unit_quaternion().w() << std::endl;
         s << std::endl;
-
-        //s << "Standard deviation on attitude: " << std::endl;
-        //s << std::endl;
 
         mStatsPort->beginWrite();
         mStatsPort->data().text = s.str().c_str();
@@ -323,6 +344,7 @@ void StereoRigCalibrationOperation::convertPoseFromOpenCVToSophus(
 
     position = -( attitude * t_eigen );
 
-    // TODO: set the pose.
+    camera_to_object.translation() = position;
+    camera_to_object.setQuaternion(attitude);
 }
 

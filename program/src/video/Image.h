@@ -28,6 +28,8 @@ public:
 
     cv::Mat& getFrame(int idx=0);
 
+    //cv::Mat aggregateAllViews();
+
 protected:
 
     bool mValid;

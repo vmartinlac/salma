@@ -77,3 +77,25 @@ cv::Mat& Image::getFrame(int idx)
     }
 }
 
+/*
+cv::Mat Image::aggregateAllViews()
+{
+    int width = 0;
+    int height = 0;
+    int type = mFrames[0].type;
+
+    for(int i=0; i<mNumberOfFrames; i++)
+    {
+        width += mFrames[i].cols;
+        height = std::max(height, mFrames[i].rows);
+    }
+
+    cv::Mat output( cv::Size(width, height), CV_8UC3);
+
+    output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) = left;
+    output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) = right;
+
+    return cv::Mat();
+}
+*/
+
