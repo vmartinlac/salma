@@ -1,3 +1,6 @@
+#include <thread>
+#include <algorithm>
+#include <chrono>
 #include "GeneralVideoSource.h"
 
 GeneralVideoSource::GeneralVideoSource()
@@ -111,36 +114,50 @@ void GeneralVideoSource::trigger()
 
 void GeneralVideoSource::read(Image& image)
 {
+    const int N = mCameras.size();
+
+    std::vector<bool> received(N, false);
+    std::vector<cv::Mat> frames(N);
     double timestamp = 0.0;
+    int max_rounds = 6;
 
-    std::vector<cv::Mat> frames;
-    frames.resize(mCameras.size());
+    bool go_on = true;
 
-    bool ok = true;
-
-    for(int i=0; ok && i<mCameras.size(); i++)
+    while(go_on && max_rounds > 0)
     {
-        Image tmp;
-        mCameras[i]->read(tmp);
+        max_rounds--;
+        go_on = false;
 
-        if( tmp.isValid() )
+        for(int i=0; i<N; i++)
         {
-            if( tmp.getNumberOfFrames() != 1 ) throw std::runtime_error("internal error");
-
-            if(i == 0)
+            if(received[i] == false)
             {
-                timestamp = tmp.getTimestamp();
-            }
+                Image im;
+                mCameras[i]->read(im);
 
-            frames[i] = tmp.getFrame(0);
+                if( im.isValid() )
+                {
+                    if( im.getNumberOfFrames() != 1 ) throw std::runtime_error("internal error");
+
+                    if(i == 0)
+                    {
+                        timestamp = im.getTimestamp();
+                    }
+
+                    frames[i] = im.getFrame(0);
+                    received[i] = true;
+                }
+                else
+                {
+                    go_on = true;
+                }
+            }
         }
-        else
-        {
-            ok = false;
-        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    if(ok)
+    if( std::all_of(received.begin(), received.end(), [] (bool a) { return a; }) )
     {
         image.setValid(timestamp, frames);
     }

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <atomic>
 #include <opencv2/core.hpp>
+#include <VimbaCPP/Include/VimbaCPP.h>
 #include "VideoSource.h"
 #include "AvtCamera.h"
 
@@ -12,8 +13,8 @@ class VideoSystem
 {
 public:
 
-    static bool initialize();
-    static void finalize();
+    bool initialize();
+    void finalize();
     static VideoSystem* instance();
 
 public:
@@ -31,7 +32,6 @@ public:
     VideoSourcePtr createMockStereoVideoSource();
     VideoSourcePtr assembleVideoSources(const std::vector<VideoSourcePtr>& video_sources);
 
-    bool detectAvtCameras();
     int getNumberOfAvtCameras();
     std::string getNameOfAvtCamera(int idx);
 
@@ -42,8 +42,7 @@ private:
 
 protected:
 
-    bool doInitialize();
-    void doFinalize();
     void clearAvtCameras();
+    bool detectAvtCameras();
 };
 

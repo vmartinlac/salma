@@ -1,3 +1,4 @@
+#include <iostream>
 #include "GeneralVideoSource.h"
 #include "VideoSystem.h"
 
@@ -5,28 +6,13 @@
 
 std::unique_ptr<VideoSystem> VideoSystem::mInstance;
 
-bool VideoSystem::initialize()
-{
-    mInstance.reset(new VideoSystem());
-
-    const bool ret = mInstance->doInitialize();
-
-    if(ret == false)
-    {
-        mInstance.reset();
-    }
-
-    return ret;
-}
-
-void VideoSystem::finalize()
-{
-    mInstance->doFinalize();
-    mInstance.reset();
-}
-
 VideoSystem* VideoSystem::instance()
 {
+    if(bool(mInstance) == false)
+    {
+        mInstance.reset(new VideoSystem());
+    }
+
     return mInstance.get();
 }
 
@@ -38,37 +24,48 @@ VideoSystem::~VideoSystem()
 {
 }
 
-bool VideoSystem::doInitialize()
+bool VideoSystem::initialize()
 {
     bool ok = true;
 
-#ifndef TEST_WITHOUT_VIMBA
+    AVT::VmbAPI::VimbaSystem& vimba = AVT::VmbAPI::VimbaSystem::GetInstance();
+
     if(ok)
     {
-        ok = (VmbErrorSuccess == VmbStartup());
+        ok = (VmbErrorSuccess == vimba.Startup());
+
+        if(ok == false)
+        {
+            std::cerr << "Could not initialize Vimba!" << std::endl;
+        }
     }
 
+    /*
     if(ok)
     {
         bool gige;
         ok = ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
     }
+    */
 
     if(ok)
     {
-        detectAvtCameras();
+        ok = detectAvtCameras();
+
+        if(ok == false)
+        {
+            std::cerr << "Error while enumerating cameras!" << std::endl;
+        }
     }
-#endif
 
     return ok;
 }
 
-void VideoSystem::doFinalize()
+void VideoSystem::finalize()
 {
     clearAvtCameras();
-#ifndef TEST_WITHOUT_VIMBA
-    VmbShutdown();
-#endif
+
+    AVT::VmbAPI::VimbaSystem::GetInstance().Shutdown();
 }
 
 void VideoSystem::clearAvtCameras()
@@ -86,48 +83,34 @@ void VideoSystem::clearAvtCameras()
 
 bool VideoSystem::detectAvtCameras()
 {
+    AVT::VmbAPI::VimbaSystem& vimba = AVT::VmbAPI::VimbaSystem::GetInstance();
+
+    AVT::VmbAPI::CameraPtrVector cameras;
+
     bool ok = true;
-    VmbUint32_t count = 0;
-    std::vector<VmbCameraInfo_t> info;
+
+    //VmbUint32_t count = 0;
 
     clearAvtCameras();
-
-#ifndef TEST_WITHOUT_VIMBA
 
     // discover.
 
     if(ok)
     {
-        ok = (VmbErrorSuccess == VmbFeatureCommandRun(gVimbaHandle, "GeVDiscoveryAllOnce"));
-    }
-
-    // get number of cameras.
-
-    if(ok)
-    {
-        ok = (VmbErrorSuccess == VmbCamerasList(NULL, 0, &count, sizeof(VmbCameraInfo_t)));
-    }
-
-    // retrieve camera infos.
-
-    if( ok && count > 0 )
-    {
-        info.resize(count);
-        ok = (VmbErrorSuccess == VmbCamerasList(&info.front(), count, &count, sizeof(VmbCameraInfo_t)));
+        ok = (VmbErrorSuccess == vimba.GetCameras(cameras));
     }
 
     // create cameras.
 
-    if(ok && count > 0 )
+    if(ok)
     {
-        mAvtCameras.resize(count);
+        mAvtCameras.resize(cameras.size());
 
-        for(int i=0; i<count; i++)
+        for(int i=0; i<cameras.size(); i++)
         {
-            mAvtCameras[i].reset( new AvtCamera(info[i]) );
+            mAvtCameras[i].reset( new AvtCamera(cameras[i]) );
         }
     }
-#endif
 
     if(ok == false)
     {

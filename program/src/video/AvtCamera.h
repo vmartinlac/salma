@@ -2,14 +2,14 @@
 
 #include <memory>
 #include <mutex>
-#include <VimbaC/Include/VimbaC.h>
+#include <VimbaCPP/Include/VimbaCPP.h>
 #include "Camera.h"
 
 class AvtCamera : public Camera
 {
 public:
 
-    AvtCamera(const VmbCameraInfo_t& caminfos);
+    AvtCamera(AVT::VmbAPI::CameraPtr camera);
     ~AvtCamera() override;
 
     bool open() override;
@@ -22,27 +22,14 @@ public:
 
 protected:
 
-    static void VMB_CALL callback( const VmbHandle_t camera, VmbFrame_t* frame );
+    class FrameObserver;
 
 protected:
 
-    std::string m_camera_id;
-    std::string m_camera_name;
-    std::string m_camera_model;
-    std::string m_camera_serial;
-    VmbAccessMode_t m_camera_permitted_access;
-    std::string m_interface_id;
-
-    struct Frame
-    {
-        VmbFrame_t vimba_frame;
-        std::vector<uint8_t> buffer;
-    };
-
     bool mIsOpen;
-    VmbHandle_t mHandle;
-    VmbInt64_t m_tick_frequency;
-    std::vector<Frame> mFrames;
+    VmbInt64_t mTickFrequency;
+    AVT::VmbAPI::FramePtrVector mFrames;
+    AVT::VmbAPI::CameraPtr mCamera;
 
     std::mutex mMutex;
     Image mNewImage;
