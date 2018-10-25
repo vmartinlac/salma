@@ -91,7 +91,7 @@ bool AvtCamera::open()
         if(ok)
         {
             AVT::VmbAPI::FeaturePtr feature;
-            ok = ( VmbErrorSuccess == mCamera->GetFeatureByName("TriggerSource", feature) && VmbErrorSuccess == feature->SetValue("Software") );
+            ok = ( VmbErrorSuccess == mCamera->GetFeatureByName("TriggerSource", feature) && VmbErrorSuccess == feature->SetValue("FreeRun") );
         }
 
         if(ok)
@@ -143,6 +143,7 @@ void AvtCamera::read(Image& image)
 
 void AvtCamera::trigger()
 {
+    /*
     AVT::VmbAPI::FeaturePtr feature;
 
     bool ok = true;
@@ -154,6 +155,7 @@ void AvtCamera::trigger()
     {
         std::cerr << "Failed to trigger the camera!" << std::endl;
     }
+    */
 }
 
 std::string AvtCamera::getHumanName()
@@ -173,35 +175,3 @@ std::string AvtCamera::getHumanName()
     }
 }
 
-/*
-void VMB_CALL AvtCamera::callback( const VmbHandle_t handle, VmbFrame_t* frame )
-{
-    if(
-        (VmbFrameStatusComplete == frame->receiveStatus) &&
-        (frame->pixelFormat == VmbPixelFormatBgr8) &&
-        (frame->receiveFlags & VmbFrameFlagsTimestamp) &&
-        (frame->receiveFlags & VmbFrameFlagsDimension) )
-    {
-        AvtCamera* camera = static_cast<AvtCamera*>(frame->context[0]);
-
-        cv::Mat wrapper(
-            cv::Size(frame->width, frame->height),
-            CV_8UC3,
-            frame->buffer);
-
-        camera->mMutex.lock();
-
-        const double timestamp = double(frame->timestamp) / double(camera->m_tick_frequency);
-        camera->mNewImage.setValid(timestamp, wrapper.clone());
-
-        camera->mMutex.unlock();
-    }
-    else
-    {
-        std::cout << "error while receiving frame !" << std::endl;
-    }
-
-    VmbCaptureFrameQueue( handle, frame, callback );
-}
-
-*/
