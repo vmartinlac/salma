@@ -1,0 +1,51 @@
+#pragma once
+
+#include <condition_variable>
+#include <mutex>
+#include <memory>
+#include <string>
+#include <VimbaCPP/Include/VimbaCPP.h>
+#include "VideoSource.h"
+#include "Image.h"
+
+class AvtRig : public VideoSource
+{
+public:
+
+    AvtRig(AVT::VmbAPI::CameraPtr camera);
+    AvtRig(AVT::VmbAPI::CameraPtr left_camera, AVT::VmbAPI::CameraPtr right_camera);
+
+    void setCameras(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras);
+    //void setMode(); // TRIGGERED, FREERUN
+
+    ~AvtRig() override;
+
+    std::string getHumanName() override;
+
+    bool open() override;
+    void close() override;
+
+    void trigger() override;
+    void read(Image& image) override;
+
+    int getNumberOfCameras() override;
+
+protected:
+
+    class CameraData;
+
+    typedef std::shared_ptr<CameraData> CameraDataPtr;
+
+    class FrameObserver;
+
+protected:
+
+    std::vector<CameraDataPtr> mCameras;
+
+protected:
+
+    void setImage(int idx, Image& image);
+};
+
+typedef std::shared_ptr<AvtRig> AvtRigPtr;
+

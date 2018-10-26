@@ -86,7 +86,6 @@ bool StereoRigCalibrationOperation::step()
     {
         if( mCamera )
         {
-            std::cout << "Try to read" << std::endl;
             mCamera->read(image);
         }
         else
@@ -98,7 +97,6 @@ bool StereoRigCalibrationOperation::step()
 
     if(image.isValid() || mTriggerClock.elapsed() > 500)
     {
-        std::cout << "Trigger" << std::endl;
         mCamera->trigger();
         mTriggerClock.start();
     }
@@ -132,30 +130,29 @@ bool StereoRigCalibrationOperation::step()
     {
         std::future<bool> left_target_found = std::async( std::launch::async, [this, &image] () -> bool
         {
+            //return false;
             return mLeftTracker.track(image.getFrame(0), true);
         });
 
         std::future<bool> right_target_found = std::async( std::launch::async, [this, &image] () -> bool
         {
+            //return false;
             return mRightTracker.track(image.getFrame(1), true);
         });
 
         const bool left_one = left_target_found.get();
         const bool right_one = right_target_found.get();
         go_on = left_one && right_one;
-        std::cout << "Found: " << left_one << ' ' << right_one << std::endl;
     }
 
     if( go_on )
     {
         go_on = computePose(mLeftTracker, mLeftCalibrationData, left_camera_to_target);
-        std::cout << "Left pose: " << go_on << std::endl;
     }
 
     if( go_on )
     {
         go_on = computePose(mRightTracker, mRightCalibrationData, right_camera_to_target);
-        std::cout << "Right pose: " << go_on << std::endl;
     }
 
     if( go_on )
@@ -178,7 +175,7 @@ bool StereoRigCalibrationOperation::step()
         writeOutputText();
     }
 
-    QThread::msleep(10);
+    //QThread::msleep(1000/50);
 
     return ret;
 }

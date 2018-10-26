@@ -196,7 +196,7 @@ bool CameraCalibrationOperation::step()
         ret = false;
     }
 
-    QThread::msleep(5);
+    //QThread::msleep(5);
 
     return ret;
 }

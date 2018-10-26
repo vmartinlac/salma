@@ -31,19 +31,21 @@ public:
 
         if(ok && status == VmbFrameStatusComplete && width > 0 && height > 0)
         {
+            const double t = double(timestamp) / double(mCamera->mTickFrequency);
 
             cv::Mat wrapper(
                 cv::Size(width, height),
                 CV_8UC3,
                 buffer);
 
-            mCamera->mMutex.lock();
+            Image im;
+            im.setValid(t, wrapper.clone());
 
-            const double t = double(timestamp) / double(mCamera->mTickFrequency);
-            //std::cout << t << std::endl;
-            mCamera->mNewImage.setValid(t, wrapper.clone());
-
-            mCamera->mMutex.unlock();
+            {
+                std::lock_guard<std::mutex> lock( mCamera->mMutex );
+                mCamera->mNewImage = std::move(im);
+                mCamera->mCondition.notify_one();
+            }
         }
 
         m_pCamera->QueueFrame(frame);
@@ -53,7 +55,6 @@ protected:
 
     int mCount;
     AvtCamera* mCamera;
-    //std::mutex mMutex;
 };
 
 AvtCamera::AvtCamera(AVT::VmbAPI::CameraPtr camera)
@@ -91,7 +92,7 @@ bool AvtCamera::open()
         if(ok)
         {
             AVT::VmbAPI::FeaturePtr feature;
-            ok = ( VmbErrorSuccess == mCamera->GetFeatureByName("TriggerSource", feature) && VmbErrorSuccess == feature->SetValue("FreeRun") );
+            ok = ( VmbErrorSuccess == mCamera->GetFeatureByName("TriggerSource", feature) && VmbErrorSuccess == feature->SetValue("Freerun") );
         }
 
         if(ok)
@@ -130,15 +131,27 @@ void AvtCamera::close()
     {
         mCamera->StopContinuousImageAcquisition();
         mCamera->Close();
+        mIsOpen = false;
     }
 }
 
 void AvtCamera::read(Image& image)
 {
-    mMutex.lock();
-    image = mNewImage;
-    mNewImage.setInvalid();
-    mMutex.unlock();
+    std::chrono::time_point< std::chrono::steady_clock > until = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+
+    std::unique_lock<std::mutex> lock(mMutex);
+
+    std::cv_status status = mCondition.wait_until(lock, until);
+
+    if(status == std::cv_status::timeout)
+    {
+        image.setInvalid();
+    }
+    else
+    {
+        image = std::move(mNewImage);
+        mNewImage.setInvalid();
+    }
 }
 
 void AvtCamera::trigger()
@@ -175,3 +188,7 @@ std::string AvtCamera::getHumanName()
     }
 }
 
+int AvtCamera::getNumberOfCameras()
+{
+    return 1;
+}

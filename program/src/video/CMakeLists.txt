@@ -20,8 +20,8 @@ add_library(
     MockCamera.cpp
     AvtCamera.h
     AvtCamera.cpp
-    AvtStereoCamera.h
-    AvtStereoCamera.cpp
+    AvtRig.h
+    AvtRig.cpp
     ArduinoTrigger.h
     ArduinoTrigger.cpp
 )

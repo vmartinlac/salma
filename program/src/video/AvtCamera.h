@@ -1,11 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <condition_variable>
 #include <mutex>
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include "Camera.h"
+#include "VideoSource.h"
 
-class AvtCamera : public Camera
+class AvtCamera : public VideoSource
 {
 public:
 
@@ -20,6 +21,8 @@ public:
     void read(Image& image) override;
     void trigger() override;
 
+    int getNumberOfCameras() override;
+
 protected:
 
     class FrameObserver;
@@ -32,6 +35,7 @@ protected:
     AVT::VmbAPI::CameraPtr mCamera;
 
     std::mutex mMutex;
+    std::condition_variable mCondition;
     Image mNewImage;
 };
 

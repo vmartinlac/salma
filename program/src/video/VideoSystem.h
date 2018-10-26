@@ -38,11 +38,6 @@ public:
 private:
 
     static std::unique_ptr<VideoSystem> mInstance;
-    std::vector<AvtCameraPtr> mAvtCameras;
-
-protected:
-
-    void clearAvtCameras();
-    bool detectAvtCameras();
+    AVT::VmbAPI::CameraPtrVector mAvtCameras;
 };
 
