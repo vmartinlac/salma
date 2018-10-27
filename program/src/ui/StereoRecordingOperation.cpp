@@ -87,7 +87,6 @@ bool StereoRecordingOperation::step()
                 cv::Mat right = image.getFrame(1);
 
                 cv::Size output_size( left.cols + right.cols, std::max(left.rows, right.rows) );
-                std::cout << output_size.width << ", " << output_size.height << std::endl;
 
                 cv::Mat output( output_size, CV_8UC3);
 

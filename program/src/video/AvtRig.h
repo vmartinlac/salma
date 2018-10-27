@@ -41,10 +41,8 @@ protected:
 protected:
 
     std::vector<CameraDataPtr> mCameras;
-
-protected:
-
-    void setImage(int idx, Image& image);
+    std::mutex mMutex;
+    std::condition_variable mCondition;
 };
 
 typedef std::shared_ptr<AvtRig> AvtRigPtr;

@@ -5,12 +5,12 @@ class AvtRig::CameraData
 {
 public:
 
+    AvtRig* rig;
+
     AVT::VmbAPI::CameraPtr avt_camera;
     AVT::VmbAPI::FramePtrVector frames;
 
-    std::mutex mutex;
-    std::condition_variable condition;
-    Image new_image;
+    Image last_image;
 
     VmbInt64_t tick_frequency;
     VmbInt64_t payload_size;
@@ -33,6 +33,8 @@ public:
         VmbUint32_t height;
         VmbFrameStatusType status;
 
+        std::cout << "callback" << std::endl;
+
         bool ok = true;
         
         ok = ok && (frame->GetImage(buffer) == VmbErrorSuccess);
@@ -54,18 +56,21 @@ public:
             image.setValid(t, wrapper.clone());
 
             {
-                std::lock_guard<std::mutex> lock(mCamera->mutex);
-                mCamera->new_image = std::move(image);
-            }
+                std::lock_guard<std::mutex> lock(mCamera->rig->mMutex);
+                mCamera->last_image = std::move(image);
 
-            mCamera->condition.notify_one();
+                if( std::all_of(mCamera->rig->mCameras.begin(), mCamera->rig->mCameras.end(), [] (CameraDataPtr cam) { return cam->last_image.isValid(); }) )
+                {
+                    mCamera->rig->mCondition.notify_one();
+                }
+            }
         }
         else
         {
             std::cerr << "Incorrect frame received!" << std::endl;
         }
 
-        m_pCamera->QueueFrame(frame);
+        //m_pCamera->QueueFrame(frame);
     }
 
 protected:
@@ -137,13 +142,20 @@ bool AvtRig::open()
 
         ok = ok && ( VmbErrorSuccess == cam->Open(VmbAccessModeFull) );
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("TriggerSource", feature) ) && ( VmbErrorSuccess == feature->SetValue("Software") );
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionMode", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->SetValue("Continuous") );
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PixelFormat", feature) ) && ( VmbErrorSuccess == feature->SetValue("BGR8Packed") );
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("TriggerSource", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->SetValue("Software") );
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PayloadSize", feature) ) && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->payload_size) );
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PixelFormat", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->SetValue("BGR8Packed") );
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("GevTimestampTickFrequency", feature) ) && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->tick_frequency) );
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PayloadSize", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->payload_size) );
+
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("GevTimestampTickFrequency", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->tick_frequency) );
 
         if(ok)
         {
@@ -163,10 +175,11 @@ bool AvtRig::open()
 
         for( AVT::VmbAPI::FramePtrVector::iterator it = mCameras[i]->frames.begin(); ok && it != mCameras[i]->frames.end(); it++ )
         {
-            ok = ok && ( VmbErrorSuccess == cam->QueueFrame(*it) );
+            //ok = ok && ( VmbErrorSuccess == cam->QueueFrame(*it) );
         }
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStart", feature) ) && ( VmbErrorSuccess == feature->RunCommand() );
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStart", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->RunCommand() );
     }
 
     if(ok == false)
@@ -212,13 +225,21 @@ void AvtRig::close()
 
 void AvtRig::trigger()
 {
-    /*
-    for(size_t i=0; i<mCameras.size(); i++)
+    std::cout << "trigger" << std::endl;
+
     {
-        mCameras[i]->avt_camera->FlushQueue();
-        mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frame );
-    } 
-    */
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        for(size_t i=0; i<mCameras.size(); i++)
+        {
+            mCameras[i]->last_image.setInvalid();
+            // TODO
+            //
+            mCameras[i]->avt_camera->FlushQueue();
+            mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
+            //
+        } 
+    }
 
     bool ok = true;
 
@@ -238,44 +259,36 @@ void AvtRig::trigger()
 
 void AvtRig::read(Image& image)
 {
+    std::unique_lock<std::mutex> lock(mMutex);
+
     const size_t N = mCameras.size();
+
+    std::cout << "read" << std::endl;
 
     bool ok = true;
 
     std::chrono::time_point< std::chrono::steady_clock > until = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
 
-    std::vector<Image> images(N);
-
-    for(size_t i=0; ok && i<N; i++)
+    auto pred = [N,this] ()
     {
-        std::unique_lock<std::mutex> lock(mCameras[i]->mutex);
+        bool finished = true;
 
-        std::cv_status status = mCameras[i]->condition.wait_until(lock, until);
-
-        if( status == std::cv_status::timeout )
+        for(size_t i=0; finished && i<N; i++)
         {
-            ok = false;
+            finished = mCameras[i]->last_image.isValid();
         }
-        else
-        {
-            images[i] = std::move(mCameras[i]->new_image);
-            mCameras[i]->new_image.setInvalid();
-        }
-    }
 
-    if(ok)
+        return finished;
+    };
+
+    const bool valid = mCondition.wait_until(lock, until, pred);
+
+    if(valid)
     {
-        const double timestamp = images.front().getTimestamp();
+        const double timestamp = mCameras.front()->last_image.getTimestamp();
 
         std::vector<cv::Mat> frames(N);
-        std::transform( images.begin(), images.end(), frames.begin(), [] (Image& im) { return im.getFrame(); } );
-
-        /*
-        for(size_t i=0; i<N; i++)
-        {
-            frames[i] = images[i].getFrame();
-        }
-        */
+        std::transform( mCameras.begin(), mCameras.end(), frames.begin(), [] (CameraDataPtr& d) { return d->last_image.getFrame(); } );
 
         image.setValid(timestamp, frames);
     }
@@ -300,6 +313,7 @@ void AvtRig::setCameras(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras)
         CameraDataPtr d(new CameraData());
 
         d->avt_camera = cam;
+        d->rig = this;
 
         mCameras.push_back(d);
     }

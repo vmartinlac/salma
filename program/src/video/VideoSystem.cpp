@@ -85,11 +85,12 @@ void VideoSystem::clearAvtCameras()
 
 VideoSourcePtr VideoSystem::createMonoAvtVideoSource(int camera_idx)
 {
-    AvtCameraPtr ret;
+    VideoSourcePtr ret;
 
     if( 0 <= camera_idx && camera_idx < mAvtCameras.size() )
     {
-        ret.reset(new AvtCamera(mAvtCameras[camera_idx]));
+        //ret.reset(new AvtCamera(mAvtCameras[camera_idx]));
+        ret.reset(new AvtRig({mAvtCameras[camera_idx]}));
     }
 
     return ret;

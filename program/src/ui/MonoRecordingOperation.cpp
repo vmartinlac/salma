@@ -42,6 +42,11 @@ bool MonoRecordingOperation::before()
         ok = mCamera->open();
     }
 
+    if(ok)
+    {
+        mCamera->trigger();
+    }
+
     return ok;
 }
 
@@ -53,6 +58,7 @@ bool MonoRecordingOperation::step()
     {
         Image image;
         mCamera->read(image);
+        mCamera->trigger();
 
         if(image.isValid())
         {
