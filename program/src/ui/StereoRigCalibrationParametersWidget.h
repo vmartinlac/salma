@@ -2,7 +2,7 @@
 #pragma once
 
 #include <QLineEdit>
-#include <QComboBox>
+#include "CameraList.h"
 #include "OperationParametersWidget.h"
 #include "PathWidget.h"
 
@@ -22,8 +22,8 @@ protected:
 
     PathWidget* mPathToLeftCalibrationData;
     PathWidget* mPathToRightCalibrationData;
-    QComboBox* mLeftCamera;
-    QComboBox* mRightCamera;
+    CameraList* mLeftCamera;
+    CameraList* mRightCamera;
     PathWidget* mOutputPath;
 };
 

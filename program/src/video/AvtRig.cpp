@@ -73,23 +73,13 @@ protected:
     CameraDataPtr mCamera;
 };
 
-AvtRig::AvtRig(AVT::VmbAPI::CameraPtr camera)
+AvtRig::AvtRig()
 {
-    mCameras.resize(1);
-
-    mCameras[0].reset(new CameraData());
-    mCameras[0]->avt_camera = camera;
 }
 
-AvtRig::AvtRig(AVT::VmbAPI::CameraPtr left_camera, AVT::VmbAPI::CameraPtr right_camera)
+AvtRig::AvtRig(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras)
 {
-    mCameras.resize(2);
-
-    mCameras[0].reset(new CameraData());
-    mCameras[0]->avt_camera = left_camera;
-
-    mCameras[1].reset(new CameraData());
-    mCameras[1]->avt_camera = right_camera;
+    setCameras(cameras);
 }
 
 AvtRig::~AvtRig()
@@ -298,5 +288,20 @@ void AvtRig::read(Image& image)
 int AvtRig::getNumberOfCameras()
 {
     return mCameras.size();
+}
+
+void AvtRig::setCameras(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras)
+{
+    mCameras.clear();
+    mCameras.reserve(cameras.size());
+
+    for(AVT::VmbAPI::CameraPtr cam : cameras)
+    {
+        CameraDataPtr d(new CameraData());
+
+        d->avt_camera = cam;
+
+        mCameras.push_back(d);
+    }
 }
 

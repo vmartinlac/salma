@@ -11,26 +11,17 @@
 
 MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
 {
-    mCameraList = new QComboBox();
-    VideoSystem* vs = VideoSystem::instance();
-    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
-    {
-        mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
-    }
+    mPath = new PathWidget(PathWidget::GET_EXISTING_DIRECTORY);
+    mPath->setPath(".");
 
-    mPath = new QLineEdit();
-    QPushButton* btnselectpath = new QPushButton("Select");
-    QHBoxLayout* pathlay = new QHBoxLayout();
-    pathlay->setContentsMargins(0, 0, 0, 0);
-    pathlay->addWidget(mPath);
-    pathlay->addWidget(btnselectpath);
-    QWidget* pathwidget = new QWidget();
-    pathwidget->setLayout(pathlay);
-    QObject::connect(btnselectpath, SIGNAL(clicked()), this, SLOT(selectOutputDirectory()));
+    mCameraList = new CameraList();
+
+    mVisualizationOnly = new QCheckBox();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
-    form->addRow("Output directory", pathwidget);
+    form->addRow("Output directory", mPath);
+    form->addRow("Visualization only", mVisualizationOnly);
 
     setLayout(form);
 }
@@ -47,17 +38,11 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
 
     if(ok)
     {
-        QVariant data = mCameraList->currentData();
+        const int camera_id = mCameraList->getCameraId();
 
-        VideoSystem* vs = VideoSystem::instance();
-
-        if(data.isValid())
+        if( camera_id >= 0 )
         {
-            int id = data.toInt();
-            if( 0 <= id && id < vs->getNumberOfAvtCameras() )
-            {
-                newcamera = vs->createMonoAvtVideoSource(id);
-            }
+            newcamera = VideoSystem::instance()->createMonoAvtVideoSource(camera_id);
         }
         
         ok = bool(newcamera);
@@ -66,7 +51,13 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputdirectory = QDir(mPath->text());
+        ok = mPath->path().isEmpty() == false;
+        error_message = "Please set output directory!";
+    }
+
+    if(ok)
+    {
+        newoutputdirectory = QDir(mPath->path());
         ok = newoutputdirectory.mkpath(".");
         error_message = "Failed to create output directory!";
     }
@@ -78,6 +69,7 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
 
         op->mCamera.swap(newcamera);
         op->mOutputDirectory = newoutputdirectory;
+        op->mVisualizationOnly = mVisualizationOnly->isChecked();
     }
     else
     {
@@ -91,14 +83,3 @@ QString MonoRecordingParametersWidget::name()
 {
     return "Mono-recording";
 }
-
-void MonoRecordingParametersWidget::selectOutputDirectory()
-{
-    QString ret = QFileDialog::getExistingDirectory(this, "Select output directory", mPath->text());
-
-    if(ret.isEmpty() == false)
-    {
-        mPath->setText(ret);
-    }
-}
-

@@ -1,12 +1,9 @@
 #pragma once
 
-#include <QDialog>
-#include <QSpinBox>
-#include <QDir>
-#include <QLineEdit>
-#include <QComboBox>
-#include "Camera.h"
+#include <QCheckBox>
 #include "OperationParametersWidget.h"
+#include "CameraList.h"
+#include "PathWidget.h"
 
 class StereoRecordingParametersWidget : public OperationParametersWidget
 {
@@ -20,14 +17,11 @@ public:
 
     QString name() override;
 
-protected slots:
-
-    void selectOutputDirectory();
-
 protected:
 
-    QLineEdit* mPath;
-    QComboBox* mCameraList;
-    QSpinBox* mMaxFrameRate;
+    CameraList* mLeftCamera;
+    CameraList* mRightCamera;
+    PathWidget* mOutputPath;
+    QCheckBox* mVisualizationOnly;
 };
 

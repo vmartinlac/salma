@@ -1,9 +1,10 @@
 #pragma once
 
+#include <QCheckBox>
 #include <QDialog>
 #include <QDir>
-#include <QLineEdit>
-#include <QComboBox>
+#include "CameraList.h"
+#include "PathWidget.h"
 #include "Camera.h"
 #include "OperationParametersWidget.h"
 
@@ -19,13 +20,10 @@ public:
 
     QString name() override;
 
-protected slots:
-
-    void selectOutputDirectory();
-
 protected:
 
-    QLineEdit* mPath;
-    QComboBox* mCameraList;
+    CameraList* mCameraList;
+    PathWidget* mPath;
+    QCheckBox* mVisualizationOnly;
 };
 

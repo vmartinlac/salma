@@ -9,19 +9,13 @@
 
 StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
 {
-    mLeftCamera = new QComboBox();
-    mRightCamera = new QComboBox();
+    mLeftCamera = new CameraList();
+
     mPathToLeftCalibrationData = new PathWidget(PathWidget::GET_OPEN_FILENAME);
+
+    mRightCamera = new CameraList();
+
     mPathToRightCalibrationData = new PathWidget(PathWidget::GET_OPEN_FILENAME);
-
-    VideoSystem* vs = VideoSystem::instance();
-
-    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
-    {
-        QString name = QString(vs->getNameOfAvtCamera(i).c_str());
-        mLeftCamera->addItem(name, i);
-        mRightCamera->addItem(name, i);
-    }
 
     mOutputPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
@@ -61,20 +55,10 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        QVariant left_data = mLeftCamera->currentData();
-        QVariant right_data = mRightCamera->currentData();
+        int left_id = mLeftCamera->getCameraId();
+        int right_id = mRightCamera->getCameraId();
 
-        VideoSystem* vs = VideoSystem::instance();
-
-        if( left_data.isValid() && right_data.isValid() )
-        {
-            int left_id = left_data.toInt();
-            int right_id = right_data.toInt();
-            if( 0 <= left_id && left_id < vs->getNumberOfAvtCameras() && 0 <= right_id && right_id < vs->getNumberOfAvtCameras() )
-            {
-                newcamera = vs->createStereoAvtVideoSource(left_id, right_id);
-            }
-        }
+        newcamera = VideoSystem::instance()->createStereoAvtVideoSource(left_id, right_id);
         
         ok = bool(newcamera);
         error_message = "Incorrect camera!";

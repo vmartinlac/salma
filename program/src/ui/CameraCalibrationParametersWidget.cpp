@@ -9,14 +9,7 @@
 
 CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* parent) : OperationParametersWidget(parent)
 {
-    mCameraList = new QComboBox();
-
-    VideoSystem* vs = VideoSystem::instance();
-
-    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
-    {
-        mCameraList->addItem(QString(vs->getNameOfAvtCamera(i).c_str()), i);
-    }
+    mCameraList = new CameraList();
 
     mPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
@@ -39,17 +32,11 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        QVariant data = mCameraList->currentData();
+        int camera_id = mCameraList->getCameraId();
 
-        VideoSystem* vs = VideoSystem::instance();
-
-        if(data.isValid())
+        if(camera_id >= 0)
         {
-            int id = data.toInt();
-            if( 0 <= id && id < vs->getNumberOfAvtCameras() )
-            {
-                newcamera = vs->createMonoAvtVideoSource(id);
-            }
+            newcamera = VideoSystem::instance()->createMonoAvtVideoSource(camera_id);
         }
         
         ok = bool(newcamera);
@@ -58,7 +45,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        newoutputpath = (mPath->path());
+        newoutputpath = mPath->path();
         ok = (newoutputpath.isEmpty() == false);
         error_message = "Please set an output filename!";
     }

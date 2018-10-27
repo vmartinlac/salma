@@ -22,9 +22,9 @@ public:
 
 public:
 
-    QDir mOutputDirectory;
     VideoSourcePtr mCamera;
-    int mMaxFrameRate;
+    QDir mOutputDirectory;
+    bool mVisualizationOnly;
 
 protected:
 

@@ -130,13 +130,11 @@ bool StereoRigCalibrationOperation::step()
     {
         std::future<bool> left_target_found = std::async( std::launch::async, [this, &image] () -> bool
         {
-            //return false;
             return mLeftTracker.track(image.getFrame(0), true);
         });
 
         std::future<bool> right_target_found = std::async( std::launch::async, [this, &image] () -> bool
         {
-            //return false;
             return mRightTracker.track(image.getFrame(1), true);
         });
 

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <QComboBox>
+#include "CameraList.h"
 #include "PathWidget.h"
 #include "OperationParametersWidget.h"
 
@@ -20,6 +20,6 @@ public:
 protected:
 
     PathWidget* mPath;
-    QComboBox* mCameraList;
+    CameraList* mCameraList;
 };
 

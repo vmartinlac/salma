@@ -8,6 +8,7 @@
 
 MonoRecordingOperation::MonoRecordingOperation()
 {
+    mVisualizationOnly = false;
 }
 
 MonoRecordingOperation::~MonoRecordingOperation()
@@ -26,11 +27,14 @@ bool MonoRecordingOperation::before()
         ok = bool(mCamera);
     }
 
-    if(ok)
+    if(mVisualizationOnly == false)
     {
-        const QString csv_path = mOutputDirectory.absoluteFilePath("recording.csv");
-        mOutputCSV.open( csv_path.toLocal8Bit().data(), std::ofstream::out );
-        ok = mOutputCSV.is_open();
+        if(ok)
+        {
+            const QString csv_path = mOutputDirectory.absoluteFilePath("recording.csv");
+            mOutputCSV.open( csv_path.toLocal8Bit().data(), std::ofstream::out );
+            ok = mOutputCSV.is_open();
+        }
     }
 
     if(ok)
@@ -52,12 +56,14 @@ bool MonoRecordingOperation::step()
 
         if(image.isValid())
         {
-            const QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
-            const QString filename = mOutputDirectory.absoluteFilePath(basename);
+            if(mVisualizationOnly == false)
+            {
+                const QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
+                const QString filename = mOutputDirectory.absoluteFilePath(basename);
 
-            cv::imwrite(filename.toLocal8Bit().data(), image.getFrame());
-
-            mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+                cv::imwrite(filename.toLocal8Bit().data(), image.getFrame());
+                mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+            }
 
             mNumFrames++;
 
@@ -71,6 +77,7 @@ bool MonoRecordingOperation::step()
                 s << std::endl;
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
                 s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
+                s << "Visualization only: " << (mVisualizationOnly ? "true" : "false" ) << std::endl;
 
                 mStatsPort->beginWrite();
                 mStatsPort->data().text = s.str().c_str();
@@ -94,11 +101,14 @@ bool MonoRecordingOperation::step()
 
 void MonoRecordingOperation::after()
 {
+    if(mVisualizationOnly == false)
+    {
+        mOutputCSV.close();
+    }
+
     if(mCamera)
     {
         mCamera->close();
     }
-
-    mOutputCSV.close();
 }
 

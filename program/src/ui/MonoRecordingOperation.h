@@ -24,6 +24,7 @@ public:
 
     QDir mOutputDirectory;
     VideoSourcePtr mCamera;
+    bool mVisualizationOnly;
 
 protected:
 

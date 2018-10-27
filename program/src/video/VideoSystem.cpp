@@ -109,7 +109,7 @@ VideoSourcePtr VideoSystem::createStereoAvtVideoSource(int left_camera_idx, int 
     {
         auto left = mAvtCameras[left_camera_idx];
         auto right = mAvtCameras[right_camera_idx];
-        ret.reset(new AvtRig(left, right));
+        ret.reset(new AvtRig({left, right}));
     }
 
     return ret;
