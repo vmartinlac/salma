@@ -4,12 +4,23 @@
 class AvtRig::CameraData
 {
 public:
+    
+    CameraData()
+    {
+        //std::cerr << "CameraData created!" << std::endl;
+    }
+
+    ~CameraData()
+    {
+        //std::cerr << "CameraData deleted!" << std::endl;
+    }
 
     AvtRig* rig;
 
     AVT::VmbAPI::CameraPtr avt_camera;
     AVT::VmbAPI::FramePtrVector frames;
 
+    bool received;
     Image last_image;
 
     VmbInt64_t tick_frequency;
@@ -23,6 +34,12 @@ public:
     FrameObserver(CameraDataPtr cam) : IFrameObserver( cam->avt_camera )
     {
         mCamera = cam;
+        //std::cerr << "FrameObserver created!" << std::endl;
+    }
+
+    ~FrameObserver()
+    {
+        //std::cerr << "FrameObserver deleted!" << std::endl;
     }
 
     void FrameReceived(const AVT::VmbAPI::FramePtr frame) override
@@ -57,9 +74,16 @@ public:
 
             {
                 std::lock_guard<std::mutex> lock(mCamera->rig->mMutex);
-                mCamera->last_image = std::move(image);
 
-                if( std::all_of(mCamera->rig->mCameras.begin(), mCamera->rig->mCameras.end(), [] (CameraDataPtr cam) { return cam->last_image.isValid(); }) )
+                if(mCamera->received)
+                {
+                    std::cerr << "Received the frame twice!" << std::endl;
+                }
+
+                mCamera->last_image = std::move(image);
+                mCamera->received = true;
+
+                if( std::all_of(mCamera->rig->mCameras.begin(), mCamera->rig->mCameras.end(), [] (CameraDataPtr cam) { return cam->received; }) )
                 {
                     mCamera->rig->mCondition.notify_one();
                 }
@@ -142,26 +166,38 @@ bool AvtRig::open()
 
         ok = ok && ( VmbErrorSuccess == cam->Open(VmbAccessModeFull) );
 
+        //std::cout << "Z " << ok << std::endl;
+
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionMode", feature) );
         ok = ok && ( VmbErrorSuccess == feature->SetValue("Continuous") );
+
+        //std::cout << "A " << ok << std::endl;
 
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("TriggerSource", feature) );
         ok = ok && ( VmbErrorSuccess == feature->SetValue("Software") );
 
+        //std::cout << "B " << ok << std::endl;
+
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PixelFormat", feature) );
         ok = ok && ( VmbErrorSuccess == feature->SetValue("BGR8Packed") );
+
+        //std::cout << "C " << ok << std::endl;
 
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("PayloadSize", feature) );
         ok = ok && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->payload_size) );
 
+        //std::cout << "D " << ok << std::endl;
+
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("GevTimestampTickFrequency", feature) );
         ok = ok && ( VmbErrorSuccess == feature->GetValue(mCameras[i]->tick_frequency) );
+
+        //std::cout << "E " << ok << std::endl;
 
         if(ok)
         {
             observer.reset(new FrameObserver(mCameras[i]));
 
-            mCameras[i]->frames.resize(3);
+            mCameras[i]->frames.resize(1);
 
             for( AVT::VmbAPI::FramePtrVector::iterator it = mCameras[i]->frames.begin(); ok && it != mCameras[i]->frames.end(); it++ )
             {
@@ -171,15 +207,23 @@ bool AvtRig::open()
             }
         }
 
+        //std::cout << "F " << ok << std::endl;
+
         ok = ok && ( VmbErrorSuccess == cam->StartCapture() );
 
+        //std::cout << "G " << ok << std::endl;
+
+        /*
         for( AVT::VmbAPI::FramePtrVector::iterator it = mCameras[i]->frames.begin(); ok && it != mCameras[i]->frames.end(); it++ )
         {
-            //ok = ok && ( VmbErrorSuccess == cam->QueueFrame(*it) );
+            ok = ok && ( VmbErrorSuccess == cam->QueueFrame(*it) );
         }
+        */
 
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStart", feature) );
         ok = ok && ( VmbErrorSuccess == feature->RunCommand() );
+
+        //std::cout << "H " << ok << std::endl;
     }
 
     if(ok == false)
@@ -192,17 +236,22 @@ bool AvtRig::open()
 
 void AvtRig::close()
 {
-    bool ok = true;
-
     std::cerr << "Closing the camera." << std::endl;
 
-    for(size_t i=0; ok && i<mCameras.size(); i++)
+    bool global_ok = true;
+
+    for(size_t i=0; i<mCameras.size(); i++)
     {
+        bool ok = true;
+
         AVT::VmbAPI::FeaturePtr feature;
 
         AVT::VmbAPI::CameraPtr cam = mCameras[i]->avt_camera;
 
-        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStop", feature) ) && ( VmbErrorSuccess == feature->RunCommand() );
+        mCameras[i]->frames.clear();
+
+        ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStop", feature) );
+        ok = ok && ( VmbErrorSuccess == feature->RunCommand() );
 
         ok = ok && ( VmbErrorSuccess == cam->EndCapture() );
 
@@ -210,14 +259,12 @@ void AvtRig::close()
 
         ok = ok && ( VmbErrorSuccess == cam->RevokeAllFrames() );
 
-        //ok = ok && ( VmbErrorSuccess == mCameras[i]->frame->UnregisterObserver() );
-
         ok = ok && ( VmbErrorSuccess == cam->Close() );
 
-        mCameras[i]->frames.clear();
+        global_ok = global_ok && ok;
     }
 
-    if( ok == false )
+    if( global_ok == false )
     {
         std::cerr << "Error while closing the camera!" << std::endl;
     }
@@ -233,10 +280,15 @@ void AvtRig::trigger()
         for(size_t i=0; i<mCameras.size(); i++)
         {
             mCameras[i]->last_image.setInvalid();
-            // TODO
-            //
+            mCameras[i]->received = false;
             mCameras[i]->avt_camera->FlushQueue();
             mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
+            /*
+            for( AVT::VmbAPI::FramePtr frame : mCameras[i]->frames )
+            {
+                mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
+            }
+            */
             //
         } 
     }
@@ -267,23 +319,35 @@ void AvtRig::read(Image& image)
 
     bool ok = true;
 
-    std::chrono::time_point< std::chrono::steady_clock > until = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+    std::chrono::time_point< std::chrono::steady_clock > until = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
 
-    auto pred = [N,this] ()
+    auto pred_received = [N,this] ()
     {
-        bool finished = true;
+        bool received = true;
 
-        for(size_t i=0; finished && i<N; i++)
+        for(size_t i=0; received && i<N; i++)
         {
-            finished = mCameras[i]->last_image.isValid();
+            received = mCameras[i]->last_image.isValid();
         }
 
-        return finished;
+        return received;
     };
 
-    const bool valid = mCondition.wait_until(lock, until, pred);
+    auto pred_valid = [N,this] ()
+    {
+        bool valid = true;
 
-    if(valid)
+        for(size_t i=0; valid && i<N; i++)
+        {
+            valid = mCameras[i]->received;
+        }
+
+        return valid;
+    };
+
+    const bool received = mCondition.wait_until(lock, until, pred_received);
+
+    if( received && pred_valid() )
     {
         const double timestamp = mCameras.front()->last_image.getTimestamp();
 

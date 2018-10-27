@@ -65,7 +65,7 @@ bool StereoRecordingOperation::step()
             if( mVisualizationOnly == false )
             {
                 const QString left_basename = QString("frame_%1_left.bmp").arg(QString::number(mNumFrames), 6, '0');
-                const QString right_basename = QString("frame_%1_left.bmp").arg(QString::number(mNumFrames), 6, '0');
+                const QString right_basename = QString("frame_%1_right.bmp").arg(QString::number(mNumFrames), 6, '0');
 
                 const QString left_filename = mOutputDirectory.absoluteFilePath(left_basename);
                 const QString right_filename = mOutputDirectory.absoluteFilePath(right_basename);
@@ -100,12 +100,16 @@ bool StereoRecordingOperation::step()
 
             // write output text.
             {
+                const int total_seconds = static_cast<int>( mClock.elapsed()*1.0e-3 );
+                const int seconds = total_seconds % 60;
+                const int minutes = total_seconds / 60;
+
                 std::stringstream s;
 
                 s << "Frame count: " << mNumFrames << std::endl;
                 s << "Left image size: " << image.getFrame(0).cols << " * " << image.getFrame(0).rows << std::endl;
                 s << "Right image size: " << image.getFrame(1).cols << " * " << image.getFrame(1).rows << std::endl;
-                s << "Recording duration: " << double(mClock.elapsed())*1.0e-3 << " seconds" << std::endl;
+                s << "Recording duration: " << minutes << " min " << seconds << " seconds" << std::endl;
                 s << std::endl;
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
                 s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
