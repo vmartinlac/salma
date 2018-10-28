@@ -7,7 +7,7 @@ int main(int num_args, char** args)
 {
     QApplication app(num_args, args);
 
-    if( VideoSystem::instance()->initialize() == false )
+    if( VideoSystem::instance()->initialize(true) == false )
     {
         QMessageBox::critical(nullptr, "Error", "Could not initialize Vimba!");
     }

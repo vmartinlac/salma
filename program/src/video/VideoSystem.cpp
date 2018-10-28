@@ -17,45 +17,51 @@ VideoSystem* VideoSystem::instance()
 
 VideoSystem::VideoSystem()
 {
+    mHaveVimba = false;
 }
 
 VideoSystem::~VideoSystem()
 {
 }
 
-bool VideoSystem::initialize()
+bool VideoSystem::initialize(bool with_vimba)
 {
+    mHaveVimba = with_vimba;
+
     bool ok = true;
 
-    AVT::VmbAPI::VimbaSystem& vimba = AVT::VmbAPI::VimbaSystem::GetInstance();
-
-    if(ok)
+    if(with_vimba)
     {
-        ok = (VmbErrorSuccess == vimba.Startup());
+        AVT::VmbAPI::VimbaSystem& vimba = AVT::VmbAPI::VimbaSystem::GetInstance();
 
-        if(ok == false)
+        if(ok)
         {
-            std::cerr << "Could not initialize Vimba!" << std::endl;
+            ok = (VmbErrorSuccess == vimba.Startup());
+
+            if(ok == false)
+            {
+                std::cerr << "Could not initialize Vimba!" << std::endl;
+            }
         }
-    }
 
-    /*
-    if(ok)
-    {
-        bool gige;
-        ok = ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
-    }
-    */
-
-    if(ok)
-    {
-        mAvtCameras.clear();
-
-        ok = (VmbErrorSuccess == vimba.GetCameras(mAvtCameras));
-
-        if(ok == false)
+        /*
+        if(ok)
         {
-            std::cerr << "Error while enumerating cameras!" << std::endl;
+            bool gige;
+            ok = ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
+        }
+        */
+
+        if(ok)
+        {
+            mAvtCameras.clear();
+
+            ok = (VmbErrorSuccess == vimba.GetCameras(mAvtCameras));
+
+            if(ok == false)
+            {
+                std::cerr << "Error while enumerating cameras!" << std::endl;
+            }
         }
     }
 
@@ -64,7 +70,10 @@ bool VideoSystem::initialize()
 
 void VideoSystem::finalize()
 {
-    AVT::VmbAPI::VimbaSystem::GetInstance().Shutdown();
+    if(mHaveVimba)
+    {
+        AVT::VmbAPI::VimbaSystem::GetInstance().Shutdown();
+    }
 }
 
 /*
@@ -87,7 +96,7 @@ VideoSourcePtr VideoSystem::createMonoAvtVideoSource(int camera_idx)
 {
     VideoSourcePtr ret;
 
-    if( 0 <= camera_idx && camera_idx < mAvtCameras.size() )
+    if( mHaveVimba && 0 <= camera_idx && camera_idx < mAvtCameras.size() )
     {
         //ret.reset(new AvtCamera(mAvtCameras[camera_idx]));
         ret.reset(new AvtRig({mAvtCameras[camera_idx]}));
@@ -102,6 +111,7 @@ VideoSourcePtr VideoSystem::createStereoAvtVideoSource(int left_camera_idx, int 
 
     bool ok = true;
 
+    ok = ok && mHaveVimba;
     ok = ok && ( left_camera_idx != right_camera_idx );
     ok = ok && ( 0 <= left_camera_idx && left_camera_idx < mAvtCameras.size() );
     ok = ok && ( 0 <= right_camera_idx && right_camera_idx < mAvtCameras.size() );
@@ -118,12 +128,26 @@ VideoSourcePtr VideoSystem::createStereoAvtVideoSource(int left_camera_idx, int 
 
 int VideoSystem::getNumberOfAvtCameras()
 {
-    return mAvtCameras.size();
+    if(mHaveVimba)
+    {
+        return mAvtCameras.size();
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 std::string VideoSystem::getNameOfAvtCamera(int idx)
 {
-    AvtCameraPtr cam(new AvtCamera(mAvtCameras[idx]));
-    return cam->getHumanName();
+    if(mHaveVimba)
+    {
+        AvtCameraPtr cam(new AvtCamera(mAvtCameras[idx]));
+        return cam->getHumanName();
+    }
+    else
+    {
+        throw std::runtime_error("Vimba was not initialized!");
+    }
 }
 

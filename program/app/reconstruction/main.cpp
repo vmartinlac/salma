@@ -10,6 +10,8 @@ int main(int num_args, char** args)
 
     if(ok)
     {
+        SLAMSystem::instance()->run();
+
         SLAMSystem::instance()->finalize();
     }
     else

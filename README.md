@@ -2,9 +2,9 @@ Dependencies
 ============
 
 * eigen
+* g2o
 * nanoflann
 * OpenCV
-* openscenegraph
 * Qt5
 * Sophus
 * Vimba SDK from Allied Vision Technologies

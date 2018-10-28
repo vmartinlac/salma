@@ -15,7 +15,7 @@ public:
 
     static VideoSystem* instance();
 
-    bool initialize();
+    bool initialize(bool with_vimba);
     void finalize();
 
 public:
@@ -38,7 +38,11 @@ public:
 private:
 
     VideoSystem();
+
+private:
+
     static std::unique_ptr<VideoSystem> mInstance;
     AVT::VmbAPI::CameraPtrVector mAvtCameras;
+    bool mHaveVimba;
 };
 

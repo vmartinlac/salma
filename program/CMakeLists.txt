@@ -19,6 +19,7 @@ find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Sophus REQUIRED)
+find_package(g2o REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(app)
