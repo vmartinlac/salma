@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "Image.h"
+#include "VideoErrorCode.h"
 
 class VideoSource
 {

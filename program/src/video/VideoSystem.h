@@ -13,13 +13,13 @@ class VideoSystem
 {
 public:
 
+    static VideoSystem* instance();
+
     bool initialize();
     void finalize();
-    static VideoSystem* instance();
 
 public:
 
-    VideoSystem();
     ~VideoSystem();
 
     VideoSourcePtr createMonoAvtVideoSource(int camera_idx);
@@ -37,6 +37,7 @@ public:
 
 private:
 
+    VideoSystem();
     static std::unique_ptr<VideoSystem> mInstance;
     AVT::VmbAPI::CameraPtrVector mAvtCameras;
 };

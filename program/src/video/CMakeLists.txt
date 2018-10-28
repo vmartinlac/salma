@@ -24,6 +24,9 @@ add_library(
     AvtRig.cpp
     ArduinoTrigger.h
     ArduinoTrigger.cpp
+    VideoReader.h
+    VideoReader.cpp
+    VideoErrorCode.h
 )
 
 target_link_libraries(video PUBLIC Vimba opencv_core opencv_videoio opencv_imgproc)
