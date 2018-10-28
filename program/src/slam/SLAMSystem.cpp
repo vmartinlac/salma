@@ -76,17 +76,22 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
 void SLAMSystem::printWelcomeMessage()
 {
     std::cout << std::endl;
-    std::cout << " SALM" << std::endl; // TODO: make some ascii-art logo.
+    std::cout << "   _____         _      __  __  " << std::endl;
+    std::cout << "  / ____|  /\\   | |    |  \\/  | " << std::endl;
+    std::cout << " | (___   /  \\  | |    | \\  / | " << std::endl;
+    std::cout << "  \\___ \\ / /\\ \\ | |    | |\\/| | " << std::endl;
+    std::cout << "  ____) / ____ \\| |____| |  | | " << std::endl;
+    std::cout << " |_____/_/    \\_\\______|_|  |_| " << std::endl;
     std::cout << std::endl;
-    std::cout << " Writen by Victor Martin Lac in 2018" << std::endl;
+    std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
     std::cout << std::endl;
-    std::cout << " Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
+    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
     std::cout << std::endl;
-    std::cout << " Build date: " << BuildInfo::getCompilationDate() << std::endl;
-    std::cout << " Compiler: " << BuildInfo::getCompilerName() << std::endl;
+    std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
+    std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
     std::cout << std::endl;
-    std::cout << " OpenCV version: " << CV_VERSION << std::endl;
-    std::cout << " Eigen version: " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
+    std::cout << "OpenCV version: " << CV_VERSION << std::endl;
+    std::cout << "Eigen version: " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
     std::cout << std::endl;
 }
 
