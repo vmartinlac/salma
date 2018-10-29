@@ -29,6 +29,6 @@ add_library(
     VideoErrorCode.h
 )
 
-target_link_libraries(video PUBLIC Vimba opencv_core opencv_videoio opencv_imgproc)
+target_link_libraries(video PUBLIC Vimba opencv_core opencv_videoio opencv_imgproc Qt5::Core)
 target_include_directories(video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

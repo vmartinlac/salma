@@ -1,4 +1,5 @@
 #include <iostream>
+#include "VideoReader.h"
 #include "AvtRig.h"
 #include "GeneralVideoSource.h"
 #include "VideoSystem.h"
@@ -149,5 +150,23 @@ std::string VideoSystem::getNameOfAvtCamera(int idx)
     {
         throw std::runtime_error("Vimba was not initialized!");
     }
+}
+
+VideoSourcePtr VideoSystem::createVideoSourceFromMonoRecording(const std::string& path)
+{
+    VideoReaderPtr ret(new VideoReader(1));
+
+    ret->setPath(path);
+
+    return ret;
+}
+
+VideoSourcePtr VideoSystem::createVideoSourceFromStereoRecording(const std::string& path)
+{
+    VideoReaderPtr ret(new VideoReader(2));
+
+    ret->setPath(path);
+
+    return ret;
 }
 

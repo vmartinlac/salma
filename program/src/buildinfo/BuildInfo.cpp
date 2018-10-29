@@ -30,3 +30,8 @@ std::string BuildInfo::getCompilerName()
         return BI_CXX_COMPILER_ID " " BI_CXX_COMPILER_VERSION;
 }
 
+std::string BuildInfo::getVersionString()
+{
+    return std::to_string(BI_VERSION_MAJOR) + "." + std::to_string(BI_VERSION_MINOR) + "." + std::to_string(BI_VERSION_REVISION);
+}
+

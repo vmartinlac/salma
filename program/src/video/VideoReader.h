@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <QDir>
+#include <future>
 #include <memory>
 #include <fstream>
 #include <iostream>
@@ -11,10 +13,10 @@ class VideoReader : public VideoSource
 {
 public:
 
-    VideoReader();
+    VideoReader(int views);
     ~VideoReader();
 
-    void setFileName(const std::string& filename);
+    void setPath(const std::string& path);
 
     std::string getHumanName() override;
 
@@ -28,9 +30,11 @@ public:
 
 protected:
 
-    std::string mFileName;
-    std::ifstream mCSVFile;
     int mNumViews;
+    QDir mDirectory;
+    std::ifstream mCSVFile;
+    bool mTriggered;
+    std::future<Image> mNextImage;
 };
 
 typedef std::shared_ptr<VideoReader> VideoReaderPtr;

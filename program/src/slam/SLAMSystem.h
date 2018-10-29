@@ -34,6 +34,8 @@ protected:
 
     bool parseCommandLineArguments(int num_args, char** args);
 
+    void createNewFrame(Image& image);
+
     void computeFeatures(FramePtr frame);
 
     void track(FramePtr frame);
@@ -44,10 +46,10 @@ protected:
     
 protected:
 
-    VideoReaderPtr mVideoReader;
+    VideoSourcePtr mVideo;
     std::vector<MapPointPtr> mMapPoints;
     FramePtr mFirstFrame;
-    FramePtr mLastFrame;
+    FramePtr mCurrentFrame;
     CameraCalibrationData mCameraCalibration[2];
     StereoRigCalibrationData mStereoRigCalibration;
     static std::unique_ptr<SLAMSystem> mInstance;

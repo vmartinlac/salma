@@ -4,5 +4,5 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(reconstruction PUBLIC slam)
+target_link_libraries(reconstruction PUBLIC slam buildinfo)
 
