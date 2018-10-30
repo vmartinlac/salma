@@ -285,13 +285,6 @@ void AvtRig::trigger()
             mCameras[i]->avt_camera->FlushQueue();
             mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
 #endif
-            /*
-            for( AVT::VmbAPI::FramePtr frame : mCameras[i]->frames )
-            {
-                mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
-            }
-            */
-            //
         } 
     }
 

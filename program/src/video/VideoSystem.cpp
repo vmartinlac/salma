@@ -143,8 +143,13 @@ std::string VideoSystem::getNameOfAvtCamera(int idx)
 {
     if(mHaveVimba)
     {
-        AvtCameraPtr cam(new AvtCamera(mAvtCameras[idx]));
-        return cam->getHumanName();
+        std::string id;
+        mAvtCameras[idx]->GetID(id);
+
+        std::string interface_id;
+        mAvtCameras[idx]->GetInterfaceID(interface_id);
+
+        return interface_id + ":" + id;
     }
     else
     {

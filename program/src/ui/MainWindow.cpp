@@ -106,6 +106,7 @@ void MainWindow::configure()
 void MainWindow::startOperation()
 {
     mThread->start();
+    mActionConfigure->setEnabled(false);
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
@@ -113,6 +114,7 @@ void MainWindow::startOperation()
 void MainWindow::stopOperation()
 {
     mThread->requestInterruption();
+    mActionConfigure->setEnabled(false);
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
@@ -128,10 +130,12 @@ void MainWindow::operationStarted()
 {
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(true);
+    mActionConfigure->setEnabled(false);
 }
 
 void MainWindow::operationStopped()
 {
+    mActionConfigure->setEnabled(true);
     mActionStart->setEnabled(true);
     mActionStop->setEnabled(false);
 }
