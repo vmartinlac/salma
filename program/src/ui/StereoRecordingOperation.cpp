@@ -57,6 +57,7 @@ bool StereoRecordingOperation::step()
     if( mCamera)
     {
         Image image;
+
         mCamera->read(image);
         mCamera->trigger();
 

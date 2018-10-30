@@ -12,7 +12,6 @@ class AvtRig : public VideoSource
 {
 public:
 
-    AvtRig();
     AvtRig(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras);
 
     void setCameras(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras);

@@ -1,6 +1,8 @@
 #include <iostream>
 #include "AvtRig.h"
 
+//#define AVT_RIG_ONLY_ONE_FRAME
+
 class AvtRig::CameraData
 {
 public:
@@ -50,8 +52,6 @@ public:
         VmbUint32_t height;
         VmbFrameStatusType status;
 
-        std::cout << "callback" << std::endl;
-
         bool ok = true;
         
         ok = ok && (frame->GetImage(buffer) == VmbErrorSuccess);
@@ -94,17 +94,15 @@ public:
             std::cerr << "Incorrect frame received!" << std::endl;
         }
 
-        //m_pCamera->QueueFrame(frame);
+#ifndef AVT_RIG_ONLY_ONE_FRAME
+        m_pCamera->QueueFrame(frame);
+#endif
     }
 
 protected:
 
     CameraDataPtr mCamera;
 };
-
-AvtRig::AvtRig()
-{
-}
 
 AvtRig::AvtRig(std::initializer_list<AVT::VmbAPI::CameraPtr> cameras)
 {
@@ -197,7 +195,11 @@ bool AvtRig::open()
         {
             observer.reset(new FrameObserver(mCameras[i]));
 
+#ifdef AVT_RIG_ONLY_ONE_FRAME
             mCameras[i]->frames.resize(1);
+#else
+            mCameras[i]->frames.resize(3);
+#endif
 
             for( AVT::VmbAPI::FramePtrVector::iterator it = mCameras[i]->frames.begin(); ok && it != mCameras[i]->frames.end(); it++ )
             {
@@ -213,12 +215,12 @@ bool AvtRig::open()
 
         //std::cout << "G " << ok << std::endl;
 
-        /*
+#ifndef AVT_RIG_ONLY_ONE_FRAME
         for( AVT::VmbAPI::FramePtrVector::iterator it = mCameras[i]->frames.begin(); ok && it != mCameras[i]->frames.end(); it++ )
         {
             ok = ok && ( VmbErrorSuccess == cam->QueueFrame(*it) );
         }
-        */
+#endif
 
         ok = ok && ( VmbErrorSuccess == cam->GetFeatureByName("AcquisitionStart", feature) );
         ok = ok && ( VmbErrorSuccess == feature->RunCommand() );
@@ -272,8 +274,6 @@ void AvtRig::close()
 
 void AvtRig::trigger()
 {
-    std::cout << "trigger" << std::endl;
-
     {
         std::lock_guard<std::mutex> lock(mMutex);
 
@@ -281,8 +281,10 @@ void AvtRig::trigger()
         {
             mCameras[i]->last_image.setInvalid();
             mCameras[i]->received = false;
+#ifdef AVT_RIG_ONLY_ONE_FRAME
             mCameras[i]->avt_camera->FlushQueue();
             mCameras[i]->avt_camera->QueueFrame( mCameras[i]->frames.front() );
+#endif
             /*
             for( AVT::VmbAPI::FramePtr frame : mCameras[i]->frames )
             {
@@ -314,8 +316,6 @@ void AvtRig::read(Image& image)
     std::unique_lock<std::mutex> lock(mMutex);
 
     const size_t N = mCameras.size();
-
-    std::cout << "read" << std::endl;
 
     bool ok = true;
 
