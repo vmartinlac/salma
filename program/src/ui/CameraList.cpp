@@ -26,9 +26,9 @@ void CameraList::refresh()
     clear();
 
     VideoSystem* vs = VideoSystem::instance();    
-    for(int i=0; i<vs->getNumberOfAvtCameras(); i++)
+    for(int i=0; i<vs->getNumberOfGenICamCameras(); i++)
     {
-        addItem( vs->getNameOfAvtCamera(i).c_str(), i );
+        addItem( vs->getNameOfGenICamCamera(i).c_str(), i );
     }
 }
 

@@ -5,7 +5,6 @@
 #include <QDir>
 #include "CameraList.h"
 #include "PathWidget.h"
-#include "Camera.h"
 #include "OperationParametersWidget.h"
 
 class MonoRecordingParametersWidget : public OperationParametersWidget

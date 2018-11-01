@@ -117,7 +117,7 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
 
     if(ok)
     {
-        mVideo = VideoSystem::instance()->createVideoSourceFromStereoRecording(parser.value("video-input").toStdString());
+        mVideo = VideoSystem::instance()->createVideoSourceFromFileStereo(parser.value("video-input").toStdString());
         ok = bool(mVideo);
         error_message = "Could not open video input file";
     }

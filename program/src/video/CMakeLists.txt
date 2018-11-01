@@ -2,33 +2,25 @@
 add_library(
     video
     STATIC
-    Image.h
     Image.cpp
-    Camera.h
-    Camera.cpp
-    Trigger.h
-    Trigger.cpp
-    VideoSource.h
+    Image.h
     VideoSource.cpp
-    AssembledVideoSource.h
-    AssembledVideoSource.cpp
-    GeneralVideoSource.h
-    GeneralVideoSource.cpp
-    VideoSystem.h
+    VideoSource.h
+    VideoSystemImpl.cpp
+    VideoSystemImpl.h
     VideoSystem.cpp
+    VideoSystem.h
     MockCamera.h
     MockCamera.cpp
-    AvtCamera.h
-    AvtCamera.cpp
-    AvtRig.h
-    AvtRig.cpp
-    ArduinoTrigger.h
-    ArduinoTrigger.cpp
-    VideoReader.h
-    VideoReader.cpp
     VideoErrorCode.h
+    VideoReader.cpp
+    VideoReader.h
+    GenICamRig.cpp
+    GenICamRig.h
+    GenICamCamera.cpp
+    GenICamCamera.h
 )
 
-target_link_libraries(video PUBLIC Vimba opencv_core opencv_videoio opencv_imgproc Qt5::Core)
+target_link_libraries(video PUBLIC Aravis opencv_core opencv_videoio opencv_imgproc Qt5::Core)
 target_include_directories(video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

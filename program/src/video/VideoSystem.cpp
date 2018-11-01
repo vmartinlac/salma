@@ -1,16 +1,13 @@
-#include <iostream>
-#include "VideoReader.h"
-#include "AvtRig.h"
-#include "GeneralVideoSource.h"
 #include "VideoSystem.h"
+#include "VideoSystemImpl.h"
 
 std::unique_ptr<VideoSystem> VideoSystem::mInstance;
 
 VideoSystem* VideoSystem::instance()
 {
-    if(bool(mInstance) == false)
+    if( bool(mInstance) == false)
     {
-        mInstance.reset(new VideoSystem());
+        mInstance.reset(new VideoSystemImpl());
     }
 
     return mInstance.get();
@@ -18,160 +15,59 @@ VideoSystem* VideoSystem::instance()
 
 VideoSystem::VideoSystem()
 {
-    mHaveVimba = false;
 }
 
 VideoSystem::~VideoSystem()
 {
 }
 
-bool VideoSystem::initialize(bool with_vimba)
+int VideoSystem::getNumberOfGenICamCameras()
 {
-    mHaveVimba = with_vimba;
-
-    bool ok = true;
-
-    if(with_vimba)
-    {
-        AVT::VmbAPI::VimbaSystem& vimba = AVT::VmbAPI::VimbaSystem::GetInstance();
-
-        if(ok)
-        {
-            ok = (VmbErrorSuccess == vimba.Startup());
-
-            if(ok == false)
-            {
-                std::cerr << "Could not initialize Vimba!" << std::endl;
-            }
-        }
-
-        /*
-        if(ok)
-        {
-            bool gige;
-            ok = ( VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gige) == VmbErrorSuccess && gige );
-        }
-        */
-
-        if(ok)
-        {
-            mAvtCameras.clear();
-
-            ok = (VmbErrorSuccess == vimba.GetCameras(mAvtCameras));
-
-            if(ok == false)
-            {
-                std::cerr << "Error while enumerating cameras!" << std::endl;
-            }
-        }
-    }
-
-    return ok;
+    return 0;
 }
 
-void VideoSystem::finalize()
+std::string VideoSystem::getNameOfGenICamCamera(int idx)
 {
-    if(mHaveVimba)
-    {
-        AVT::VmbAPI::VimbaSystem::GetInstance().Shutdown();
-    }
+    throw std::runtime_error("fatal error");
 }
 
-/*
-void VideoSystem::clearAvtCameras()
+VideoSourcePtr VideoSystem::createVideoSourceGenICamMono(int camera_idx)
 {
-    for( AVT::VmbAPI::CameraPtr& camera : mAvtCameras)
-    {
-        if(camera.use_count() != 1)
-        {
-            //throw std::runtime_error("Attempted to release VimbaCameraManager while a VimbaCamera is still referenced.");
-            std::cerr << "Releasing VideoSystem while some camera is still referenced!" << std::endl;
-        }
-    }
-
-    mAvtCameras.clear();
-}
-*/
-
-VideoSourcePtr VideoSystem::createMonoAvtVideoSource(int camera_idx)
-{
-    VideoSourcePtr ret;
-
-    if( mHaveVimba && 0 <= camera_idx && camera_idx < mAvtCameras.size() )
-    {
-        //ret.reset(new AvtCamera(mAvtCameras[camera_idx]));
-        ret.reset(new AvtRig({mAvtCameras[camera_idx]}));
-    }
-
-    return ret;
+    return VideoSourcePtr();
 }
 
-VideoSourcePtr VideoSystem::createStereoAvtVideoSource(int left_camera_idx, int right_camera_idx)
+VideoSourcePtr VideoSystem::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id)
 {
-    AvtRigPtr ret;
-
-    bool ok = true;
-
-    ok = ok && mHaveVimba;
-    ok = ok && ( left_camera_idx != right_camera_idx );
-    ok = ok && ( 0 <= left_camera_idx && left_camera_idx < mAvtCameras.size() );
-    ok = ok && ( 0 <= right_camera_idx && right_camera_idx < mAvtCameras.size() );
-
-    if(ok)
-    {
-        auto left = mAvtCameras[left_camera_idx];
-        auto right = mAvtCameras[right_camera_idx];
-        ret.reset(new AvtRig({left, right}));
-    }
-
-    return ret;
+    return VideoSourcePtr();
 }
 
-int VideoSystem::getNumberOfAvtCameras()
+VideoSourcePtr VideoSystem::createVideoSourceOpenCV(int id)
 {
-    if(mHaveVimba)
-    {
-        return mAvtCameras.size();
-    }
-    else
-    {
-        return 0;
-    }
+    return VideoSourcePtr();
 }
 
-std::string VideoSystem::getNameOfAvtCamera(int idx)
+VideoSourcePtr VideoSystem::createVideoSourceOpenCV(const std::string& filename)
 {
-    if(mHaveVimba)
-    {
-        std::string id;
-        mAvtCameras[idx]->GetID(id);
-
-        std::string interface_id;
-        mAvtCameras[idx]->GetInterfaceID(interface_id);
-
-        return interface_id + ":" + id;
-    }
-    else
-    {
-        throw std::runtime_error("Vimba was not initialized!");
-    }
+    return VideoSourcePtr();
 }
 
-VideoSourcePtr VideoSystem::createVideoSourceFromMonoRecording(const std::string& path)
+VideoSourcePtr VideoSystem::createVideoSourceFromFileMono(const std::string& path)
 {
-    VideoReaderPtr ret(new VideoReader(1));
-
-    ret->setPath(path);
-
-    return ret;
+    return VideoSourcePtr();
 }
 
-VideoSourcePtr VideoSystem::createVideoSourceFromStereoRecording(const std::string& path)
+VideoSourcePtr VideoSystem::createVideoSourceFromFileStereo(const std::string& path)
 {
-    VideoReaderPtr ret(new VideoReader(2));
+    return VideoSourcePtr();
+}
 
-    ret->setPath(path);
+VideoSourcePtr VideoSystem::createVideoSourceMockMono()
+{
+    return VideoSourcePtr();
+}
 
-    return ret;
+VideoSourcePtr VideoSystem::createVideoSourceMockStereo()
+{
+    return VideoSourcePtr();
 }
 

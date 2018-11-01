@@ -14,12 +14,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 find_package(Qt5 COMPONENTS OpenGL Core Widgets Gui PrintSupport Test REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Vimba REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Sophus REQUIRED)
 find_package(g2o REQUIRED)
+find_package(Aravis REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(app)
@@ -27,6 +27,7 @@ add_subdirectory(tst)
 
 # Old stuff:
 
+#find_package(Vimba REQUIRED)
 #find_package(OSG REQUIRED)
 #find_package(Curses REQUIRED)
 #find_package(Aravis REQUIRED)

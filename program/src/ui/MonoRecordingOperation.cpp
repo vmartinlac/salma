@@ -75,11 +75,15 @@ bool MonoRecordingOperation::step()
 
             // write to ports.
             {
+                const int total_seconds = static_cast<int>( mClock.elapsed()*1.0e-3 );
+                const int seconds = total_seconds % 60;
+                const int minutes = total_seconds / 60;
+
                 std::stringstream s;
 
                 s << "Frame count: " << mNumFrames << std::endl;
                 s << "Image resolution: " << image.getFrame().cols << " x " << image.getFrame().rows << std::endl;
-                s << "Recording duration: " << double(mClock.elapsed())*1.0e-3 << std::endl;
+                s << "Recording duration: " << minutes << " min " << seconds << " seconds" << std::endl;
                 s << std::endl;
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
                 s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;

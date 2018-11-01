@@ -9,7 +9,7 @@ int main(int num_args, char** args)
     QCoreApplication app(num_args, args);
     app.setApplicationVersion(BuildInfo::getVersionString().c_str());
 
-    if( VideoSystem::instance()->initialize(false) == false )
+    if( VideoSystem::instance()->initialize() == false )
     {
         std::cerr << "Could not initialize video module!" << std::endl;
         exit(1);

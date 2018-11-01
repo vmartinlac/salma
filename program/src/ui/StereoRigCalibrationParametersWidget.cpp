@@ -58,7 +58,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         int left_id = mLeftCamera->getCameraId();
         int right_id = mRightCamera->getCameraId();
 
-        newcamera = VideoSystem::instance()->createStereoAvtVideoSource(left_id, right_id);
+        newcamera = VideoSystem::instance()->createVideoSourceGenICamStereo(left_id, right_id);
         
         ok = bool(newcamera);
         error_message = "Incorrect camera!";

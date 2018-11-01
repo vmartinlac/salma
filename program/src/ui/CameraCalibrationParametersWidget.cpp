@@ -36,7 +36,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
         if(camera_id >= 0)
         {
-            newcamera = VideoSystem::instance()->createMonoAvtVideoSource(camera_id);
+            newcamera = VideoSystem::instance()->createVideoSourceGenICamMono(camera_id);
         }
         
         ok = bool(newcamera);

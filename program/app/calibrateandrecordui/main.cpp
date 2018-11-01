@@ -50,11 +50,11 @@ int main(int num_args, char** args)
     //
     QApplication app(num_args, args);
 
-    if( VideoSystem::instance()->initialize(true) == false )
+    if( VideoSystem::instance()->initialize() == false )
     {
         QMessageBox::critical(nullptr, "Error", "Could not initialize Vimba!");
     }
-    else if( VideoSystem::instance()->getNumberOfAvtCameras() == 0 )
+    else if( VideoSystem::instance()->getNumberOfGenICamCameras() == 0 )
     {
         QMessageBox::critical(nullptr, "Error", "No camera were detected!");
 

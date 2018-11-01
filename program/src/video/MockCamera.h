@@ -2,19 +2,20 @@
 
 #include <memory>
 #include <chrono>
-#include "Camera.h"
+#include "VideoSource.h"
 
-class MockCamera : public Camera
+class MockCamera : public VideoSource
 {
 public:
 
-    MockCamera(int width, int height);
+    MockCamera(int num_views, int width, int height);
     ~MockCamera() override;
 
     bool open() override;
     void close() override;
 
     std::string getHumanName() override;
+    int getNumberOfCameras() override;
 
     void read(Image& image) override;
     void trigger() override;
@@ -23,6 +24,7 @@ protected:
 
     int mWidth;
     int mHeight;
+    int mNumViews;
     bool mReady;
     std::chrono::time_point<std::chrono::steady_clock> mT0;
 };

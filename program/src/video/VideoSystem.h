@@ -1,13 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <memory>
-#include <mutex>
-#include <atomic>
-#include <opencv2/core.hpp>
-#include <VimbaCPP/Include/VimbaCPP.h>
+#include <string>
 #include "VideoSource.h"
-#include "AvtCamera.h"
 
 class VideoSystem
 {
@@ -15,34 +9,34 @@ public:
 
     static VideoSystem* instance();
 
-    bool initialize(bool with_vimba);
-    void finalize();
+    virtual bool initialize() = 0;
+    virtual void finalize() = 0;
 
 public:
 
-    ~VideoSystem();
+    virtual ~VideoSystem();
 
-    VideoSourcePtr createMonoAvtVideoSource(int camera_idx);
-    VideoSourcePtr createStereoAvtVideoSource(int left_camera_idx, int right_camera_id);
-    VideoSourcePtr createOpenCVVideoSource(const std::string& filename);
-    VideoSourcePtr createOpenCVVideoSource(int id);
-    VideoSourcePtr createVideoSourceFromMonoRecording(const std::string& path);
-    VideoSourcePtr createVideoSourceFromStereoRecording(const std::string& path);
-    VideoSourcePtr createMockMonoVideoSource();
-    VideoSourcePtr createMockStereoVideoSource();
-    VideoSourcePtr assembleVideoSources(const std::vector<VideoSourcePtr>& video_sources);
+    virtual int getNumberOfGenICamCameras();
+    virtual std::string getNameOfGenICamCamera(int idx);
 
-    int getNumberOfAvtCameras();
-    std::string getNameOfAvtCamera(int idx);
+    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx);
+    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id);
 
-private:
+    virtual VideoSourcePtr createVideoSourceOpenCV(int id);
+    virtual VideoSourcePtr createVideoSourceOpenCV(const std::string& filename);
+
+    virtual VideoSourcePtr createVideoSourceFromFileMono(const std::string& path);
+    virtual VideoSourcePtr createVideoSourceFromFileStereo(const std::string& path);
+
+    virtual VideoSourcePtr createVideoSourceMockMono();
+    virtual VideoSourcePtr createVideoSourceMockStereo();
+
+protected:
 
     VideoSystem();
 
 private:
 
     static std::unique_ptr<VideoSystem> mInstance;
-    AVT::VmbAPI::CameraPtrVector mAvtCameras;
-    bool mHaveVimba;
 };
 

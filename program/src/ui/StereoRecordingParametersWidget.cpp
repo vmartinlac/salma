@@ -52,7 +52,7 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
 
         if( left >= 0 && right >= 0 )
         {
-            newcamera = VideoSystem::instance()->createStereoAvtVideoSource(left, right);
+            newcamera = VideoSystem::instance()->createVideoSourceGenICamStereo(left, right);
         }
         
         ok = bool(newcamera);
