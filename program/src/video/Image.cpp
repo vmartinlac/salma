@@ -77,25 +77,86 @@ cv::Mat& Image::getFrame(int idx)
     }
 }
 
-/*
-cv::Mat Image::aggregateAllViews()
+void Image::merge( std::vector<Image>& from, Image& to )
 {
-    int width = 0;
-    int height = 0;
-    int type = mFrames[0].type;
+    double timestamp = 0.0;
+    std::vector<cv::Mat> frames;
+    bool ok = true;
 
-    for(int i=0; i<mNumberOfFrames; i++)
+    if(ok)
     {
-        width += mFrames[i].cols;
-        height = std::max(height, mFrames[i].rows);
+        ok = ( from.empty() == false );
     }
 
-    cv::Mat output( cv::Size(width, height), CV_8UC3);
+    if(ok)
+    {
+        for(Image& img : from)
+        {
+            ok = ok && img.isValid();
+        }
+    }
 
-    output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) = left;
-    output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) = right;
+    if(ok)
+    {
+        timestamp = from.front().getTimestamp();
 
-    return cv::Mat();
+        for(Image& img : from)
+        {
+            frames.push_back( img.getFrame() );
+        }
+
+        to.setValid(timestamp, frames);
+    }
+    else
+    {
+        to.setInvalid();
+    }
 }
-*/
+
+void Image::concatenate(Image& to)
+{
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = (mValid && mNumberOfFrames > 0);
+    }
+
+    if(ok)
+    {
+        for(int i=1; ok && i<mNumberOfFrames; i++)
+        {
+            ok = ok && (mFrames.front().type() == mFrames[i].type());
+        }
+    }
+
+    if(ok)
+    {
+        int width = 0;
+        int height = 0;
+
+        for(int i=0; i<mNumberOfFrames; i++)
+        {
+            width += mFrames[i].cols;
+            height = std::max(height, mFrames[i].rows);
+        }
+
+        cv::Mat output( cv::Size(width, height), mFrames.front().type() );
+        output.setTo( cv::Scalar(0,0,0) );
+
+        int delta = 0;
+        for(int i=0; i<mNumberOfFrames; i++)
+        {
+            cv::Rect roi(delta, 0, mFrames[i].cols, mFrames[i].rows);
+            mFrames[i].copyTo( output(roi) );
+            delta += mFrames[i].cols;
+        }
+
+        to.setValid( mTimestamp, output);
+    }
+    else
+    {
+        to.setInvalid();
+    }
+}
 

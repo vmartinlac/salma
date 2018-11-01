@@ -103,42 +103,20 @@ void GenICamRig::trigger()
 
 void GenICamRig::read(Image& image)
 {
-    auto expiration_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+    auto expiration_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
 
     const size_t N = mCameras.size();
 
-    double timestamp = 0.0;
-    std::vector<cv::Mat> frames(N);
+    std::vector<Image> images(N);
 
-    bool ok = true;
-
-    for(size_t i=0; ok && i<N; i++)
+    for(size_t i=0; i<N; i++)
     {
         GenICamCameraPtr c = mCameras[i];
 
-        Image im;
-        c->read(expiration_time, im);
-
-        ok = im.isValid();
-
-        if(ok)
-        {
-            if(i == 0)
-            {
-                timestamp = im.getTimestamp();
-            }
-            frames[i] = im.getFrame();
-        }
+        c->read(expiration_time, images[i]);
     }
 
-    if( ok )
-    {
-        image.setValid(timestamp, frames);
-    }
-    else
-    {
-        image.setInvalid();
-    }
+    Image::merge(images, image);
 }
 
 int GenICamRig::getNumberOfCameras()

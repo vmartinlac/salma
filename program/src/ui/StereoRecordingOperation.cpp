@@ -84,18 +84,13 @@ bool StereoRecordingOperation::step()
 
             // display video.
             {
-                cv::Mat left = image.getFrame(0);
-                cv::Mat right = image.getFrame(1);
+                Image concat;
+                image.concatenate(concat);
 
-                cv::Size output_size( left.cols + right.cols, std::max(left.rows, right.rows) );
-
-                cv::Mat output( output_size, CV_8UC3);
-
-                left.copyTo( output( cv::Range(0, left.rows), cv::Range(0, left.cols) ) );
-                right.copyTo( output( cv::Range(0, right.rows), cv::Range(left.cols, left.cols + right.cols) ) );
+                if( concat.isValid() == false ) throw std::runtime_error("some unexpected error");
 
                 mVideoPort->beginWrite();
-                mVideoPort->data().image = output;
+                mVideoPort->data().image = concat.getFrame();
                 mVideoPort->endWrite();
             }
 

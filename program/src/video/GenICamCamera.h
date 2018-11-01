@@ -26,6 +26,7 @@ protected:
     bool mIsOpen;
     ArvDevice* mDevice;
     ArvStream* mStream;
+    ArvBuffer* mBuffer;
     gint64 mPayload;
     GenICamRig* mRig;
     std::string mId;
