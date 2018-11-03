@@ -103,24 +103,50 @@ void GenICamRig::trigger()
 
 void GenICamRig::read(Image& image)
 {
-    auto expiration_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
+    std::unique_lock<std::mutex> lock(mMutex);
 
+    //auto expiration_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
     const size_t N = mCameras.size();
 
     std::vector<Image> images(N);
 
-    for(size_t i=0; i<N; i++)
+    auto pred = [&images,this,N] ()
     {
-        GenICamCameraPtr c = mCameras[i];
+        bool ret = true;
 
-        c->read(expiration_time, images[i]);
+        for(size_t i=0; i<N; i++)
+        {
+            if(images[i].isValid() == false)
+            {
+                mCameras[i]->takeLastImage(images[i]);
+            }
+
+            ret = ret && images[i].isValid();
+        }
+
+        return ret;
+    };
+
+    const bool ok = mCondition.wait_for(lock, std::chrono::milliseconds(100), pred);
+
+    if(ok)
+    {
+        Image::merge(images, image);
     }
-
-    Image::merge(images, image);
+    else
+    {
+        image.setInvalid();
+    }
 }
 
 int GenICamRig::getNumberOfCameras()
 {
     return mCameras.size();
+}
+
+void GenICamRig::onFrameReceived()
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mCondition.notify_one();
 }
 

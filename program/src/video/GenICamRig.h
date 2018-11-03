@@ -1,6 +1,8 @@
 #pragma once
 
+#include <condition_variable>
 #include <initializer_list>
+#include <mutex>
 #include <memory>
 #include "VideoSource.h"
 #include "GenICamCamera.h"
@@ -24,10 +26,14 @@ public:
 
     int getNumberOfCameras() override;
 
+    void onFrameReceived();
+
 protected:
 
     bool mIsOpen;
     std::vector<GenICamCameraPtr> mCameras;
+    std::condition_variable mCondition;
+    std::mutex mMutex;
 };
 
 typedef std::shared_ptr<GenICamRig> GenICamRigPtr;
