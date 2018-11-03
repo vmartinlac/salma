@@ -11,6 +11,7 @@ public:
 
     TargetParametersWidget(QWidget* parent=nullptr);
 
+    void setCellLength(double value);
     double getCellLength();
 
 protected slots:

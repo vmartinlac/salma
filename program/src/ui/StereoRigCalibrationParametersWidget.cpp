@@ -1,4 +1,5 @@
 #include <QFileInfo>
+#include <QSettings>
 #include <QFileDialog>
 #include <QPushButton>
 #include <QMessageBox>
@@ -30,6 +31,16 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
     form->addRow("Output JSON file", mOutputPath);
 
     setLayout(form);
+
+    QSettings s;
+    s.beginGroup("stereo_rig_calibration_parameters");
+    mLeftCamera->setSelectedCamera( s.value("left_camera", QString() ).toString().toStdString() );
+    mRightCamera->setSelectedCamera( s.value("right_camera", QString() ).toString().toStdString() );
+    mPathToLeftCalibrationData->setPath( s.value("left_camera_calibration_file", QString()).toString() );
+    mPathToRightCalibrationData->setPath( s.value("right_camera_calibration_file", QString()).toString() );
+    mTargetParameters->setCellLength( s.value("target_cell_length", 1.0).toDouble() );
+    mOutputPath->setPath( s.value("output_file", QString()).toString() );
+    s.endGroup();
 }
 
 OperationPtr StereoRigCalibrationParametersWidget::getOperation()
@@ -40,6 +51,8 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
     CameraCalibrationData right_camera_parameters;
     VideoSourcePtr newcamera;
     QString newoutputpath;
+    int left_id = -1;
+    int right_id = -1;
 
     bool ok = true;
     const char* error_message;
@@ -58,8 +71,8 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
 
     if(ok)
     {
-        int left_id = mLeftCamera->getCameraId();
-        int right_id = mRightCamera->getCameraId();
+        left_id = mLeftCamera->getCameraId();
+        right_id = mRightCamera->getCameraId();
 
         newcamera = VideoSystem::instance()->createVideoSourceGenICamStereo(left_id, right_id);
         
@@ -84,6 +97,17 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         op->mRightCalibrationData = right_camera_parameters;
         op->mTargetCellLength = mTargetParameters->getCellLength();
         op->mCamera.swap(newcamera);
+
+        QSettings s;
+        s.beginGroup("stereo_rig_calibration_parameters");
+        s.setValue("left_camera", VideoSystem::instance()->getNameOfGenICamCamera(left_id).c_str());
+        s.setValue("right_camera", VideoSystem::instance()->getNameOfGenICamCamera(right_id).c_str());
+        s.setValue("left_camera_calibration_file", mPathToLeftCalibrationData->path());
+        s.setValue("right_camera_calibration_file", mPathToRightCalibrationData->path());
+        s.setValue("target_cell_length", mTargetParameters->getCellLength());
+        s.setValue("output_file", mOutputPath->path());
+        s.endGroup();
+        s.sync();
     }
     else
     {

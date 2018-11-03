@@ -37,3 +37,8 @@ double TargetParametersWidget::getCellLength()
     return mCellLength->value();
 }
 
+void TargetParametersWidget::setCellLength(double value)
+{
+    mCellLength->setValue(value);
+}
+

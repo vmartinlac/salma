@@ -1,4 +1,5 @@
 #include <QPushButton>
+#include <QSettings>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QHBoxLayout>
@@ -24,6 +25,13 @@ MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
     form->addRow("Visualization only", mVisualizationOnly);
 
     setLayout(form);
+
+    QSettings s;
+    s.beginGroup("mono_recording_parameters");
+    mCameraList->setSelectedCamera( s.value("camera", QString() ).toString().toStdString() );
+    mPath->setPath( s.value("output_path", ".").toString() );
+    mVisualizationOnly->setChecked( s.value("visualization_only", false).toBool() );
+    s.endGroup();
 }
 
 OperationPtr MonoRecordingParametersWidget::getOperation()
@@ -32,13 +40,14 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
 
     VideoSourcePtr newcamera;
     QDir newoutputdirectory;
+    int camera_id = -1;
 
     bool ok = true;
     const char* error_message;
 
     if(ok)
     {
-        const int camera_id = mCameraList->getCameraId();
+        camera_id = mCameraList->getCameraId();
 
         if( camera_id >= 0 )
         {
@@ -70,6 +79,14 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
         op->mCamera.swap(newcamera);
         op->mOutputDirectory = newoutputdirectory;
         op->mVisualizationOnly = mVisualizationOnly->isChecked();
+
+        QSettings s;
+        s.beginGroup("mono_recording_parameters");
+        s.setValue("camera", VideoSystem::instance()->getNameOfGenICamCamera(camera_id).c_str());
+        s.setValue("output_path", mPath->path());
+        s.setValue("visualization_only", mVisualizationOnly->isChecked());
+        s.endGroup();
+        s.sync();
     }
     else
     {

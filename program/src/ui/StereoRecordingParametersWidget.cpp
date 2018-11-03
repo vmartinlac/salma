@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QSettings>
 #include <QMessageBox>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -32,6 +33,14 @@ StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent
     form->addRow("Visualization only", mVisualizationOnly);
 
     setLayout(form);
+
+    QSettings s;
+    s.beginGroup("stereo_recording_parameters");
+    mLeftCamera->setSelectedCamera( s.value("left_camera", QString() ).toString().toStdString() );
+    mRightCamera->setSelectedCamera( s.value("right_camera", QString() ).toString().toStdString() );
+    mOutputPath->setPath( s.value("output_path", QString()).toString() );
+    mVisualizationOnly->setChecked( s.value("visualization_only", false).toBool() );
+    s.endGroup();
 }
 
 OperationPtr StereoRecordingParametersWidget::getOperation()
@@ -42,13 +51,16 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
     QDir newoutputdirectory;
     QString outputpath;
 
+    int left = -1;
+    int right = -1;
+
     bool ok = true;
     const char* error_message;
 
     if(ok)
     {
-        const int left = mLeftCamera->getCameraId();
-        const int right = mRightCamera->getCameraId();
+        left = mLeftCamera->getCameraId();
+        right = mRightCamera->getCameraId();
 
         if( left >= 0 && right >= 0 )
         {
@@ -81,6 +93,15 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
         op->mCamera.swap(newcamera);
         op->mOutputDirectory = newoutputdirectory;
         op->mVisualizationOnly = mVisualizationOnly->isChecked();
+
+        QSettings s;
+        s.beginGroup("stereo_recording_parameters");
+        s.setValue("left_camera", VideoSystem::instance()->getNameOfGenICamCamera(left).c_str());
+        s.setValue("right_camera", VideoSystem::instance()->getNameOfGenICamCamera(right).c_str());
+        s.setValue("output_path", mOutputPath->path());
+        s.setValue("visualization_only", mVisualizationOnly->isChecked());
+        s.endGroup();
+        s.sync();
     }
     else
     {

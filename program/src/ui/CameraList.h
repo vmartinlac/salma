@@ -8,6 +8,7 @@ public:
 
     CameraList(QWidget* parent=nullptr);
 
+    void setSelectedCamera(const std::string& camid);
     int getCameraId();
 
 protected:

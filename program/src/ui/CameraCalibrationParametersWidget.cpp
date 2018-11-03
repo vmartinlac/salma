@@ -1,3 +1,4 @@
+#include <QSettings>
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QPushButton>
@@ -21,6 +22,13 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
     form->addRow("Output JSON file", mPath);
 
     setLayout(form);
+
+    QSettings s;
+    s.beginGroup("camera_calibration_parameters");
+    mCameraList->setSelectedCamera( s.value("camera", QString() ).toString().toStdString() );
+    mTargetParameters->setCellLength( s.value("target_cell_length", 1.0).toDouble() );
+    mPath->setPath( s.value("output_file", "camera.json").toString() );
+    s.endGroup();
 }
 
 OperationPtr CameraCalibrationParametersWidget::getOperation()
@@ -29,13 +37,14 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
     VideoSourcePtr newcamera;
     QString newoutputpath;
+    int camera_id = -1;
 
     bool ok = true;
     const char* error_message;
 
     if(ok)
     {
-        int camera_id = mCameraList->getCameraId();
+        camera_id = mCameraList->getCameraId();
 
         if(camera_id >= 0)
         {
@@ -61,6 +70,14 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
         op->mOutputPath = newoutputpath.toStdString();
         op->mTargetCellLength = mTargetParameters->getCellLength();
         op->mCamera.swap(newcamera);
+
+        QSettings s;
+        s.beginGroup("camera_calibration_parameters");
+        s.setValue("camera", VideoSystem::instance()->getNameOfGenICamCamera(camera_id).c_str());
+        s.setValue("target_cell_length", mTargetParameters->getCellLength());
+        s.setValue("output_file", mPath->path());
+        s.endGroup();
+        s.sync();
     }
     else
     {

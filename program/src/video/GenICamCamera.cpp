@@ -12,8 +12,6 @@ extern "C" void GenICamCallback(ArvStream* stream, void* user_data)
 
 void GenICamCamera::onFrameReceived()
 {
-    std::cout << "frame received on camera" << std::endl;
-
     mMutex.lock();
 
     const void* buffer_data = nullptr;
