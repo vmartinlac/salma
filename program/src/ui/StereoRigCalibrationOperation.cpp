@@ -19,6 +19,7 @@ StereoRigCalibrationOperation::StereoRigCalibrationOperation()
 {
     mNumberOfPosesForCalibration = 20;
     mMillisecondsOfTemporisation = 700;
+    mTargetCellLength = 1.0;
 }
 
 StereoRigCalibrationOperation::~StereoRigCalibrationOperation()
@@ -30,6 +31,9 @@ bool StereoRigCalibrationOperation::before()
     mFrameCount = 0;
     mClock.start();
     mPoses.clear();
+
+    mLeftTracker.setUnitLength(mTargetCellLength);
+    mRightTracker.setUnitLength(mTargetCellLength);
 
     bool ok = true;
 
@@ -186,6 +190,7 @@ void StereoRigCalibrationOperation::writeOutputText()
     s << "Number of poses left: " << mNumberOfPosesForCalibration - mPoses.size() << std::endl;
     s << std::endl;
     s << "Video input: " << mCamera->getHumanName() << std::endl;
+    s << "Target cell length: " << mTargetCellLength << std::endl;
     s << "Output file: " << mOutputPath << std::endl;
 
     mStatsPort->beginWrite();

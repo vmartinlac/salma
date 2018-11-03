@@ -12,8 +12,8 @@ PathWidget::PathWidget(Mode mode, QWidget* parent) : QWidget(parent)
 
     QHBoxLayout* lay = new QHBoxLayout();
     lay->setContentsMargins(0, 0, 0, 0);
-    lay->addWidget(mText);
-    lay->addWidget(btn);
+    lay->addWidget(mText, 1);
+    lay->addWidget(btn, 0);
 
     setLayout(lay);
 

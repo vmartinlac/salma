@@ -4,6 +4,7 @@
 #include <QLineEdit>
 #include "CameraList.h"
 #include "OperationParametersWidget.h"
+#include "TargetParametersWidget.h"
 #include "PathWidget.h"
 
 class StereoRigCalibrationParametersWidget : public OperationParametersWidget
@@ -20,6 +21,7 @@ public:
 
 protected:
 
+    TargetParametersWidget* mTargetParameters;
     PathWidget* mPathToLeftCalibrationData;
     PathWidget* mPathToRightCalibrationData;
     CameraList* mLeftCamera;

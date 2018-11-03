@@ -5,6 +5,7 @@
 #include <QIcon>
 #include <QKeySequence>
 #include <QSplitter>
+#include "TargetParametersDialog.h"
 #include "AboutDialog.h"
 #include "OperationDialog.h"
 #include "MainWindow.h"
@@ -19,7 +20,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         tb->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
         mActionQuit = tb->addAction("Quit");
-        mActionConfigure = tb->addAction("Configure");
+        mActionConfigure = tb->addAction("Operation");
         mActionStart = tb->addAction("Start");
         mActionStop = tb->addAction("Stop");
         mActionAbout = tb->addAction("About");

@@ -4,6 +4,7 @@
 #include "CameraList.h"
 #include "PathWidget.h"
 #include "OperationParametersWidget.h"
+#include "TargetParametersWidget.h"
 
 class CameraCalibrationParametersWidget : public OperationParametersWidget
 {
@@ -20,6 +21,7 @@ public:
 protected:
 
     PathWidget* mPath;
+    TargetParametersWidget* mTargetParameters;
     CameraList* mCameraList;
 };
 

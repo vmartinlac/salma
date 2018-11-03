@@ -17,6 +17,8 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
 
     mPathToRightCalibrationData = new PathWidget(PathWidget::GET_OPEN_FILENAME);
 
+    mTargetParameters = new TargetParametersWidget();
+
     mOutputPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
     QFormLayout* form = new QFormLayout();
@@ -24,6 +26,7 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
     form->addRow("Left camera calibration data", mPathToLeftCalibrationData);
     form->addRow("Right camera", mRightCamera);
     form->addRow("Right camera calibration data", mPathToRightCalibrationData);
+    form->addRow("Target cell length", mTargetParameters);
     form->addRow("Output JSON file", mOutputPath);
 
     setLayout(form);
@@ -79,6 +82,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         op->mOutputPath = newoutputpath.toStdString();
         op->mLeftCalibrationData = left_camera_parameters;
         op->mRightCalibrationData = right_camera_parameters;
+        op->mTargetCellLength = mTargetParameters->getCellLength();
         op->mCamera.swap(newcamera);
     }
     else

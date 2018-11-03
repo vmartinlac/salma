@@ -24,6 +24,7 @@ public:
 public:
 
     std::string mOutputPath;
+    double mTargetCellLength;
     VideoSourcePtr mCamera;
     int mRequestedSuccessfulFrameCount;
     int mMillisecondsTemporisation;

@@ -12,6 +12,7 @@
 
 CameraCalibrationOperation::CameraCalibrationOperation()
 {
+    mTargetCellLength = 1.0;
     mRequestedSuccessfulFrameCount = 40;
     mMillisecondsTemporisation = 700;
 }
@@ -29,6 +30,8 @@ bool CameraCalibrationOperation::before()
     mImagePoints.clear();
     mImageSize = cv::Size(-1, -1);
     mClock.start();
+
+    mTracker.setUnitLength(mTargetCellLength);
 
     bool ok = true;
 
@@ -218,6 +221,7 @@ void CameraCalibrationOperation::writeOutputText()
     s << "Successful frames left: " << mRequestedSuccessfulFrameCount - mSuccessfulFrameCount << std::endl;
     s << std::endl;
     s << "Camera name: " << mCamera->getHumanName() << std::endl;
+    s << "Target cell length: " << mTargetCellLength << std::endl;
     s << "Output file: " << mOutputPath << std::endl;
 
     mStatsPort->beginWrite();

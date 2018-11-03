@@ -38,6 +38,10 @@ add_library(
     StereoRecordingOperation.h
     StereoRecordingParametersWidget.cpp
     StereoRecordingParametersWidget.h
+    TargetParametersWidget.cpp
+    TargetParametersWidget.h
+    TargetParametersDialog.cpp
+    TargetParametersDialog.h
     CameraList.h
     CameraList.cpp
 )

@@ -28,6 +28,7 @@ public:
 
     CameraCalibrationData mLeftCalibrationData;
     CameraCalibrationData mRightCalibrationData;
+    double mTargetCellLength;
     VideoSourcePtr mCamera;
     int mNumberOfPosesForCalibration;
     int mMillisecondsOfTemporisation;

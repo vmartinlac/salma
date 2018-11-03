@@ -11,10 +11,13 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
 {
     mCameraList = new CameraList();
 
+    mTargetParameters = new TargetParametersWidget();
+
     mPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
+    form->addRow("Target cell length", mTargetParameters);
     form->addRow("Output JSON file", mPath);
 
     setLayout(form);
@@ -56,6 +59,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
         ret.reset(op);
 
         op->mOutputPath = newoutputpath.toStdString();
+        op->mTargetCellLength = mTargetParameters->getCellLength();
         op->mCamera.swap(newcamera);
     }
     else
