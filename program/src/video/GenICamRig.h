@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <mutex>
 #include <memory>
+#include "ExternalTrigger.h"
 #include "VideoSource.h"
 #include "GenICamCamera.h"
 
@@ -15,6 +16,7 @@ public:
     virtual ~GenICamRig();
 
     void setCameras(std::initializer_list<std::string> cameras);
+    void setExternalTrigger(ExternalTriggerPtr trigger);
 
     std::string getHumanName() override;
 
@@ -34,6 +36,7 @@ protected:
     std::vector<GenICamCameraPtr> mCameras;
     std::condition_variable mCondition;
     std::mutex mMutex;
+    ExternalTriggerPtr mExternalTrigger;
 };
 
 typedef std::shared_ptr<GenICamRig> GenICamRigPtr;

@@ -19,7 +19,8 @@ public:
     bool open();
     void close();
 
-    void trigger();
+    void prepareTrigger();
+    void softwareTrigger();
 
     void onFrameReceived();
     void takeLastImage(Image& image);

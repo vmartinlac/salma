@@ -142,7 +142,7 @@ std::string GenICamCamera::getId()
     return mId;
 }
 
-void GenICamCamera::trigger()
+void GenICamCamera::prepareTrigger()
 {
     mMutex.lock();
     mLastImage.setInvalid();
@@ -152,6 +152,10 @@ void GenICamCamera::trigger()
         mAvailableBuffers.pop_back();
     }
     mMutex.unlock();
+}
+
+void GenICamCamera::softwareTrigger()
+{
     arv_device_execute_command(mDevice, "TriggerSoftware");
 }
 

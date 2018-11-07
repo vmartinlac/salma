@@ -72,6 +72,11 @@ bool GenICamRig::open()
 
     mIsOpen = true;
 
+    if(mExternalTrigger)
+    {
+        mIsOpen = mIsOpen && mExternalTrigger->open();
+    }
+
     for(GenICamCameraPtr c : mCameras)
     {
         mIsOpen = mIsOpen && c->open();
@@ -89,6 +94,11 @@ void GenICamRig::close()
             c->close();
         }
 
+        if(mExternalTrigger)
+        {
+            mExternalTrigger->close();
+        }
+
         mIsOpen = false;
     }
 }
@@ -97,7 +107,19 @@ void GenICamRig::trigger()
 {
     for(GenICamCameraPtr c : mCameras)
     {
-        c->trigger();
+        c->prepareTrigger();
+    }
+
+    if(mExternalTrigger)
+    {
+        mExternalTrigger->trigger();
+    }
+    else
+    {
+      for(GenICamCameraPtr c : mCameras)
+      {
+          c->softwareTrigger();
+      }
     }
 }
 
@@ -148,5 +170,10 @@ void GenICamRig::onFrameReceived()
 {
     std::lock_guard<std::mutex> lock(mMutex);
     mCondition.notify_one();
+}
+
+void GenICamRig::setExternalTrigger(ExternalTriggerPtr trigger)
+{
+  mExternalTrigger = std::move(trigger);
 }
 
