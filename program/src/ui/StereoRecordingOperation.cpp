@@ -1,4 +1,5 @@
 #include <QThread>
+#include <thread>
 #include <opencv2/imgcodecs.hpp>
 #include <sstream>
 #include <iostream>
@@ -9,6 +10,7 @@
 StereoRecordingOperation::StereoRecordingOperation()
 {
     mVisualizationOnly = false;
+    mMaxFrameRate = 1000;
 }
 
 StereoRecordingOperation::~StereoRecordingOperation()
@@ -110,11 +112,23 @@ bool StereoRecordingOperation::step()
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
                 s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false") << std::endl;
+                s << "Max frame rate: " << mMaxFrameRate << std::endl;
 
                 mStatsPort->beginWrite();
                 mStatsPort->data().text = s.str().c_str();
                 mStatsPort->endWrite();
             }
+
+            if(mMaxFrameRate > 0 && mNumFrames > 1)
+            {
+                const int diff = 1000/mMaxFrameRate - mFrameRateClock.elapsed();
+                if( diff > 0 );
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(diff));
+                }
+            }
+
+            mFrameRateClock.start();
         }
     }
     else

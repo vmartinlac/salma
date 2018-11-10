@@ -1,5 +1,6 @@
 #include <QThread>
 #include <opencv2/imgcodecs.hpp>
+#include <thread>
 #include <sstream>
 #include <iostream>
 #include <fstream>
@@ -9,6 +10,7 @@
 MonoRecordingOperation::MonoRecordingOperation()
 {
     mVisualizationOnly = false;
+    mMaxFrameRate = 1000;
 }
 
 MonoRecordingOperation::~MonoRecordingOperation()
@@ -88,6 +90,7 @@ bool MonoRecordingOperation::step()
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
                 s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false" ) << std::endl;
+                s << "Max frame rate: " << mMaxFrameRate << std::endl;
 
                 mStatsPort->beginWrite();
                 mStatsPort->data().text = s.str().c_str();
@@ -97,6 +100,17 @@ bool MonoRecordingOperation::step()
                 mVideoPort->data().image = image.getFrame();
                 mVideoPort->endWrite();
             }
+
+            if(mMaxFrameRate > 0 && mNumFrames > 1)
+            {
+                const int diff = 1000/mMaxFrameRate - mFrameRateClock.elapsed();
+                if( diff > 0 );
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(diff));
+                }
+            }
+
+            mFrameRateClock.start();
         }
     }
     else

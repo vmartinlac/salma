@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QCheckBox>
+#include <QSpinBox>
 #include "OperationParametersWidget.h"
 #include "CameraList.h"
 #include "PathWidget.h"
@@ -22,6 +23,7 @@ protected:
     CameraList* mLeftCamera;
     CameraList* mRightCamera;
     PathWidget* mOutputPath;
+    QSpinBox* mMaxFrameRate;
     QCheckBox* mVisualizationOnly;
 };
 

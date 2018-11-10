@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <QFormLayout>
+#include "TriggerInfo.h"
 #include "VideoSystem.h"
 #include "CameraCalibrationParametersWidget.h"
 #include "CameraCalibrationOperation.h"

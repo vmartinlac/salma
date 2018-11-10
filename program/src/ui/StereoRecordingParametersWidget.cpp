@@ -17,6 +17,11 @@ StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent
     mOutputPath = new PathWidget(PathWidget::GET_EXISTING_DIRECTORY);
     mOutputPath->setPath(".");
 
+    mMaxFrameRate = new QSpinBox();
+    mMaxFrameRate->setValue(1000);
+    mMaxFrameRate->setMinimum(1);
+    mMaxFrameRate->setMaximum(1000);
+
     mVisualizationOnly = new QCheckBox();
 
     /*
@@ -30,6 +35,7 @@ StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent
     form->addRow("Left camera", mLeftCamera);
     form->addRow("Right camera", mRightCamera);
     form->addRow("Output directory", mOutputPath);
+    form->addRow("Max framerate", mMaxFrameRate);
     form->addRow("Visualization only", mVisualizationOnly);
 
     setLayout(form);
@@ -40,6 +46,7 @@ StereoRecordingParametersWidget::StereoRecordingParametersWidget(QWidget* parent
     mRightCamera->setSelectedCamera( s.value("right_camera", QString() ).toString().toStdString() );
     mOutputPath->setPath( s.value("output_path", QString()).toString() );
     mVisualizationOnly->setChecked( s.value("visualization_only", false).toBool() );
+    mMaxFrameRate->setValue( s.value("max_framerate", 1000).toInt() );
     s.endGroup();
 }
 
@@ -92,6 +99,7 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
 
         op->mCamera.swap(newcamera);
         op->mOutputDirectory = newoutputdirectory;
+        op->mMaxFrameRate = mMaxFrameRate->value();
         op->mVisualizationOnly = mVisualizationOnly->isChecked();
 
         QSettings s;
@@ -99,6 +107,7 @@ OperationPtr StereoRecordingParametersWidget::getOperation()
         s.setValue("left_camera", VideoSystem::instance()->getNameOfGenICamCamera(left).c_str());
         s.setValue("right_camera", VideoSystem::instance()->getNameOfGenICamCamera(right).c_str());
         s.setValue("output_path", mOutputPath->path());
+        s.setValue("max_framerate", mMaxFrameRate->value());
         s.setValue("visualization_only", mVisualizationOnly->isChecked());
         s.endGroup();
         s.sync();

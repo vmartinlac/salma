@@ -2,6 +2,7 @@
 
 #include <QCheckBox>
 #include <QDialog>
+#include <QSpinBox>
 #include <QDir>
 #include "CameraList.h"
 #include "PathWidget.h"
@@ -24,5 +25,6 @@ protected:
     CameraList* mCameraList;
     PathWidget* mPath;
     QCheckBox* mVisualizationOnly;
+    QSpinBox* mMaxFrameRate;
 };
 

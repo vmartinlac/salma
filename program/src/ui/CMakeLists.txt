@@ -44,6 +44,12 @@ add_library(
     TargetParametersDialog.h
     CameraList.h
     CameraList.cpp
+    TriggerInfo.h
+    TriggerInfo.cpp
+    TriggerWidget.h
+    TriggerWidget.cpp
+    TriggerDialog.h
+    TriggerDialog.cpp
 )
 
 target_link_libraries(

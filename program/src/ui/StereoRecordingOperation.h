@@ -25,11 +25,13 @@ public:
     VideoSourcePtr mCamera;
     QDir mOutputDirectory;
     bool mVisualizationOnly;
+    double mMaxFrameRate;
 
 protected:
 
     QTime mClock;
     int mNumFrames;
     std::ofstream mOutputCSV;
+    QTime mFrameRateClock;
 };
 

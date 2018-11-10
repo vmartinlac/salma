@@ -47,7 +47,7 @@ std::string VideoSystemImpl::getNameOfGenICamCamera(int idx)
     return mGenICamCameras.at(idx);
 }
 
-VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx)
+VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, ExternalTriggerPtr trigger)
 {
     GenICamRigPtr ret;
 
@@ -59,10 +59,15 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx)
         ret.reset(new GenICamRig{ id });
     }
 
+    if(ok && trigger)
+    {
+        ret->setExternalTrigger(trigger);
+    }
+
     return ret;
 }
 
-VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_idx)
+VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_idx, ExternalTriggerPtr trigger)
 {
     GenICamRigPtr ret;
     bool ok = true;
@@ -77,6 +82,11 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
         std::string& right_id = mGenICamCameras[right_camera_idx];
 
         ret.reset(new GenICamRig{left_id, right_id});
+    }
+
+    if(ok && trigger)
+    {
+        ret->setExternalTrigger(trigger);
     }
 
     return ret;

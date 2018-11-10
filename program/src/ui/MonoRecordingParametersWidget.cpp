@@ -17,11 +17,17 @@ MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
 
     mCameraList = new CameraList();
 
+    mMaxFrameRate = new QSpinBox();
+    mMaxFrameRate->setValue(1000);
+    mMaxFrameRate->setMinimum(1);
+    mMaxFrameRate->setMaximum(1000);
+
     mVisualizationOnly = new QCheckBox();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
     form->addRow("Output directory", mPath);
+    form->addRow("Max framerate", mMaxFrameRate);
     form->addRow("Visualization only", mVisualizationOnly);
 
     setLayout(form);
@@ -31,6 +37,7 @@ MonoRecordingParametersWidget::MonoRecordingParametersWidget(QWidget* parent)
     mCameraList->setSelectedCamera( s.value("camera", QString() ).toString().toStdString() );
     mPath->setPath( s.value("output_path", ".").toString() );
     mVisualizationOnly->setChecked( s.value("visualization_only", false).toBool() );
+    mMaxFrameRate->setValue( s.value("max_framerate", 1000).toInt() );
     s.endGroup();
 }
 
@@ -79,11 +86,13 @@ OperationPtr MonoRecordingParametersWidget::getOperation()
         op->mCamera.swap(newcamera);
         op->mOutputDirectory = newoutputdirectory;
         op->mVisualizationOnly = mVisualizationOnly->isChecked();
+        op->mMaxFrameRate = mMaxFrameRate->value();
 
         QSettings s;
         s.beginGroup("mono_recording_parameters");
         s.setValue("camera", VideoSystem::instance()->getNameOfGenICamCamera(camera_id).c_str());
         s.setValue("output_path", mPath->path());
+        s.setValue("max_framerate", mMaxFrameRate->value());
         s.setValue("visualization_only", mVisualizationOnly->isChecked());
         s.endGroup();
         s.sync();
