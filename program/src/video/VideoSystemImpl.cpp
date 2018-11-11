@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include "VideoReader.h"
+#include "ArduinoTrigger.h"
 #include "MockCamera.h"
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
@@ -88,6 +89,15 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
     {
         ret->setExternalTrigger(trigger);
     }
+
+    /*
+    if(ok)
+    {
+        ArduinoTriggerPtr t(new ArduinoTrigger());
+        t->setPathToSerialPort("/dev/ttyACM0");
+        //ret->setExternalTrigger(t);
+    }
+    */
 
     return ret;
 }

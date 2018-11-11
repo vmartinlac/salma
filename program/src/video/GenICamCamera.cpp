@@ -159,7 +159,7 @@ void GenICamCamera::softwareTrigger()
     arv_device_execute_command(mDevice, "TriggerSoftware");
 }
 
-bool GenICamCamera::open()
+bool GenICamCamera::open(bool external_trigger)
 {
     if(mIsOpen) throw std::runtime_error("camera is already open");
 
@@ -188,7 +188,14 @@ bool GenICamCamera::open()
 
     if(mIsOpen)
     {
-        arv_device_set_string_feature_value(mDevice, "TriggerSource", "Software");
+        if(external_trigger)
+        {
+            arv_device_set_string_feature_value(mDevice, "TriggerSource", "Line1");
+        }
+        else
+        {
+            arv_device_set_string_feature_value(mDevice, "TriggerSource", "Software");
+        }
         mIsOpen = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
     }
 

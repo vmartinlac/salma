@@ -26,6 +26,7 @@ void ArduinoTrigger::close()
 
 void ArduinoTrigger::trigger()
 {
+    std::cout << "trigger" << std::endl;
   mSerialPort << "T" << std::flush;
 }
 

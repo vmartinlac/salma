@@ -36,10 +36,7 @@ namespace target {
 #endif
 
         // Thresholding
-        cv::threshold(m_greyscale, m_thresh, 100, 255, cv::THRESH_BINARY_INV);
-#ifdef TARGET_DETECTOR_DEBUG
-        cv::imwrite("debug_output/30_threshold.png", m_thresh);
-#endif
+        threshold();
 
         // Detecting corners...
         detect_corners();
@@ -65,6 +62,16 @@ namespace target {
         std::cout << "Computation time: " << dt << " ms" << std::endl;
 
         return m_found;
+    }
+
+    void Tracker::threshold()
+    {
+        cv::threshold(m_greyscale, m_thresh, 0, 255, cv::THRESH_OTSU|cv::THRESH_BINARY_INV);
+        //cv::threshold(m_greyscale, m_thresh, 100, 255, cv::THRESH_BINARY_INV);
+
+#ifdef TARGET_DETECTOR_DEBUG
+        cv::imwrite("debug_output/30_threshold.png", m_thresh);
+#endif
     }
 
     void Tracker::build_kdtree()

@@ -124,6 +124,7 @@ namespace target
 
     protected:
 
+        void threshold();
         void build_kdtree();
         void detect_corners();
         bool filter_keypoint(const cv::KeyPoint& kp);

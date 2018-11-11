@@ -1,5 +1,5 @@
 
-const int ms = 50;
+const int ms = 500;
 
 void loop()
 {

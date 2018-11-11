@@ -2,6 +2,10 @@
 add_library(
     video
     STATIC
+    ArduinoTrigger.cpp
+    ArduinoTrigger.h
+    ExternalTrigger.cpp
+    ExternalTrigger.h
     Image.cpp
     Image.h
     VideoSource.cpp

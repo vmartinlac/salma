@@ -16,7 +16,7 @@ public:
 
     std::string getId();
 
-    bool open();
+    bool open(bool external_trigger);
     void close();
 
     void prepareTrigger();

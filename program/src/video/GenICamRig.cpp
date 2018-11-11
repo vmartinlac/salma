@@ -75,11 +75,18 @@ bool GenICamRig::open()
     if(mExternalTrigger)
     {
         mIsOpen = mIsOpen && mExternalTrigger->open();
-    }
 
-    for(GenICamCameraPtr c : mCameras)
+        for(GenICamCameraPtr c : mCameras)
+        {
+            mIsOpen = mIsOpen && c->open(true);
+        }
+    }
+    else
     {
-        mIsOpen = mIsOpen && c->open();
+        for(GenICamCameraPtr c : mCameras)
+        {
+            mIsOpen = mIsOpen && c->open(false);
+        }
     }
 
     return mIsOpen;
