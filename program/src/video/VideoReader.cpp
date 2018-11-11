@@ -43,7 +43,7 @@ std::string VideoReader::getHumanName()
 
 bool VideoReader::open()
 {
-    std::string listing = mDirectory.absoluteFilePath( "listing.csv" ).toStdString();
+    std::string listing = mDirectory.absoluteFilePath( "recording.csv" ).toStdString();
     mCSVFile.open(listing);
     return mCSVFile.is_open();
 }
