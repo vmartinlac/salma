@@ -234,15 +234,50 @@ bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, Camera
 void StereoRigCalibrationOperation::calibrate()
 {
     Sophus::optional< Sophus::SE3d > right_camera_to_left_camera;
+    double xdev = 0.0;
+    double ydev = 0.0;
+    double zdev = 0.0;
+    double thetadev = 0.0;
     StereoRigCalibrationData calibration;
     const char* error_message = "";
     bool ok = true;
 
     if(ok)
     {
+        ok = (mPoses.size() > 1);
+    }
+
+    if(ok)
+    {
         right_camera_to_left_camera = Sophus::average( mPoses );
         ok = bool(right_camera_to_left_camera);
         error_message = "Could not average calibration data.";
+    }
+
+    if(ok)
+    {
+        xdev = 0.0;
+        ydev = 0.0;
+        zdev = 0.0;
+        thetadev = 0.0;
+
+        for( Sophus::SE3d& p : mPoses)
+        {
+            const double dx = p.translation().x() - right_camera_to_left_camera->translation().x();
+            const double dy = p.translation().y() - right_camera_to_left_camera->translation().y();
+            const double dz = p.translation().z() - right_camera_to_left_camera->translation().z();
+            const double dtheta = p.unit_quaternion().angularDistance( right_camera_to_left_camera->unit_quaternion() );
+
+            xdev += dx*dx;
+            ydev += dy*dy;
+            zdev += dz*dz;
+            thetadev += dtheta*dtheta;
+        }
+
+        xdev = std::sqrt( xdev/double(mPoses.size()) );
+        ydev = std::sqrt( ydev/double(mPoses.size()) );
+        zdev = std::sqrt( zdev/double(mPoses.size()) );
+        thetadev = std::sqrt( thetadev/double(mPoses.size()) );
     }
 
     if(ok)
@@ -282,6 +317,12 @@ void StereoRigCalibrationOperation::calibrate()
         s << "right_qy = " << calibration.right_camera_to_world.unit_quaternion().y() << std::endl;
         s << "right_qz = " << calibration.right_camera_to_world.unit_quaternion().z() << std::endl;
         s << "right_qw = " << calibration.right_camera_to_world.unit_quaternion().w() << std::endl;
+        s << std::endl;
+
+        s << "x std-dev = " << xdev << std::endl;
+        s << "y std-dev = " << ydev << std::endl;
+        s << "z std-dev = " << zdev << std::endl;
+        s << "θ std-dev = " << thetadev << std::endl;
         s << std::endl;
 
         mStatsPort->beginWrite();
