@@ -37,11 +37,11 @@ void FeatureDetector::buildPyramid(cv::Mat& image)
         mPyramid[i].scale = mPyramid[i-1].scale * scale_factor;
 
         cv::resize(
-        mPyramid[i-1].image,
-        mPyramid[i].image,
-        cv::Size(),
-        scale_factor,
-        scale_factor);
+            mPyramid[i-1].image,
+            mPyramid[i].image,
+            cv::Size(),
+            scale_factor,
+            scale_factor);
     }
 }
 

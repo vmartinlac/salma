@@ -9,6 +9,8 @@
 #include "FeatureDetector.h"
 #include "BuildInfo.h"
 #include "SLAMSystem.h"
+#include "Debug.h"
+#include "StereoMatcher.h"
 
 std::unique_ptr<SLAMSystem> SLAMSystem::mInstance;
 
@@ -83,21 +85,21 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
     if(ok)
     {
         ok = ok && parser.isSet("left-camera-calibration");
-        ok = ok && mCameraCalibration[0].loadFromFile( parser.value("left-camera-calibration").toStdString() );
+        ok = ok && mCameraCalibration[0]->loadFromFile( parser.value("left-camera-calibration").toStdString() );
         error_message = "Please set left camera calibration file!";
     }
 
     if(ok)
     {
         ok = ok && parser.isSet("right-camera-calibration");
-        ok = ok && mCameraCalibration[1].loadFromFile( parser.value("right-camera-calibration").toStdString() );
+        ok = ok && mCameraCalibration[1]->loadFromFile( parser.value("right-camera-calibration").toStdString() );
         error_message = "Please set right camera calibration file!";
     }
 
     if(ok)
     {
         ok = ok && parser.isSet("stereo-rig-calibration");
-        ok = ok && mStereoRigCalibration.loadFromFile( parser.value("stereo-rig-calibration").toStdString() );
+        ok = ok && mStereoRigCalibration->loadFromFile( parser.value("stereo-rig-calibration").toStdString() );
         error_message = "Please set stereo rig calibration file!";
     }
 
@@ -195,9 +197,19 @@ void SLAMSystem::track(FramePtr frame)
     }
 }
 
-void SLAMSystem::map(FramePtr map)
+void SLAMSystem::map(FramePtr f)
 {
-    ;
+    std::vector< std::pair<int, int> > matches;
+
+    StereoMatcher m;
+
+    m.setLeftCameraCalibration( mCameraCalibration[0] );
+    m.setRightCameraCalibration( mCameraCalibration[1] );
+    m.setStereoRigCalibration( mStereoRigCalibration );
+
+    m.match(f, matches);
+
+    // TODO
 }
 
 void SLAMSystem::globalBundleAdjustment()

@@ -1,4 +1,5 @@
-#include <QCoreApplication>
+#include <QApplication>
+//#include <QCoreApplication>
 #include <iostream>
 #include <VideoSystem.h>
 #include "BuildInfo.h"
@@ -6,7 +7,7 @@
 
 int main(int num_args, char** args)
 {
-    QCoreApplication app(num_args, args);
+    QApplication app(num_args, args);
     app.setApplicationVersion(BuildInfo::getVersionString().c_str());
 
     if( VideoSystem::instance()->initialize() == false )

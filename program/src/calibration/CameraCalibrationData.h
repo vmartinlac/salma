@@ -2,6 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <string>
+#include <memory>
 
 class CameraCalibrationData
 {
@@ -16,4 +17,6 @@ public:
     bool saveToFile(const std::string& path);
     bool loadFromFile(const std::string& path);
 };
+
+typedef std::shared_ptr<CameraCalibrationData> CameraCalibrationDataPtr;
 

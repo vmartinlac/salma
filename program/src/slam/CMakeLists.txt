@@ -7,6 +7,8 @@ add_library(
     SLAMDataStructures.h
     SLAMSystem.cpp
     SLAMSystem.h
+    StereoMatcher.cpp
+    StereoMatcher.h
 )
 
 target_link_libraries(
@@ -23,6 +25,7 @@ target_link_libraries(
     video
     calibration
     buildinfo
+    dbg # temporary, for development purpose!
     features)
 
 target_include_directories(slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -50,8 +50,8 @@ protected:
     std::vector<MapPointPtr> mMapPoints;
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
-    CameraCalibrationData mCameraCalibration[2];
-    StereoRigCalibrationData mStereoRigCalibration;
+    CameraCalibrationDataPtr mCameraCalibration[2];
+    StereoRigCalibrationDataPtr mStereoRigCalibration;
     static std::unique_ptr<SLAMSystem> mInstance;
 };
 

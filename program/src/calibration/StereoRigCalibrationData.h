@@ -2,6 +2,7 @@
 #pragma once
 
 #include <sophus/se3.hpp>
+#include <memory>
 #include <string>
 
 class StereoRigCalibrationData
@@ -16,4 +17,6 @@ public:
     bool saveToFile(const std::string& path);
     bool loadFromFile(const std::string& path);
 };
+
+typedef std::shared_ptr<StereoRigCalibrationData> StereoRigCalibrationDataPtr;
 
