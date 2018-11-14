@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Eigen/Eigen>
 #include <opencv2/core.hpp>
 #include <string>
 #include <memory>
@@ -16,6 +17,9 @@ public:
 
     bool saveToFile(const std::string& path);
     bool loadFromFile(const std::string& path);
+
+    Eigen::Matrix3d inverseOfCalibrationMatrix();
+    Eigen::Matrix3d calibrationMatrix();
 };
 
 typedef std::shared_ptr<CameraCalibrationData> CameraCalibrationDataPtr;

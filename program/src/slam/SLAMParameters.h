@@ -5,7 +5,6 @@ class SLAMParameters
 public:
 
     // features.
-
     int num_octaves;
     double scale_factor;
 

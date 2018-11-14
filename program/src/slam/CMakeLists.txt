@@ -2,6 +2,8 @@
 add_library(
     slam
     STATIC
+    Misc.cpp
+    Misc.h
     SLAMConfig.cpp
     SLAMConfig.h
     SLAMDataStructures.h

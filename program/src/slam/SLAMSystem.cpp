@@ -84,6 +84,7 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
 
     if(ok)
     {
+        mCameraCalibration[0].reset(new CameraCalibrationData());
         ok = ok && parser.isSet("left-camera-calibration");
         ok = ok && mCameraCalibration[0]->loadFromFile( parser.value("left-camera-calibration").toStdString() );
         error_message = "Please set left camera calibration file!";
@@ -91,6 +92,7 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
 
     if(ok)
     {
+        mCameraCalibration[1].reset(new CameraCalibrationData());
         ok = ok && parser.isSet("right-camera-calibration");
         ok = ok && mCameraCalibration[1]->loadFromFile( parser.value("right-camera-calibration").toStdString() );
         error_message = "Please set right camera calibration file!";
@@ -98,6 +100,7 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
 
     if(ok)
     {
+        mStereoRigCalibration.reset(new StereoRigCalibrationData());
         ok = ok && parser.isSet("stereo-rig-calibration");
         ok = ok && mStereoRigCalibration->loadFromFile( parser.value("stereo-rig-calibration").toStdString() );
         error_message = "Please set stereo rig calibration file!";

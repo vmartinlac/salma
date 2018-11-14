@@ -2,6 +2,7 @@
 #include <opencv2/imgproc.hpp>
 #include "StereoMatcher.h"
 #include "FinitePriorityQueue.h"
+#include "Misc.h"
 
 StereoMatcher::StereoMatcher()
 {
@@ -171,10 +172,8 @@ void StereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> >& matches
 
     // compute fundamental matrices.
 
-    {
-        // TODO!
-        mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
-    }
+    mFundamentalMatrices[0] = Misc::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
+    mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
 
     // proceed with matching.
 
@@ -189,6 +188,7 @@ void StereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> >& matches
             matches.push_back( std::pair<int,int>(i, j) );
         }
     }
+    std::cout << matches.size() << std::endl;
 
     mUndistortedPoints[0].clear();
     mUndistortedPoints[1].clear();
