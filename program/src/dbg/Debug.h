@@ -11,6 +11,7 @@ namespace Debug
         const cv::Mat& left,
         const std::vector<cv::KeyPoint>& lkpts,
         const cv::Mat& right,
-        const std::vector<cv::KeyPoint>& rkpts);
+        const std::vector<cv::KeyPoint>& rkpts,
+        const std::vector< std::pair<int,int> >& matches);
 }
 

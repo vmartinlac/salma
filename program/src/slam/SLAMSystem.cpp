@@ -212,7 +212,12 @@ void SLAMSystem::map(FramePtr f)
 
     m.match(f, matches);
 
-    // TODO
+    Debug::plotkeypointsandmatches(
+        f->views[0].image,
+        f->views[0].keypoints,
+        f->views[1].image,
+        f->views[1].keypoints,
+        matches);
 }
 
 void SLAMSystem::globalBundleAdjustment()
