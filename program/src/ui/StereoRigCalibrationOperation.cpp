@@ -242,6 +242,10 @@ void StereoRigCalibrationOperation::calibrate()
     const char* error_message = "";
     bool ok = true;
 
+    mStatsPort->beginWrite();
+    mStatsPort->data().text = "Computing stereo-rig parameters...";
+    mStatsPort->endWrite();
+
     if(ok)
     {
         ok = (mPoses.size() > 1);
