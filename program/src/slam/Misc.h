@@ -11,6 +11,9 @@ namespace Misc
     template<int rows, int cols>
     Eigen::Matrix<double,rows,cols> matToEigen( const cv::Mat& m );
 
+    template<int rows, int cols>
+    cv::Mat eigenToMat( const Eigen::Matrix<double, rows, cols>& from );
+
     Eigen::Matrix3d vectorialProductMatrix( const Eigen::Vector3d& v );
 
     Eigen::Matrix3d computeFundamentalMatrix( CameraCalibrationDataPtr left_camera, CameraCalibrationDataPtr right_camera, StereoRigCalibrationDataPtr stereo_rig );
@@ -39,6 +42,20 @@ Eigen::Matrix<double,rows,cols> Misc::matToEigen(const cv::Mat& m)
         }
     }
 
+    return ret;
+}
+
+template<int rows, int cols>
+cv::Mat Misc::eigenToMat( const Eigen::Matrix<double, rows, cols>& from )
+{
+    cv::Mat ret(rows, cols, CV_64F);
+    for(int i=0; i<rows; i++)
+    {
+        for(int j=0; j<cols; j++)
+        {
+            ret.at<double>(i,j) = from(i,j);
+        }
+    }
     return ret;
 }
 

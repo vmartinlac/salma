@@ -4,10 +4,14 @@
 #include <QPixmap>
 #include <QLabel>
 #include <opencv2/features2d.hpp>
+#include <opencv2/imgproc.hpp>
 #include "Debug.h"
 
-void Debug::imshow(const cv::Mat& image)
+void Debug::imshow(const cv::Mat& original_image)
 {
+    cv::Mat image;
+    cv::cvtColor(original_image, image, CV_BGR2RGB);
+
     QImage im;
 
     switch(image.type())

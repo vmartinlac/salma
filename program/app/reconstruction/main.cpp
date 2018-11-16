@@ -16,15 +16,8 @@ int main(int num_args, char** args)
         exit(1);
     }
 
-    if( SLAMSystem::instance()->initialize(num_args, args) == false )
-    {
-        std::cerr << "Could not initialize SLAM system!" << std::endl;
-        exit(1);
-    }
+    SLAMSystem::instance()->run(num_args, args);
 
-    SLAMSystem::instance()->run();
-
-    SLAMSystem::instance()->finalize();
     VideoSystem::instance()->finalize();
 
     return 0;

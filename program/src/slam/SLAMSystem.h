@@ -6,12 +6,6 @@
 #include "VideoReader.h"
 #include "SLAMDataStructures.h"
 
-enum SLAMErrorType
-{
-    SLAM_OK=0,
-    SLAM_OTHER_ERROR
-};
-
 class SLAMSystem
 {
 public:
@@ -20,38 +14,48 @@ public:
 
     ~SLAMSystem();
 
-    bool initialize(int num_args, char** args);
-
-    void run();
-
-    void finalize();
+    void run(int num_args, char** args);
 
 protected:
 
     SLAMSystem();
 
+    bool initialize(int num_args, char** args);
     void printWelcomeMessage();
-
     bool parseCommandLineArguments(int num_args, char** args);
+    void setCurrentFrame(Image& image);
+    void finalize();
 
-    void createNewFrame(Image& image);
+protected:
 
-    void computeFeatures(FramePtr frame);
+    struct CameraRectification
+    {
+        cv::Mat R;
+        cv::Mat P;
+        cv::Mat map0;
+        cv::Mat map1;
+    };
 
-    void track(FramePtr frame);
+    struct StereoRectification
+    {
+        CameraRectification camera[2];
+        cv::Mat Q;
+        cv::Mat R;
+        cv::Mat T;
+    };
 
-    void map(FramePtr map);
-
-    void globalBundleAdjustment();
-    
 protected:
 
     VideoSourcePtr mVideo;
-    std::vector<MapPointPtr> mMapPoints;
+
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
+
     CameraCalibrationDataPtr mCameraCalibration[2];
     StereoRigCalibrationDataPtr mStereoRigCalibration;
+
+    StereoRectification mRectification;
+
     static std::unique_ptr<SLAMSystem> mInstance;
 };
 

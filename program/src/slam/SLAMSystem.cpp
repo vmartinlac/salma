@@ -1,8 +1,9 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
-#include <iostream>
 #include <opencv2/core/version.hpp>
-//#include <Eigen/Eigen>
+#include <opencv2/calib3d.hpp>
+#include <Eigen/Eigen>
+#include <iostream>
 #include <thread>
 #include "VideoSystem.h"
 #include "Image.h"
@@ -11,6 +12,7 @@
 #include "SLAMSystem.h"
 #include "Debug.h"
 #include "StereoMatcher.h"
+#include "Misc.h"
 
 std::unique_ptr<SLAMSystem> SLAMSystem::mInstance;
 
@@ -32,6 +34,39 @@ SLAMSystem::~SLAMSystem()
 {
 }
 
+void SLAMSystem::run(int num_args, char** args)
+{
+    if( initialize(num_args, args) == false )
+    {
+        throw std::runtime_error("initialization failed!");
+    }
+
+    Image im;
+
+    mVideo->trigger();
+    mVideo->read(im);
+
+    while(im.isValid())
+    {
+        mVideo->trigger();
+
+        setCurrentFrame(im);
+
+        std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
+
+        cv::Mat left;
+        cv::Mat right;
+        cv::remap( mCurrentFrame->views[0].image, left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
+        cv::remap( mCurrentFrame->views[1].image, right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
+
+        Debug::plotkeypointsandmatches(left, std::vector<cv::KeyPoint>(), right, std::vector<cv::KeyPoint>(), std::vector< std::pair<int,int> >());
+
+        mVideo->read(im);
+    }
+
+    finalize();
+}
+
 bool SLAMSystem::initialize(int num_args, char** args)
 {
     bool ok = true;
@@ -45,6 +80,47 @@ bool SLAMSystem::initialize(int num_args, char** args)
     {
         ok = mVideo->open();
         error_message = "Could not open input video file!";
+    }
+
+    if(ok)
+    {
+        ok = ( mCameraCalibration[0]->image_size == mCameraCalibration[1]->image_size );
+        error_message = "Image sizes should be equal";
+    }
+
+    if(ok)
+    {
+        const Sophus::SE3d left_to_right = mStereoRigCalibration->right_camera_to_world.inverse() * mStereoRigCalibration->left_camera_to_world;
+
+        mRectification.R = Misc::eigenToMat( left_to_right.rotationMatrix() );
+        mRectification.T = Misc::eigenToMat( left_to_right.translation() );
+
+        cv::stereoRectify(
+            mCameraCalibration[0]->calibration_matrix,
+            mCameraCalibration[0]->distortion_coefficients,
+            mCameraCalibration[1]->calibration_matrix,
+            mCameraCalibration[1]->distortion_coefficients,
+            mCameraCalibration[0]->image_size,
+            mRectification.R,
+            mRectification.T,
+            mRectification.camera[0].R,
+            mRectification.camera[1].R,
+            mRectification.camera[0].P,
+            mRectification.camera[1].P,
+            mRectification.Q);
+
+        for(int i=0; i<2; i++)
+        {
+            cv::initUndistortRectifyMap(
+                mCameraCalibration[i]->calibration_matrix,
+                mCameraCalibration[i]->distortion_coefficients,
+                mRectification.camera[i].R,
+                mRectification.camera[i].P,
+                mCameraCalibration[i]->image_size,
+                CV_32FC1,
+                mRectification.camera[i].map0,
+                mRectification.camera[i].map1 );
+        }
     }
 
     if(ok == false)
@@ -61,7 +137,6 @@ void SLAMSystem::finalize()
 
     mFirstFrame.reset();
     mCurrentFrame.reset();
-    mMapPoints.clear();
     mVideo.reset();
 }
 
@@ -166,6 +241,7 @@ void SLAMSystem::printWelcomeMessage()
     std::cout << std::endl;
 }
 
+/*
 void SLAMSystem::computeFeatures(FramePtr frame)
 {
     std::cout << "Computing features of frame " << frame->id << "." << std::endl;
@@ -219,37 +295,9 @@ void SLAMSystem::map(FramePtr f)
         f->views[1].keypoints,
         matches);
 }
+*/
 
-void SLAMSystem::globalBundleAdjustment()
-{
-}
-
-void SLAMSystem::run()
-{
-    Image im;
-
-    mVideo->trigger();
-    mVideo->read(im);
-
-    while(im.isValid())
-    {
-        mVideo->trigger();
-
-        createNewFrame(im);
-
-        std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
-
-        computeFeatures(mCurrentFrame);
-
-        track(mCurrentFrame);
-
-        map(mCurrentFrame);
-
-        mVideo->read(im);
-    }
-}
-
-void SLAMSystem::createNewFrame(Image& image)
+void SLAMSystem::setCurrentFrame(Image& image)
 {
     FramePtr new_frame(new Frame());
 
