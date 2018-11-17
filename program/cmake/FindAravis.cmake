@@ -1,6 +1,6 @@
 find_package(PkgConfig REQUIRED)
 
-pkg_search_module(ARAVIS REQUIRED aravis-0.6)
+pkg_search_module(ARAVIS REQUIRED aravis-0.6 glib-2.0)
 
 add_library(Aravis INTERFACE)
 target_include_directories(Aravis INTERFACE ${ARAVIS_INCLUDE_DIRS})

@@ -11,6 +11,8 @@ add_library(
     SLAMSystem.h
     StereoMatcher.cpp
     StereoMatcher.h
+    Debug.cpp
+    Debug.h
 )
 
 target_link_libraries(
@@ -19,6 +21,7 @@ target_link_libraries(
     Threads::Threads
     g2o::core
     Qt5::Core
+    Qt5::Widgets
     Eigen3::Eigen
     opencv_core
     opencv_imgproc
@@ -27,7 +30,6 @@ target_link_libraries(
     video
     calibration
     buildinfo
-    dbg # temporary, for development purpose!
     features)
 
 target_include_directories(slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

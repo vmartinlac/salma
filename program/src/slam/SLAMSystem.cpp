@@ -46,6 +46,10 @@ void SLAMSystem::run(int num_args, char** args)
     mVideo->trigger();
     mVideo->read(im);
 
+    /*
+    Use opencv2/core/eigen.hpp
+    */
+
     while(im.isValid())
     {
         mVideo->trigger();
@@ -54,12 +58,29 @@ void SLAMSystem::run(int num_args, char** args)
 
         std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
 
-        cv::Mat left;
-        cv::Mat right;
-        cv::remap( mCurrentFrame->views[0].image, left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
-        cv::remap( mCurrentFrame->views[1].image, right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
+        cv::Mat rectified_left;
+        cv::Mat rectified_right;
+        cv::remap( mCurrentFrame->views[0].image, rectified_left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
+        cv::remap( mCurrentFrame->views[1].image, rectified_right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
 
-        Debug::plotkeypointsandmatches(left, std::vector<cv::KeyPoint>(), right, std::vector<cv::KeyPoint>(), std::vector< std::pair<int,int> >());
+        cv::Ptr<cv::StereoMatcher> matcher = cv::StereoSGBM::create();
+        //matcher->setBlockSize(15);
+
+        const double kappa = 0.3;
+        cv::resize(rectified_left, rectified_left, cv::Size(), kappa, kappa, cv::INTER_LINEAR);
+        cv::resize(rectified_right, rectified_right, cv::Size(), kappa, kappa, cv::INTER_LINEAR);
+
+        cv::Mat disparity;
+        matcher->compute(rectified_left, rectified_right, disparity);
+
+        /*
+        Debug::stereoimshow( mCurrentFrame->views[0].image, mCurrentFrame->views[1].image );
+        */
+        Debug::stereoimshow(rectified_left, rectified_right);
+
+        if( disparity.type() != CV_16S ) throw std::runtime_error("unexpected disparity image data type!");
+
+        Debug::imshow(disparity);
 
         mVideo->read(im);
     }
@@ -149,8 +170,8 @@ bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
     parser.addOption( QCommandLineOption("left-camera-calibration", "Path to left camera calibration file.", "FILE") );
     parser.addOption( QCommandLineOption("right-camera-calibration", "Path to right camera calibration file.", "FILE") );
     parser.addOption( QCommandLineOption("stereo-rig-calibration", "Path to rig calibration file.", "FILE") );
-    parser.addOption( QCommandLineOption("video-input", "Path to video input file.", "FILE") );
-    parser.addOption( QCommandLineOption("reconstruction-output", "Path to reconstruction output file.", "FILE") );
+    parser.addOption( QCommandLineOption("video-input", "Path to video input file.", "PATH") );
+    parser.addOption( QCommandLineOption("reconstruction-output", "Path to reconstruction output file.", "PATH") );
 
     parser.process(*QCoreApplication::instance());
 

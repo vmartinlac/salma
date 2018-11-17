@@ -7,23 +7,51 @@
 #include <opencv2/imgproc.hpp>
 #include "Debug.h"
 
-void Debug::imshow(const cv::Mat& original_image)
+void Debug::imshow(const cv::Mat& image)
 {
-    cv::Mat image;
-    cv::cvtColor(original_image, image, CV_BGR2RGB);
+    cv::Mat true_image;
+
+    if(image.type() == CV_8UC3 )
+    {
+        cv::cvtColor(image, true_image, cv::COLOR_BGR2RGB);
+        true_image = image;
+    }
+    else if(image.type() == CV_8UC1 )
+    {
+        true_image = image;
+    }
+    else if(image.type() == CV_16SC1)
+    {
+        cv::Mat A;
+        cv::normalize(image, A, 255.0, 0.0, cv::NORM_MINMAX);
+        A.convertTo(true_image, CV_8UC1);
+    }
+    else if(image.type() == CV_32FC1)
+    {
+        cv::Mat A;
+        cv::normalize(image, A, 255.0, 0.0, cv::NORM_MINMAX);
+        A.convertTo(true_image, CV_8UC1);
+    }
+    else
+    {
+        throw std::runtime_error("internal error");
+    }
 
     QImage im;
 
-    switch(image.type())
+    switch(true_image.type())
     {
+
     case CV_8UC3:
-        im = QImage(image.ptr(0), image.cols, image.rows, QImage::Format_RGB888);
+        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, QImage::Format_RGB888);
         break;
+
     case CV_8UC1:
-        im = QImage(image.ptr(0), image.cols, image.rows, QImage::Format_Grayscale8);
+        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, QImage::Format_Grayscale8);
         break;
+
     default:
-        throw("incorrect image format");
+        throw std::runtime_error("internal error");
     }
 
     const int max_width = 1500;
@@ -50,10 +78,10 @@ void Debug::imshow(const cv::Mat& original_image)
     delete dlg;
 }
 
-void Debug::plotkeypointsandmatches(
+void Debug::stereoimshow(
     const cv::Mat& left,
-    const std::vector<cv::KeyPoint>& lkpts,
     const cv::Mat& right,
+    const std::vector<cv::KeyPoint>& lkpts,
     const std::vector<cv::KeyPoint>& rkpts,
     const std::vector< std::pair<int,int> >& matches)
 {

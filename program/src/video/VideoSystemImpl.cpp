@@ -17,7 +17,7 @@ VideoSystemImpl::~VideoSystemImpl()
 
 bool VideoSystemImpl::initialize()
 {
-    arv_g_type_init();
+    //arv_g_type_init();
     arv_update_device_list();
 
     unsigned int N = arv_get_n_devices();
