@@ -2,17 +2,27 @@
 add_library(
     slam
     STATIC
+    FinitePriorityQueue.h
+    Debug.cpp
+    Debug.h
     Misc.cpp
     Misc.h
+    SLAMModule.cpp
+    SLAMModule.h
+    SLAMModulePyramid.cpp
+    SLAMModulePyramid.h
+    SLAMModuleFeatures.cpp
+    SLAMModuleFeatures.h
+    SLAMModuleStereoMatcher.cpp
+    SLAMModuleStereoMatcher.h
+    SLAMPyramid.h
+    SLAMProject.cpp
+    SLAMProject.h
     SLAMConfig.cpp
     SLAMConfig.h
     SLAMDataStructures.h
     SLAMSystem.cpp
     SLAMSystem.h
-    StereoMatcher.cpp
-    StereoMatcher.h
-    Debug.cpp
-    Debug.h
 )
 
 target_link_libraries(
@@ -29,8 +39,7 @@ target_link_libraries(
     opencv_calib3d
     video
     calibration
-    buildinfo
-    features)
+    buildinfo)
 
 target_include_directories(slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

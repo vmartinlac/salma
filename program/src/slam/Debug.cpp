@@ -14,7 +14,6 @@ void Debug::imshow(const cv::Mat& image)
     if(image.type() == CV_8UC3 )
     {
         cv::cvtColor(image, true_image, cv::COLOR_BGR2RGB);
-        true_image = image;
     }
     else if(image.type() == CV_8UC1 )
     {
@@ -43,11 +42,11 @@ void Debug::imshow(const cv::Mat& image)
     {
 
     case CV_8UC3:
-        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, QImage::Format_RGB888);
+        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, true_image.step, QImage::Format_RGB888);
         break;
 
     case CV_8UC1:
-        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, QImage::Format_Grayscale8);
+        im = QImage(true_image.ptr(0), true_image.cols, true_image.rows, true_image.step, QImage::Format_Grayscale8);
         break;
 
     default:

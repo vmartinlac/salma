@@ -1,7 +1,11 @@
 #include "FinitePriorityQueue.h"
-#include "FeatureDetector.h"
+#include "SLAMModuleFeatures.h"
 
-void FeatureDetector::run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(project)
+{
+}
+
+void SLAMModuleFeatures::run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
     buildPyramid(image);
     detectAllKeyPoints();
@@ -17,7 +21,7 @@ void FeatureDetector::run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, 
     mDescriptors = cv::Mat();
 }
 
-void FeatureDetector::buildPyramid(cv::Mat& image)
+void SLAMModuleFeatures::buildPyramid(cv::Mat& image)
 {
     const int min_width = 150;
     const double scale_factor = 0.7;
@@ -45,7 +49,7 @@ void FeatureDetector::buildPyramid(cv::Mat& image)
     }
 }
 
-void FeatureDetector::detectAllKeyPoints()
+void SLAMModuleFeatures::detectAllKeyPoints()
 {
     mKeyPoints.clear();
 
@@ -67,7 +71,7 @@ void FeatureDetector::detectAllKeyPoints()
     }
 }
 
-void FeatureDetector::binKeyPoints(bool second)
+void SLAMModuleFeatures::binKeyPoints(bool second)
 {
     const int cell_length = 20;
     const int cell_delta = (second) ? cell_length/2 : 0;
@@ -116,7 +120,7 @@ void FeatureDetector::binKeyPoints(bool second)
     mKeyPoints.swap(newkpts);
 }
 
-void FeatureDetector::describeKeyPoints()
+void SLAMModuleFeatures::describeKeyPoints()
 {
     cv::Ptr<cv::ORB> orb = cv::ORB::create();
     orb->compute(mPyramid.front().image, mKeyPoints, mDescriptors);

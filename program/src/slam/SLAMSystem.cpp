@@ -1,30 +1,21 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
-#include <opencv2/core/version.hpp>
-#include <opencv2/calib3d.hpp>
 #include <Eigen/Eigen>
+#include <opencv2/core/version.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/calib3d.hpp>
 #include <iostream>
 #include <thread>
 #include "VideoSystem.h"
 #include "Image.h"
-#include "FeatureDetector.h"
+#include "SLAMModulePyramid.h"
+#include "SLAMModuleFeatures.h"
+#include "SLAMModuleStereoMatcher.h"
 #include "BuildInfo.h"
 #include "SLAMSystem.h"
 #include "Debug.h"
-#include "StereoMatcher.h"
 #include "Misc.h"
-
-std::unique_ptr<SLAMSystem> SLAMSystem::mInstance;
-
-SLAMSystem* SLAMSystem::instance()
-{
-    if( bool(mInstance) == false )
-    {
-        mInstance.reset(new SLAMSystem());
-    }
-
-    return mInstance.get();
-}
 
 SLAMSystem::SLAMSystem()
 {
@@ -34,87 +25,145 @@ SLAMSystem::~SLAMSystem()
 {
 }
 
-void SLAMSystem::run(int num_args, char** args)
+bool SLAMSystem::initialize()
 {
-    if( initialize(num_args, args) == false )
+    const char* error = "";
+    bool ret = true;
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Perform SLAM on given video. Writen by Victor Martin Lac in 2018.");
+    parser.addHelpOption();
+    parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
+
+    parser.process(*QCoreApplication::instance());
+
     {
-        throw std::runtime_error("initialization failed!");
+        mProject.reset(new SLAMProject());
+        const std::string project_path = parser.positionalArguments().front().toStdString();
+        ret = mProject->load(project_path.c_str());
+        error = "Could not load project!";
     }
 
-    Image im;
-
-    mVideo->trigger();
-    mVideo->read(im);
-
-    /*
-    Use opencv2/core/eigen.hpp
-    */
-
-    while(im.isValid())
+    if(ret)
     {
-        mVideo->trigger();
-
-        setCurrentFrame(im);
-
-        std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
-
-        cv::Mat rectified_left;
-        cv::Mat rectified_right;
-        cv::remap( mCurrentFrame->views[0].image, rectified_left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
-        cv::remap( mCurrentFrame->views[1].image, rectified_right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
-
-        cv::Ptr<cv::StereoMatcher> matcher = cv::StereoSGBM::create();
-        //matcher->setBlockSize(15);
-
-        const double kappa = 0.3;
-        cv::resize(rectified_left, rectified_left, cv::Size(), kappa, kappa, cv::INTER_LINEAR);
-        cv::resize(rectified_right, rectified_right, cv::Size(), kappa, kappa, cv::INTER_LINEAR);
-
-        cv::Mat disparity;
-        matcher->compute(rectified_left, rectified_right, disparity);
-
-        /*
-        Debug::stereoimshow( mCurrentFrame->views[0].image, mCurrentFrame->views[1].image );
-        */
-        Debug::stereoimshow(rectified_left, rectified_right);
-
-        if( disparity.type() != CV_16S ) throw std::runtime_error("unexpected disparity image data type!");
-
-        Debug::imshow(disparity);
-
-        mVideo->read(im);
+        mModulePyramid.reset(new SLAMModulePyramid(mProject));
+        mModuleFeatures.reset(new SLAMModuleFeatures(mProject));
+        mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mProject));
     }
 
-    finalize();
+    if(ret == false)
+    {
+        std::cerr << error << std::endl;
+    }
+
+    return ret;
 }
 
-bool SLAMSystem::initialize(int num_args, char** args)
+void SLAMSystem::run()
 {
+    Image im;
+    VideoSourcePtr video;
     bool ok = true;
-    const char* error_message = "";
 
     printWelcomeMessage();
-    
-    ok = ok && parseCommandLineArguments(num_args, args);
 
-    if(ok)
+    if( ok )
     {
-        ok = mVideo->open();
-        error_message = "Could not open input video file!";
+        ok = initialize();
+    }
+
+    if( ok )
+    {
+        video = mProject->getVideo();
+        ok = bool(video);
     }
 
     if(ok)
     {
-        ok = ( mCameraCalibration[0]->image_size == mCameraCalibration[1]->image_size );
-        error_message = "Image sizes should be equal";
+        ok = video->open();
     }
 
+    if(ok)
+    {
+        video->trigger();
+        video->read(im);
+    }
+
+    while(ok && im.isValid())
+    {
+        video->trigger();
+
+        FramePtr new_frame(new Frame());
+
+        new_frame->previous_frame = mCurrentFrame;
+        new_frame->id = (bool(mCurrentFrame)) ? mCurrentFrame->id+1 : 0;
+        new_frame->timestamp = im.getTimestamp();
+        new_frame->views[0].image = im.getFrame(0);
+        new_frame->views[1].image = im.getFrame(1);
+
+        mCurrentFrame.swap(new_frame);
+
+        std::cout << "Processing frame " << mCurrentFrame->id << std::endl;
+        handleFrame(mCurrentFrame);
+
+        video->read(im);
+    }
+
+    if( ok )
+    {
+        video->close();
+        video.reset();
+
+        finalize();
+    }
+}
+
+void SLAMSystem::finalize()
+{
+    mModulePyramid.reset();
+    mModuleFeatures.reset();
+    mModuleStereoMatcher.reset();
+
+    mProject.reset();
+
+    mFirstFrame.reset();
+    mCurrentFrame.reset();
+}
+
+void SLAMSystem::printWelcomeMessage()
+{
+    std::cout << std::endl;
+    std::cout << "   _____         _      __  __  " << std::endl;
+    std::cout << "  / ____|  /\\   | |    |  \\/  | " << std::endl;
+    std::cout << " | (___   /  \\  | |    | \\  / | " << std::endl;
+    std::cout << "  \\___ \\ / /\\ \\ | |    | |\\/| | " << std::endl;
+    std::cout << "  ____) / ____ \\| |____| |  | | " << std::endl;
+    std::cout << " |_____/_/    \\_\\______|_|  |_| " << std::endl;
+    std::cout << std::endl;
+    std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
+    std::cout << std::endl;
+    std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
+    std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
+    std::cout << std::endl;
+}
+
+void SLAMSystem::handleFrame(FramePtr frame)
+{
+    //Debug::imshow(frame->views[0].image);
+}
+
+    /*
     if(ok)
     {
         const Sophus::SE3d left_to_right = mStereoRigCalibration->right_camera_to_world.inverse() * mStereoRigCalibration->left_camera_to_world;
 
-        mRectification.R = Misc::eigenToMat( left_to_right.rotationMatrix() );
-        mRectification.T = Misc::eigenToMat( left_to_right.translation() );
+        mRectification.R;
+        cv::eigen2cv( left_to_right.rotationMatrix(), mRectification.R );
+
+        mRectification.T;
+        cv::eigen2cv( left_to_right.translation(), mRectification.T );
 
         cv::stereoRectify(
             mCameraCalibration[0]->calibration_matrix,
@@ -143,124 +192,8 @@ bool SLAMSystem::initialize(int num_args, char** args)
                 mRectification.camera[i].map1 );
         }
     }
+    */
 
-    if(ok == false)
-    {
-        std::cerr << error_message << std::endl;
-    }
-
-    return ok;
-}
-
-void SLAMSystem::finalize()
-{
-    mVideo->close();
-
-    mFirstFrame.reset();
-    mCurrentFrame.reset();
-    mVideo.reset();
-}
-
-bool SLAMSystem::parseCommandLineArguments(int num_args, char** args)
-{
-    QCommandLineParser parser;
-
-    parser.addHelpOption();
-    parser.addOption( QCommandLineOption("slam-config", "Path to SLAM configuration file", "FILE") );
-    parser.addOption( QCommandLineOption("left-camera-calibration", "Path to left camera calibration file.", "FILE") );
-    parser.addOption( QCommandLineOption("right-camera-calibration", "Path to right camera calibration file.", "FILE") );
-    parser.addOption( QCommandLineOption("stereo-rig-calibration", "Path to rig calibration file.", "FILE") );
-    parser.addOption( QCommandLineOption("video-input", "Path to video input file.", "PATH") );
-    parser.addOption( QCommandLineOption("reconstruction-output", "Path to reconstruction output file.", "PATH") );
-
-    parser.process(*QCoreApplication::instance());
-
-    bool ok = true;
-    const char* error_message = "";
-
-    if(ok)
-    {
-        mCameraCalibration[0].reset(new CameraCalibrationData());
-        ok = ok && parser.isSet("left-camera-calibration");
-        ok = ok && mCameraCalibration[0]->loadFromFile( parser.value("left-camera-calibration").toStdString() );
-        error_message = "Please set left camera calibration file!";
-    }
-
-    if(ok)
-    {
-        mCameraCalibration[1].reset(new CameraCalibrationData());
-        ok = ok && parser.isSet("right-camera-calibration");
-        ok = ok && mCameraCalibration[1]->loadFromFile( parser.value("right-camera-calibration").toStdString() );
-        error_message = "Please set right camera calibration file!";
-    }
-
-    if(ok)
-    {
-        mStereoRigCalibration.reset(new StereoRigCalibrationData());
-        ok = ok && parser.isSet("stereo-rig-calibration");
-        ok = ok && mStereoRigCalibration->loadFromFile( parser.value("stereo-rig-calibration").toStdString() );
-        error_message = "Please set stereo rig calibration file!";
-    }
-
-    if(ok)
-    {
-        ok = ok && parser.isSet("slam-config");
-        error_message = "Please set SLAM configuration file!";
-    }
-
-    // TODO: load config file.
-
-    if(ok)
-    {
-        ok = ok && parser.isSet("video-input");
-        error_message = "Please set video input file!";
-    }
-
-    if(ok)
-    {
-        mVideo = VideoSystem::instance()->createVideoSourceFromFileStereo(parser.value("video-input").toStdString());
-        ok = bool(mVideo);
-        error_message = "Could not open video input file";
-    }
-
-    if(ok)
-    {
-        ok = ok && parser.isSet("reconstruction-output");
-        error_message = "Please set reconstruction output file!";
-    }
-
-    // TODO: open output files.
-
-    if(ok == false)
-    {
-        std::cerr << error_message << std::endl;
-        exit(1);
-    }
-
-    return ok;
-}
-
-void SLAMSystem::printWelcomeMessage()
-{
-    std::cout << std::endl;
-    std::cout << "   _____         _      __  __  " << std::endl;
-    std::cout << "  / ____|  /\\   | |    |  \\/  | " << std::endl;
-    std::cout << " | (___   /  \\  | |    | \\  / | " << std::endl;
-    std::cout << "  \\___ \\ / /\\ \\ | |    | |\\/| | " << std::endl;
-    std::cout << "  ____) / ____ \\| |____| |  | | " << std::endl;
-    std::cout << " |_____/_/    \\_\\______|_|  |_| " << std::endl;
-    std::cout << std::endl;
-    std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
-    std::cout << std::endl;
-    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
-    std::cout << std::endl;
-    std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
-    std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
-    std::cout << std::endl;
-    std::cout << "OpenCV version: " << CV_VERSION << std::endl;
-    std::cout << "Eigen version: " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
-    std::cout << std::endl;
-}
 
 /*
 void SLAMSystem::computeFeatures(FramePtr frame)
@@ -318,16 +251,70 @@ void SLAMSystem::map(FramePtr f)
 }
 */
 
-void SLAMSystem::setCurrentFrame(Image& image)
-{
-    FramePtr new_frame(new Frame());
 
-    new_frame->previous_frame = mCurrentFrame;
-    new_frame->id = (bool(mCurrentFrame)) ? mCurrentFrame->id+1 : 0;
-    new_frame->timestamp = image.getTimestamp();
-    new_frame->views[0].image = image.getFrame(0);
-    new_frame->views[1].image = image.getFrame(1);
+        /*
+        cv::Ptr<cv::StereoBM> matcher = cv::StereoBM::create();
+        cv::Mat rectified_left;
+        cv::Mat rectified_right;
+        cv::Mat disparity;
 
-    mCurrentFrame.swap(new_frame);
-}
+        matcher->setPreFilterType(cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE);
+        //matcher->setPreFilterSize(11);
+        matcher->setMinDisparity(0);
+        matcher->setNumDisparities(240);
+        matcher->setBlockSize(101);
+        matcher->setUniquenessRatio(2.0);
+        //matcher->setTextureThreshold(0.95);
+
+        mVideo->trigger();
+
+        setCurrentFrame(im);
+
+        std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
+
+        // compute rectified images.
+
+        cv::remap( mCurrentFrame->views[0].image, rectified_left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
+        cv::remap( mCurrentFrame->views[1].image, rectified_right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
+
+
+        // convert to grayscale.
+        {
+            cv::Mat tmp;
+
+            cv::cvtColor(rectified_left, tmp, cv::COLOR_BGR2GRAY);
+            cv::swap(rectified_left, tmp);
+
+            cv::cvtColor(rectified_right, tmp, cv::COLOR_BGR2GRAY);
+            cv::swap(rectified_right, tmp);
+        }
+
+        matcher->compute(rectified_left, rectified_right, disparity);
+        Debug::imshow(rectified_left);
+        Debug::imshow(disparity);
+
+        if( disparity.type() != CV_16S ) throw std::runtime_error("unexpected disparity image data type!");
+
+        */
+
+    /*
+    struct CameraRectification
+    {
+        cv::Mat R;
+        cv::Mat P;
+        cv::Mat map0;
+        cv::Mat map1;
+    };
+
+    struct StereoRectification
+    {
+        CameraRectification camera[2];
+        cv::Mat Q;
+        cv::Mat R;
+        cv::Mat T;
+    };
+
+    StereoRectification mRectification;
+    */
+
 

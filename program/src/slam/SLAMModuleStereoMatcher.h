@@ -7,24 +7,13 @@
 #include "CameraCalibrationData.h"
 #include "StereoRigCalibrationData.h"
 #include "SLAMDataStructures.h"
+#include "SLAMModule.h"
 
-class StereoMatcher
+class SLAMModuleStereoMatcher : public SLAMModule
 {
 public:
 
-    StereoMatcher();
-
-    void setLeftCameraCalibration( CameraCalibrationDataPtr calib );
-    void setRightCameraCalibration( CameraCalibrationDataPtr calib );
-    void setStereoRigCalibration( StereoRigCalibrationDataPtr calib );
-
-    void setCheckLowe(bool value);
-    void setCheckSymmetry(bool value);
-    void setCheckEpipolar(bool value);
-    void setCheckOctave(bool value);
-
-    void setEpipolarThreshold(double value);
-    void setLoweRatio(double value);
+    SLAMModuleStereoMatcher(SLAMProjectPtr project);
 
     void match(FramePtr frame, std::vector< std::pair<int,int> >& matches);
 
@@ -47,4 +36,6 @@ protected:
     Eigen::Matrix3d mFundamentalMatrices[2];
     std::vector<cv::Point2f> mUndistortedPoints[2];
 };
+
+typedef std::shared_ptr<SLAMModuleStereoMatcher> SLAMModuleStereoMatcherPtr;
 

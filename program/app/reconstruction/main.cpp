@@ -1,5 +1,4 @@
 #include <QApplication>
-//#include <QCoreApplication>
 #include <iostream>
 #include <VideoSystem.h>
 #include "BuildInfo.h"
@@ -16,7 +15,9 @@ int main(int num_args, char** args)
         exit(1);
     }
 
-    SLAMSystem::instance()->run(num_args, args);
+    SLAMSystemPtr slam(new SLAMSystem());
+    slam->run();
+    slam.reset();
 
     VideoSystem::instance()->finalize();
 

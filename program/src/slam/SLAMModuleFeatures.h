@@ -6,10 +6,13 @@
 #include <opencv2/imgproc.hpp>
 #include <utility>
 #include <cmath>
+#include "SLAMModule.h"
 
-class FeatureDetector
+class SLAMModuleFeatures : public SLAMModule
 {
 public:
+
+    SLAMModuleFeatures(SLAMProjectPtr project);
 
     void run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
 
@@ -34,4 +37,6 @@ protected:
     std::vector<cv::KeyPoint> mKeyPoints;
     cv::Mat mDescriptors;
 };
+
+typedef std::shared_ptr<SLAMModuleFeatures> SLAMModuleFeaturesPtr;
 

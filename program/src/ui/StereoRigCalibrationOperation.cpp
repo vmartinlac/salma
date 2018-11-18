@@ -7,9 +7,11 @@
 #include <QTime>
 #include <sophus/average.hpp>
 #include <sophus/interpolate.hpp>
+#include <Eigen/Eigen>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>
-#include <Eigen/Eigen>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core/eigen.hpp>
 #include "Image.h"
 #include "Tracker.h"
 #include "StereoRigCalibrationOperation.h"
@@ -110,13 +112,19 @@ bool StereoRigCalibrationOperation::step()
         Image concat;
         image.concatenate(concat);
 
-        if( concat.isValid() == false ) throw std::runtime_error("some unexpected error");
+        if( concat.isValid() )
+        {
+            mVideoPort->beginWrite();
+            mVideoPort->data().image = concat.getFrame();
+            mVideoPort->endWrite();
 
-        mVideoPort->beginWrite();
-        mVideoPort->data().image = concat.getFrame();
-        mVideoPort->endWrite();
-
-        mFrameCount++;
+            mFrameCount++;
+        }
+        else
+        {
+            std::cerr << "Error while concatenating images!" << std::endl;
+            go_on = false;
+        }
     }
 
     if( go_on )
@@ -150,6 +158,53 @@ bool StereoRigCalibrationOperation::step()
     {
         go_on = computePose(mRightTracker, mRightCalibrationData, right_camera_to_target);
     }
+
+    /*
+    if( go_on )
+    {
+        auto plot_points = [this] ( cv::Mat image, const CameraCalibrationData& calibration, const Sophus::SE3d& camera_to_target, const char* prefix )
+        {
+            std::vector<cv::Point3d> arr;
+
+            for(int i=-4; i<=4; i++)
+            {
+                for(int j=-4; j<=4; j++)
+                {
+                    Eigen::Vector3d point3d;
+                    point3d.x() = mTargetCellLength*double(i);
+                    point3d.y() = mTargetCellLength*double(j);
+                    point3d.z() = 0.0;
+
+                    Eigen::Vector3d P = (camera_to_target.inverse() * point3d);
+
+                    arr.push_back( cv::Point3d( P.x(), P.y(), P.z() ) );
+                }
+            }
+
+            std::vector<cv::Point2d> pts(arr.size());
+
+            cv::projectPoints(
+                arr,
+                cv::Mat::zeros(3, 1, CV_64F),
+                cv::Mat::zeros(3, 1, CV_64F),
+                calibration.calibration_matrix,
+                calibration.distortion_coefficients,
+                pts);
+
+            for( cv::Point2f pt : pts )
+            {
+                cv::circle(image, pt, 4, cv::Scalar(0, 255, 0), -1 );;
+            }
+
+            static int i = 0;
+            cv::imwrite("/home/victor/depotoire/rien_"+std::string(prefix)+std::to_string(i)+".png", image);
+            i++;
+        };
+
+        plot_points( image.getFrame(0), mLeftCalibrationData, left_camera_to_target, "left");
+        plot_points( image.getFrame(1), mRightCalibrationData, right_camera_to_target, "right");
+    }
+    */
 
     if( go_on )
     {

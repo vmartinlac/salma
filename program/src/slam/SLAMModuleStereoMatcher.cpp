@@ -1,54 +1,23 @@
 #include <utility>
 #include <opencv2/imgproc.hpp>
-#include "StereoMatcher.h"
+#include "SLAMModuleStereoMatcher.h"
 #include "FinitePriorityQueue.h"
 #include "Misc.h"
 
-StereoMatcher::StereoMatcher()
+SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMModule(project)
 {
-    mCheckSymmetry = true;
-    mCheckLowe = true;
-    mCheckEpipolar = true;
-    mEpipolarThreshold = 8.0;
-    mLoweRatio = 0.5;
+    mCheckSymmetry = project->getParameterBoolean("stereo_matcher_check_lowe", true);
+    mCheckLowe = project->getParameterBoolean("stereo_matcher_check_lowe", true);
+    mCheckEpipolar = project->getParameterBoolean("stereo_matcher_check_epipolar", true);
+    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 8.0);
+    mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.5);
+
+    mCameraCalibration[0] = project->getLeftCameraCalibration();
+    mCameraCalibration[1] = project->getRightCameraCalibration();
+    mStereoRigCalibration = project->getStereoRigCalibration();
 }
 
-void StereoMatcher::setLeftCameraCalibration( CameraCalibrationDataPtr calib )
-{
-    mCameraCalibration[0] = std::move(calib);
-}
-
-void StereoMatcher::setRightCameraCalibration( CameraCalibrationDataPtr calib )
-{
-    mCameraCalibration[1] = std::move(calib);
-}
-
-void StereoMatcher::setStereoRigCalibration( StereoRigCalibrationDataPtr calib )
-{
-    mStereoRigCalibration = std::move(calib);
-}
-
-void StereoMatcher::setCheckLowe(bool value)
-{
-    mCheckLowe = true;
-}
-
-void StereoMatcher::setCheckSymmetry(bool value)
-{
-    mCheckSymmetry = value;
-}
-
-void StereoMatcher::setCheckOctave(bool value)
-{
-    mCheckOctave = value;
-}
-
-void StereoMatcher::setCheckEpipolar(bool value)
-{
-    mCheckEpipolar = value;
-}
-
-int StereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetry)
+int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetry)
 {
     const int other_view = (view + 1) % 2;
 
@@ -139,17 +108,7 @@ int StereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetr
     return ret;
 }
 
-void StereoMatcher::setLoweRatio(double value)
-{
-    mLoweRatio = value;
-}
-
-void StereoMatcher::setEpipolarThreshold(double value)
-{
-    mEpipolarThreshold = value;
-}
-
-void StereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> >& matches)
+void SLAMModuleStereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> >& matches)
 {
     // compute undistorted key points.
 

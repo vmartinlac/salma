@@ -5,57 +5,38 @@
 #include "StereoRigCalibrationData.h"
 #include "VideoReader.h"
 #include "SLAMDataStructures.h"
+#include "SLAMProject.h"
+#include "SLAMModulePyramid.h"
+#include "SLAMModuleFeatures.h"
+#include "SLAMModuleStereoMatcher.h"
 
 class SLAMSystem
 {
 public:
 
-    static SLAMSystem* instance();
-
+    SLAMSystem();
     ~SLAMSystem();
 
-    void run(int num_args, char** args);
+    void run();
 
 protected:
 
-    SLAMSystem();
-
-    bool initialize(int num_args, char** args);
-    void printWelcomeMessage();
-    bool parseCommandLineArguments(int num_args, char** args);
-    void setCurrentFrame(Image& image);
+    bool initialize();
     void finalize();
+    void printWelcomeMessage();
+    void handleFrame(FramePtr frame);
 
 protected:
 
-    struct CameraRectification
-    {
-        cv::Mat R;
-        cv::Mat P;
-        cv::Mat map0;
-        cv::Mat map1;
-    };
+    SLAMProjectPtr mProject;
 
-    struct StereoRectification
-    {
-        CameraRectification camera[2];
-        cv::Mat Q;
-        cv::Mat R;
-        cv::Mat T;
-    };
-
-protected:
-
-    VideoSourcePtr mVideo;
+    SLAMModulePyramidPtr mModulePyramid;
+    SLAMModuleFeaturesPtr mModuleFeatures;
+    SLAMModuleStereoMatcherPtr mModuleStereoMatcher;
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
-
-    CameraCalibrationDataPtr mCameraCalibration[2];
-    StereoRigCalibrationDataPtr mStereoRigCalibration;
-
-    StereoRectification mRectification;
-
-    static std::unique_ptr<SLAMSystem> mInstance;
 };
+
+typedef std::shared_ptr<SLAMSystem> SLAMSystemPtr;
 

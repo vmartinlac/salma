@@ -1,3 +1,5 @@
+#include <Eigen/Eigen>
+#include <opencv2/core/eigen.hpp>
 #include "Misc.h"
 
 Eigen::Matrix3d Misc::vectorialProductMatrix(const Eigen::Vector3d& v)
@@ -38,8 +40,11 @@ Eigen::Matrix3d Misc::computeFundamentalMatrix( CameraCalibrationDataPtr left_ca
     const Eigen::Matrix3d R = transform34.leftCols<3>();
     const Eigen::Vector3d t = transform34.rightCols<1>();
 
-    const Eigen::Matrix3d left_K = Misc::matToEigen<3,3>( left_camera->calibration_matrix );
-    const Eigen::Matrix3d right_K = Misc::matToEigen<3,3>( right_camera->calibration_matrix );
+    Eigen::Matrix3d left_K;
+    cv::cv2eigen<double, 3, 3>( left_camera->calibration_matrix, left_K );
+
+    Eigen::Matrix3d right_K;
+    cv::cv2eigen<double, 3, 3>( right_camera->calibration_matrix, right_K );
 
     const Eigen::Matrix3d inverse_left_K = left_camera->inverseOfCalibrationMatrix();
     const Eigen::Matrix3d inverse_right_K = right_camera->inverseOfCalibrationMatrix();
