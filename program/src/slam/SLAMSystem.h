@@ -6,9 +6,9 @@
 #include "VideoReader.h"
 #include "SLAMDataStructures.h"
 #include "SLAMProject.h"
-#include "SLAMModulePyramid.h"
 #include "SLAMModuleFeatures.h"
 #include "SLAMModuleStereoMatcher.h"
+#include "SLAMModuleTemporalMatcher.h"
 
 class SLAMSystem
 {
@@ -30,9 +30,9 @@ protected:
 
     SLAMProjectPtr mProject;
 
-    SLAMModulePyramidPtr mModulePyramid;
     SLAMModuleFeaturesPtr mModuleFeatures;
     SLAMModuleStereoMatcherPtr mModuleStereoMatcher;
+    SLAMModuleTemporalMatcherPtr mModuleTemporalMatcher;
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;

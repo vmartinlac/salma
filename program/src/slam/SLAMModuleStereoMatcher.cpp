@@ -3,23 +3,78 @@
 #include "SLAMModuleStereoMatcher.h"
 #include "FinitePriorityQueue.h"
 #include "Misc.h"
+#include "Debug.h"
+
+//#define DEBUG_SHOW_EPIPOLAR_LINES
+//#define DEBUG_SHOW_RESULT
 
 SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMModule(project)
 {
-    mCheckSymmetry = project->getParameterBoolean("stereo_matcher_check_lowe", true);
+    mCheckOctave = project->getParameterBoolean("stereo_matcher_check_octave", false);
+
+    mCheckSymmetry = project->getParameterBoolean("stereo_matcher_check_symmetry", true);
+
     mCheckLowe = project->getParameterBoolean("stereo_matcher_check_lowe", true);
+    mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.85);
+
     mCheckEpipolar = project->getParameterBoolean("stereo_matcher_check_epipolar", true);
-    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 8.0);
-    mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.5);
+    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 20.0);
 
     mCameraCalibration[0] = project->getLeftCameraCalibration();
     mCameraCalibration[1] = project->getRightCameraCalibration();
     mStereoRigCalibration = project->getStereoRigCalibration();
+
+    mFundamentalMatrices[0] = Misc::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
+    mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
+
 }
 
 int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetry)
 {
     const int other_view = (view + 1) % 2;
+
+#ifdef DEBUG_SHOW_EPIPOLAR_LINES
+    {
+        cv::Mat image = f->views[view].image.clone();
+        cv::Mat other_image = f->views[other_view].image.clone();
+
+        cv::circle(image, f->views[view].keypoints[i].pt, 5, cv::Scalar(0,255,0), -1);
+
+        Eigen::Vector3d pointi;
+        pointi <<
+            mUndistortedPoints[view][i].x,
+            mUndistortedPoints[view][i].y,
+            1.0;
+
+        Eigen::Vector3d line = mFundamentalMatrices[view] * pointi;
+
+        const double l = line.head<2>().norm();
+
+        if( l > 1.0e-7 )
+        {
+            line /= l;
+
+            Eigen::Vector2d normal = line.head<2>();
+
+            Eigen::Vector2d tangent;
+            tangent.x() = -normal.y();
+            tangent.y() = normal.x();
+
+            const Eigen::Vector2d origin = - line.z() * normal;
+            const double delta = 2050.0;
+            const Eigen::Vector2d A = origin + delta * tangent;
+            const Eigen::Vector2d B = origin - delta * tangent;
+
+            const cv::Point2f cvA(A.x(), A.y());
+            const cv::Point2f cvB(B.x(), B.y());
+
+            cv::line(other_image, cvA, cvB, cv::Scalar(0,255,0), 3);
+            std::cout << A.transpose() << "     " << B.transpose() << std::endl;
+
+            Debug::stereoimshow( image, other_image );
+        }
+    }
+#endif
 
     FinitePriorityQueueF<int, double, 2> queue;
 
@@ -30,38 +85,6 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
         if(ok && mCheckOctave)
         {
             ok = ( f->views[view].keypoints[i].octave == f->views[other_view].keypoints[j].octave );
-        }
-
-        if(ok && mCheckEpipolar)
-        {
-            Eigen::Vector3d pointi;
-            pointi <<
-                mUndistortedPoints[view][i].x,
-                mUndistortedPoints[view][i].y,
-                1.0;
-
-            Eigen::Vector3d pointj;
-            pointj <<
-                mUndistortedPoints[other_view][j].x,
-                mUndistortedPoints[other_view][j].y,
-                1.0;
-
-            Eigen::Vector3d line = mFundamentalMatrices[view] * pointi;
-
-            const double l = line.head<2>().norm();
-
-            if( l > 1.0e-7 )
-            {
-                line /= l;
-
-                const double val = pointj.transpose() * line;
-
-                ok = ( std::fabs(val) < mEpipolarThreshold );
-            }
-            else
-            {
-                ok = false;
-            }
         }
 
         if(ok)
@@ -95,7 +118,43 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
         ret = queue.top();
     }
 
-    if(ret >= 0 && check_symmetry )
+    if( ret >= 0 && mCheckEpipolar )
+    {
+        Eigen::Vector3d pointi;
+        pointi <<
+            mUndistortedPoints[view][i].x,
+            mUndistortedPoints[view][i].y,
+            1.0;
+
+        Eigen::Vector3d pointj;
+        pointj <<
+            mUndistortedPoints[other_view][ret].x,
+            mUndistortedPoints[other_view][ret].y,
+            1.0;
+
+        Eigen::Vector3d line = mFundamentalMatrices[view] * pointi;
+
+        const double l = line.head<2>().norm();
+
+        if( l > 1.0e-7 )
+        {
+            line /= l;
+
+            const double val = pointj.transpose() * line;
+            //std::cout << val << std::endl;
+
+            if( std::fabs(val) > mEpipolarThreshold )
+            {
+                ret = -1;
+            }
+        }
+        else
+        {
+            ret = -1;
+        }
+    }
+
+    if( ret >= 0 && check_symmetry )
     {
         const int other = matchKeyPoint(f, other_view, ret, false);
 
@@ -108,33 +167,28 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
     return ret;
 }
 
-void SLAMModuleStereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> >& matches)
+void SLAMModuleStereoMatcher::match(FramePtr f)
 {
     // compute undistorted key points.
 
+    for(int k=0; k<2; k++)
     {
         std::vector<cv::Point2f> tmp;
 
-        for(int k=0; k<2; k++)
-        {
-            cv::KeyPoint::convert( f->views[k].keypoints, tmp );
+        cv::KeyPoint::convert( f->views[k].keypoints, tmp );
 
-            cv::undistortPoints(
-                tmp,
-                mUndistortedPoints[k], 
-                mCameraCalibration[k]->calibration_matrix,
-                mCameraCalibration[k]->distortion_coefficients,
-                cv::noArray(),
-                mCameraCalibration[k]->calibration_matrix);
-        }
+        cv::undistortPoints(
+            tmp,
+            mUndistortedPoints[k], 
+            mCameraCalibration[k]->calibration_matrix,
+            mCameraCalibration[k]->distortion_coefficients,
+            cv::noArray(),
+            mCameraCalibration[k]->calibration_matrix);
     }
 
-    // compute fundamental matrices.
-
-    mFundamentalMatrices[0] = Misc::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
-    mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
-
     // proceed with matching.
+
+    StereoMatching& matches = f->stereo_matching;
 
     matches.clear();
 
@@ -147,9 +201,17 @@ void SLAMModuleStereoMatcher::match(FramePtr f, std::vector< std::pair<int,int> 
             matches.push_back( std::pair<int,int>(i, j) );
         }
     }
-    std::cout << matches.size() << std::endl;
 
     mUndistortedPoints[0].clear();
     mUndistortedPoints[1].clear();
+
+#ifdef DEBUG_SHOW_RESULT
+    Debug::stereoimshow(
+        f->views[0].image,
+        f->views[1].image,
+        f->views[0].keypoints,
+        f->views[1].keypoints,
+        f->stereo_matching);
+#endif
 }
 

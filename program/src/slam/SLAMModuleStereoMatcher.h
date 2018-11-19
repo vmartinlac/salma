@@ -15,7 +15,7 @@ public:
 
     SLAMModuleStereoMatcher(SLAMProjectPtr project);
 
-    void match(FramePtr frame, std::vector< std::pair<int,int> >& matches);
+    void match(FramePtr frame);
 
 protected:
 

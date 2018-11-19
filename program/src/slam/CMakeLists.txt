@@ -9,10 +9,10 @@ add_library(
     Misc.h
     SLAMModule.cpp
     SLAMModule.h
-    SLAMModulePyramid.cpp
-    SLAMModulePyramid.h
     SLAMModuleFeatures.cpp
     SLAMModuleFeatures.h
+    SLAMModuleTemporalMatcher.cpp
+    SLAMModuleTemporalMatcher.h
     SLAMModuleStereoMatcher.cpp
     SLAMModuleStereoMatcher.h
     SLAMPyramid.h
@@ -37,6 +37,7 @@ target_link_libraries(
     opencv_imgproc
     opencv_features2d
     opencv_calib3d
+    opencv_video
     video
     calibration
     buildinfo)

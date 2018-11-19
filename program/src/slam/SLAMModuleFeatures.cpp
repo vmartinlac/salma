@@ -3,126 +3,35 @@
 
 SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(project)
 {
+    const double scale_factor = project->getParameterReal("features_scale_factor", 1.1);
+    const int min_width = project->getParameterInteger("features_min_width", 160);
+    const int max_features = project->getParameterInteger("features_max_features", 800); // 500 ?
+    const int patch_size = project->getParameterInteger("features_patch_size", 31);
+    const int fast_threshold = project->getParameterInteger("features_fast_threshold", 10);
+
+    const int num_levels = std::floor( std::log(double(project->getLeftCameraCalibration()->image_size.width)/double(min_width)) / std::log(scale_factor) );
+
+    mFeature2d = cv::ORB::create();
+
+    mFeature2d->setScoreType(cv::ORB::HARRIS_SCORE);
+    mFeature2d->setScaleFactor(scale_factor);
+    mFeature2d->setNLevels(num_levels);
+    mFeature2d->setFirstLevel(0);
+    mFeature2d->setPatchSize(patch_size);
+    mFeature2d->setFastThreshold(fast_threshold);
+    mFeature2d->setMaxFeatures(max_features);
 }
 
-void SLAMModuleFeatures::run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+void SLAMModuleFeatures::run(FramePtr frame)
 {
-    buildPyramid(image);
-    detectAllKeyPoints();
-    binKeyPoints(false);
-    binKeyPoints(true);
-    describeKeyPoints();
-
-    keypoints.swap(mKeyPoints);
-    descriptors = mDescriptors;
-
-    mPyramid.clear();
-    mKeyPoints.clear();
-    mDescriptors = cv::Mat();
-}
-
-void SLAMModuleFeatures::buildPyramid(cv::Mat& image)
-{
-    const int min_width = 150;
-    const double scale_factor = 0.7;
-    const int levels = std::max<int>(
-        1,
-        int(std::floor(std::log(double(min_width)/double(image.cols))/std::log(scale_factor))) );
-
-    //std::cout << "Number of levels: " << levels << std::endl;
-
-    mPyramid.resize(levels);
-
-    mPyramid.front().image = image;
-    mPyramid.front().scale = 1.0;
-
-    for(int i=1; i<levels; i++)
+    for(int i=0; i<2; i++)
     {
-        mPyramid[i].scale = mPyramid[i-1].scale * scale_factor;
-
-        cv::resize(
-            mPyramid[i-1].image,
-            mPyramid[i].image,
-            cv::Size(),
-            scale_factor,
-            scale_factor);
+        runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
     }
 }
 
-void SLAMModuleFeatures::detectAllKeyPoints()
+void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-    mKeyPoints.clear();
-
-    cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create();
-
-    for(int i=0; i<mPyramid.size(); i++)
-    {
-        std::vector<cv::KeyPoint> kpts;
-        gftt->detect(mPyramid[i].image, kpts);
-
-        for(cv::KeyPoint& kp : kpts)
-        {
-            kp.pt.x /= float(mPyramid[i].scale);
-            kp.pt.y /= float(mPyramid[i].scale);
-            kp.octave = i;
-        }
-
-        mKeyPoints.insert(mKeyPoints.end(), kpts.begin(), kpts.end());
-    }
-}
-
-void SLAMModuleFeatures::binKeyPoints(bool second)
-{
-    const int cell_length = 20;
-    const int cell_delta = (second) ? cell_length/2 : 0;
-
-    const int num_bins_x = 2 + mPyramid.front().image.cols/cell_length;
-    const int num_bins_y = 2 + mPyramid.front().image.rows/cell_length;
-
-    /*
-    const int cell_min_length = 30;
-    const int num_bins_x = std::max<int>(1, mPyramid.front().image.cols/cell_min_length);
-    const int num_bins_y = std::max<int>(1, mPyramid.front().image.rows/cell_min_length);
-    */
-
-    typedef FinitePriorityQueueF<size_t,double,1> FPQ;
-
-    std::vector<FPQ> bins( num_bins_x*num_bins_y );
-
-    /*
-    for( FPQ& fpq : bins )
-    {
-      fpq.reset(max_keypoints_per_cell);
-    }
-    */
-
-    for(size_t i=0; i<mKeyPoints.size(); i++)
-    {
-        const int a = (int(mKeyPoints[i].pt.x) + cell_delta) / cell_length;
-        const int b = (int(mKeyPoints[i].pt.y) + cell_delta) / cell_length;
-        //const int b = int(mKeyPoints[i].pt.y) * num_bins_y / mPyramid.front().image.rows;
-        const int bin = b * num_bins_x + a;
-
-        bins[bin].push( i, mKeyPoints[i].response );
-    }
-
-    std::vector<cv::KeyPoint> newkpts;
-    newkpts.reserve(mKeyPoints.size());
-
-    for(size_t i=0; i<bins.size(); i++)
-    {
-        for(size_t j : bins[i])
-        {
-            newkpts.push_back(std::move(mKeyPoints[j]));
-        }
-    }
-
-    mKeyPoints.swap(newkpts);
-}
-
-void SLAMModuleFeatures::describeKeyPoints()
-{
-    cv::Ptr<cv::ORB> orb = cv::ORB::create();
-    orb->compute(mPyramid.front().image, mKeyPoints, mDescriptors);
+    mFeature2d->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
 }
 

@@ -9,9 +9,6 @@
 #include <thread>
 #include "VideoSystem.h"
 #include "Image.h"
-#include "SLAMModulePyramid.h"
-#include "SLAMModuleFeatures.h"
-#include "SLAMModuleStereoMatcher.h"
 #include "BuildInfo.h"
 #include "SLAMSystem.h"
 #include "Debug.h"
@@ -46,9 +43,9 @@ bool SLAMSystem::initialize()
 
     if(ret)
     {
-        mModulePyramid.reset(new SLAMModulePyramid(mProject));
         mModuleFeatures.reset(new SLAMModuleFeatures(mProject));
         mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mProject));
+        mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mProject));
     }
 
     if(ret == false)
@@ -120,9 +117,9 @@ void SLAMSystem::run()
 
 void SLAMSystem::finalize()
 {
-    mModulePyramid.reset();
     mModuleFeatures.reset();
     mModuleStereoMatcher.reset();
+    mModuleTemporalMatcher.reset();
 
     mProject.reset();
 
@@ -151,170 +148,19 @@ void SLAMSystem::printWelcomeMessage()
 
 void SLAMSystem::handleFrame(FramePtr frame)
 {
-    //Debug::imshow(frame->views[0].image);
+    // detect features.
+
+    mModuleFeatures->run(frame);
+    std::cout << "Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
+    std::cout << "Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+
+    // perform temporal matching.
+
+    mModuleTemporalMatcher->match(frame);
+
+    // perform stereo matching.
+
+    mModuleStereoMatcher->match(frame);
+    std::cout << "Number of stereo matches: " << frame->stereo_matching.size() << std::endl;
 }
-
-    /*
-    if(ok)
-    {
-        const Sophus::SE3d left_to_right = mStereoRigCalibration->right_camera_to_world.inverse() * mStereoRigCalibration->left_camera_to_world;
-
-        mRectification.R;
-        cv::eigen2cv( left_to_right.rotationMatrix(), mRectification.R );
-
-        mRectification.T;
-        cv::eigen2cv( left_to_right.translation(), mRectification.T );
-
-        cv::stereoRectify(
-            mCameraCalibration[0]->calibration_matrix,
-            mCameraCalibration[0]->distortion_coefficients,
-            mCameraCalibration[1]->calibration_matrix,
-            mCameraCalibration[1]->distortion_coefficients,
-            mCameraCalibration[0]->image_size,
-            mRectification.R,
-            mRectification.T,
-            mRectification.camera[0].R,
-            mRectification.camera[1].R,
-            mRectification.camera[0].P,
-            mRectification.camera[1].P,
-            mRectification.Q);
-
-        for(int i=0; i<2; i++)
-        {
-            cv::initUndistortRectifyMap(
-                mCameraCalibration[i]->calibration_matrix,
-                mCameraCalibration[i]->distortion_coefficients,
-                mRectification.camera[i].R,
-                mRectification.camera[i].P,
-                mCameraCalibration[i]->image_size,
-                CV_32FC1,
-                mRectification.camera[i].map0,
-                mRectification.camera[i].map1 );
-        }
-    }
-    */
-
-
-/*
-void SLAMSystem::computeFeatures(FramePtr frame)
-{
-    std::cout << "Computing features of frame " << frame->id << "." << std::endl;
-    auto my_proc = [] (View* v)
-    {
-        FeatureDetector detector;
-        detector.run(
-            v->image,
-            v->keypoints,
-            v->descriptors);
-    };
-
-    std::thread t1(my_proc, &frame->views[0]);
-    std::thread t2(my_proc, &frame->views[1]);
-
-    t1.join();
-    t2.join();
-
-    std::cout << "Number of features on left image: " << frame->views[0].keypoints.size() << std::endl;
-    std::cout << "Number of features on right image: " << frame->views[1].keypoints.size() << std::endl;
-}
-
-void SLAMSystem::track(FramePtr frame)
-{
-    if(frame->id == 0)
-    {
-        frame->world_to_frame = Sophus::SE3d();
-    }
-    else
-    {
-        // TODO!
-    }
-}
-
-void SLAMSystem::map(FramePtr f)
-{
-    std::vector< std::pair<int, int> > matches;
-
-    StereoMatcher m;
-
-    m.setLeftCameraCalibration( mCameraCalibration[0] );
-    m.setRightCameraCalibration( mCameraCalibration[1] );
-    m.setStereoRigCalibration( mStereoRigCalibration );
-
-    m.match(f, matches);
-
-    Debug::plotkeypointsandmatches(
-        f->views[0].image,
-        f->views[0].keypoints,
-        f->views[1].image,
-        f->views[1].keypoints,
-        matches);
-}
-*/
-
-
-        /*
-        cv::Ptr<cv::StereoBM> matcher = cv::StereoBM::create();
-        cv::Mat rectified_left;
-        cv::Mat rectified_right;
-        cv::Mat disparity;
-
-        matcher->setPreFilterType(cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE);
-        //matcher->setPreFilterSize(11);
-        matcher->setMinDisparity(0);
-        matcher->setNumDisparities(240);
-        matcher->setBlockSize(101);
-        matcher->setUniquenessRatio(2.0);
-        //matcher->setTextureThreshold(0.95);
-
-        mVideo->trigger();
-
-        setCurrentFrame(im);
-
-        std::cout << "=> Processing frame " << mCurrentFrame->id << "." << std::endl;
-
-        // compute rectified images.
-
-        cv::remap( mCurrentFrame->views[0].image, rectified_left, mRectification.camera[0].map0, mRectification.camera[0].map1, cv::INTER_LINEAR );
-        cv::remap( mCurrentFrame->views[1].image, rectified_right, mRectification.camera[1].map0, mRectification.camera[1].map1, cv::INTER_LINEAR );
-
-
-        // convert to grayscale.
-        {
-            cv::Mat tmp;
-
-            cv::cvtColor(rectified_left, tmp, cv::COLOR_BGR2GRAY);
-            cv::swap(rectified_left, tmp);
-
-            cv::cvtColor(rectified_right, tmp, cv::COLOR_BGR2GRAY);
-            cv::swap(rectified_right, tmp);
-        }
-
-        matcher->compute(rectified_left, rectified_right, disparity);
-        Debug::imshow(rectified_left);
-        Debug::imshow(disparity);
-
-        if( disparity.type() != CV_16S ) throw std::runtime_error("unexpected disparity image data type!");
-
-        */
-
-    /*
-    struct CameraRectification
-    {
-        cv::Mat R;
-        cv::Mat P;
-        cv::Mat map0;
-        cv::Mat map1;
-    };
-
-    struct StereoRectification
-    {
-        CameraRectification camera[2];
-        cv::Mat Q;
-        cv::Mat R;
-        cv::Mat T;
-    };
-
-    StereoRectification mRectification;
-    */
-
 

@@ -6,6 +6,7 @@
 #include <opencv2/imgproc.hpp>
 #include <utility>
 #include <cmath>
+#include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
 class SLAMModuleFeatures : public SLAMModule
@@ -14,28 +15,15 @@ public:
 
     SLAMModuleFeatures(SLAMProjectPtr project);
 
-    void run(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
+    void run(FramePtr frame);
 
 protected:
 
-    struct Level
-    {
-        cv::Mat image;
-        double scale;
-    };
+    void runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
 
 protected:
 
-    void buildPyramid(cv::Mat& image);
-    void detectAllKeyPoints();
-    void binKeyPoints(bool second);
-    void describeKeyPoints();
-
-protected:
-
-    std::vector<Level> mPyramid;
-    std::vector<cv::KeyPoint> mKeyPoints;
-    cv::Mat mDescriptors;
+    cv::Ptr<cv::ORB> mFeature2d;
 };
 
 typedef std::shared_ptr<SLAMModuleFeatures> SLAMModuleFeaturesPtr;
