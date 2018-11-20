@@ -16,6 +16,7 @@ public:
 protected:
 
     void processView(FramePtr frame, int view);
+    int matchKeyPoint(int i, const cv::Point2f& prediction, const View& from, const View& to, bool check_symmetry);
 
 protected:
 
@@ -26,10 +27,9 @@ protected:
     bool mCheckLowe;
     double mLoweRatio;
 
-    bool mCheckOpticalFlow;
-    double mOpticalFlowRadius;
-
     bool mCheckOctave;
+
+    double mPredictionRadius;
 };
 
 typedef std::shared_ptr<SLAMModuleTemporalMatcher> SLAMModuleTemporalMatcherPtr;

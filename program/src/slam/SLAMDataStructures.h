@@ -36,6 +36,7 @@ public:
     }
 
     int match_in_previous_frame;
+
     MapPointPtr mappoint;
 };
 
