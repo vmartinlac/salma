@@ -1,7 +1,7 @@
 #include "SLAMModuleTemporalMatcher.h"
 #include "Debug.h"
 
-//#define DEBUG_SHOW_OPTICAL_FLOW
+#define DEBUG_SHOW_OPTICAL_FLOW
 
 SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMProjectPtr project) : SLAMModule(project)
 {
