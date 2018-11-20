@@ -262,7 +262,7 @@ bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, Camera
 
     if( ok )
     {
-        ok = ( tracker.objectPoints().size() >= 15 );
+        ok = ( tracker.objectPoints().size() >= 30 );
     }
 
     if( ok )

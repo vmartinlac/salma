@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QTime>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 #include "Image.h"
 #include "Tracker.h"
@@ -92,7 +93,9 @@ bool CameraCalibrationOperation::step()
     {
         if( mObjectPoints.empty() || mClock.elapsed() > mMillisecondsTemporisation )
         {
-            const bool target_found = mTracker.track(image.getFrame(), false);
+            const bool target_found =
+                mTracker.track(image.getFrame(), false) &&
+                (mTracker.imagePoints().size() >= 30);
 
             if( target_found )
             {
@@ -112,9 +115,20 @@ bool CameraCalibrationOperation::step()
 
         mFrameCount++;
 
-        mVideoPort->beginWrite();
-        mVideoPort->data().image = image.getFrame();
-        mVideoPort->endWrite();
+        {
+            cv::Mat output_image = image.getFrame().clone();
+            for( std::vector<cv::Point2f>& arr : mImagePoints )
+            {
+                for( cv::Point2f& pt : arr )
+                {
+                    cv::circle(output_image, pt, 2, cv::Scalar(0,255,0)); // TODO: something faster.
+                }
+            }
+
+            mVideoPort->beginWrite();
+            mVideoPort->data().image = output_image;
+            mVideoPort->endWrite();
+        }
 
         writeOutputText();
     }
