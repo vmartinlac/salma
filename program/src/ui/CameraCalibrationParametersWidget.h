@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QSpinBox>
 #include "CameraList.h"
 #include "PathWidget.h"
 #include "OperationParametersWidget.h"
@@ -23,5 +24,6 @@ protected:
     PathWidget* mPath;
     TargetParametersWidget* mTargetParameters;
     CameraList* mCameraList;
+    QSpinBox* mNumViews;
 };
 

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QSpinBox>
 #include <QLineEdit>
 #include "CameraList.h"
 #include "OperationParametersWidget.h"
@@ -27,5 +28,6 @@ protected:
     CameraList* mLeftCamera;
     CameraList* mRightCamera;
     PathWidget* mOutputPath;
+    QSpinBox* mNumViews;
 };
 

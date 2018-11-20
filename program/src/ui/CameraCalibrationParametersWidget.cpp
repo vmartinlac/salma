@@ -17,9 +17,14 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
 
     mPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
+    mNumViews = new QSpinBox();
+    mNumViews->setMinimum(10);
+    mNumViews->setMaximum(1000);
+
     QFormLayout* form = new QFormLayout();
     form->addRow("Camera", mCameraList);
     form->addRow("Target cell length", mTargetParameters);
+    form->addRow("Number of views", mNumViews);
     form->addRow("Output JSON file", mPath);
 
     setLayout(form);
@@ -29,6 +34,7 @@ CameraCalibrationParametersWidget::CameraCalibrationParametersWidget(QWidget* pa
     mCameraList->setSelectedCamera( s.value("camera", QString() ).toString().toStdString() );
     mTargetParameters->setCellLength( s.value("target_cell_length", 1.0).toDouble() );
     mPath->setPath( s.value("output_file", "camera.json").toString() );
+    mNumViews->setValue( s.value("num_views", 50).toInt() );
     s.endGroup();
 }
 
@@ -70,6 +76,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
 
         op->mOutputPath = newoutputpath.toStdString();
         op->mTargetCellLength = mTargetParameters->getCellLength();
+        op->mRequestedSuccessfulFrameCount = mNumViews->value();
         op->mCamera.swap(newcamera);
 
         QSettings s;
@@ -77,6 +84,7 @@ OperationPtr CameraCalibrationParametersWidget::getOperation()
         s.setValue("camera", VideoSystem::instance()->getNameOfGenICamCamera(camera_id).c_str());
         s.setValue("target_cell_length", mTargetParameters->getCellLength());
         s.setValue("output_file", mPath->path());
+        s.setValue("num_views", mNumViews->value());
         s.endGroup();
         s.sync();
     }

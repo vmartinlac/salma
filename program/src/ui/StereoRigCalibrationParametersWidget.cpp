@@ -20,6 +20,10 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
 
     mTargetParameters = new TargetParametersWidget();
 
+    mNumViews = new QSpinBox();
+    mNumViews->setMinimum(3);
+    mNumViews->setMaximum(1000);
+
     mOutputPath = new PathWidget(PathWidget::GET_SAVE_FILENAME);
 
     QFormLayout* form = new QFormLayout();
@@ -28,6 +32,7 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
     form->addRow("Right camera", mRightCamera);
     form->addRow("Right camera calibration data", mPathToRightCalibrationData);
     form->addRow("Target cell length", mTargetParameters);
+    form->addRow("Number of views", mNumViews);
     form->addRow("Output JSON file", mOutputPath);
 
     setLayout(form);
@@ -39,6 +44,7 @@ StereoRigCalibrationParametersWidget::StereoRigCalibrationParametersWidget(QWidg
     mPathToLeftCalibrationData->setPath( s.value("left_camera_calibration_file", QString()).toString() );
     mPathToRightCalibrationData->setPath( s.value("right_camera_calibration_file", QString()).toString() );
     mTargetParameters->setCellLength( s.value("target_cell_length", 1.0).toDouble() );
+    mNumViews->setValue( s.value("num_views", 20).toInt() );
     mOutputPath->setPath( s.value("output_file", QString()).toString() );
     s.endGroup();
 }
@@ -96,6 +102,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         op->mLeftCalibrationData = left_camera_parameters;
         op->mRightCalibrationData = right_camera_parameters;
         op->mTargetCellLength = mTargetParameters->getCellLength();
+        op->mNumberOfPosesForCalibration = mNumViews->value();
         op->mCamera.swap(newcamera);
 
         QSettings s;
@@ -105,6 +112,7 @@ OperationPtr StereoRigCalibrationParametersWidget::getOperation()
         s.setValue("left_camera_calibration_file", mPathToLeftCalibrationData->path());
         s.setValue("right_camera_calibration_file", mPathToRightCalibrationData->path());
         s.setValue("target_cell_length", mTargetParameters->getCellLength());
+        s.setValue("num_views", mNumViews->value());
         s.setValue("output_file", mOutputPath->path());
         s.endGroup();
         s.sync();
