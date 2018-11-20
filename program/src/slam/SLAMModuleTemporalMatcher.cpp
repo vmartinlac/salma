@@ -3,6 +3,7 @@
 #include "Debug.h"
 
 //#define DEBUG_SHOW_OPTICAL_FLOW
+//#define DEBUG_SHOW_MATCHES
 
 SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMProjectPtr project) : SLAMModule(project)
 {
@@ -71,7 +72,7 @@ void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
 
     for(int i=0; i<N; i++)
     {
-        //if( opticalflow_status[i] > 0 )
+        if( opticalflow_status[i] > 0 )
         {
             const int j = matchKeyPoint(i, opticalflow_post[i], previous_view, current_view, mCheckSymmetry);
 
@@ -87,7 +88,7 @@ void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
         }
     }
 
-    //
+#ifdef DEBUG_SHOW_MATCHES
     {
         std::vector< std::pair<int,int> > matches;
 
@@ -109,7 +110,7 @@ void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
             current_view.keypoints,
             matches);
     }
-    //
+#endif
 }
 
 int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const cv::Point2f& prediction, const View& from, const View& to, bool check_symmetry)

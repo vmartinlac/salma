@@ -150,17 +150,38 @@ void SLAMSystem::handleFrame(FramePtr frame)
 {
     // detect features.
 
-    mModuleFeatures->run(frame);
-    std::cout << "Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
-    std::cout << "Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+    {
+        mModuleFeatures->run(frame);
+
+        std::cout << "Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
+        std::cout << "Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+    }
 
     // perform temporal matching.
 
-    mModuleTemporalMatcher->match(frame);
+    {
+        mModuleTemporalMatcher->match(frame);
+
+        auto op = [] (int count, const Track& t)
+        {
+            return ( t.match_in_previous_frame >= 0 ) ? count+1 : count;
+        };
+
+        const int count_left = std::accumulate( frame->views[0].tracks.begin(), frame->views[0].tracks.end(), 0, op );
+        const int count_right = std::accumulate( frame->views[1].tracks.begin(), frame->views[1].tracks.end(), 0, op );
+
+        std::cout << "Num temporal matches in left view: " << count_left << std::endl;
+        std::cout << "Num temporal matches in right view: " << count_right << std::endl;
+    }
 
     // perform stereo matching.
 
-    mModuleStereoMatcher->match(frame);
-    std::cout << "Number of stereo matches: " << frame->stereo_matching.size() << std::endl;
+    {
+        mModuleStereoMatcher->match(frame);
+
+        std::cout << "Number of stereo matches: " << frame->stereo_matching.size() << std::endl;
+    }
+
+    // perform triangulation of new map points and alignment of current keyframe.
 }
 

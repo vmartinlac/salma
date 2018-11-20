@@ -6,7 +6,7 @@
 #include "Debug.h"
 
 //#define DEBUG_SHOW_EPIPOLAR_LINES
-//#define DEBUG_SHOW_RESULT
+//#define DEBUG_SHOW_MATCHES
 
 SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMModule(project)
 {
@@ -18,7 +18,7 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMM
     mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.85);
 
     mCheckEpipolar = project->getParameterBoolean("stereo_matcher_check_epipolar", true);
-    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 20.0);
+    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 8.0);
 
     mCameraCalibration[0] = project->getLeftCameraCalibration();
     mCameraCalibration[1] = project->getRightCameraCalibration();
@@ -205,7 +205,7 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
     mUndistortedPoints[0].clear();
     mUndistortedPoints[1].clear();
 
-#ifdef DEBUG_SHOW_RESULT
+#ifdef DEBUG_SHOW_MATCHES
     Debug::stereoimshow(
         f->views[0].image,
         f->views[1].image,
