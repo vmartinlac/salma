@@ -236,6 +236,10 @@ bool StereoRigCalibrationOperation::step()
 
     if( go_on && mLeftImagePoints.size() >= mNumberOfPosesForCalibration )
     {
+        mStatsPort->beginWrite();
+        mStatsPort->data().text = "Computing calibration data ...";
+        mStatsPort->endWrite();
+
         calibrate();
         ret = false;
     }
@@ -312,6 +316,9 @@ void StereoRigCalibrationOperation::calibrate()
 
         calibration.right_camera_to_world.setRotationMatrix(Rbis.transpose());
         calibration.right_camera_to_world.translation() = -Rbis.transpose() * Tbis;
+
+        //cv::cv2eigen<double,3,3>(F, calibration.fundamental_matrix);
+        //cv::cv2eigen<double,3,3>(E, calibration.essential_matrix);
     }
     
     if(ok)

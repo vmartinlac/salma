@@ -14,6 +14,9 @@ public:
     Sophus::SE3d left_camera_to_world;
     Sophus::SE3d right_camera_to_world;
 
+    //Eigen::Matrix3d fundamental_matrix;
+    //Eigen::Matrix3d essential_matrix;
+
     bool saveToFile(const std::string& path);
     bool loadFromFile(const std::string& path);
 };

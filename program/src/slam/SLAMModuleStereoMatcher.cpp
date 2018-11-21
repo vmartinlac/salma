@@ -188,7 +188,7 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
     // proceed with matching.
 
-    StereoMatching& matches = f->stereo_matching;
+    StereoMatchList& matches = f->stereo_matches;
 
     matches.clear();
 

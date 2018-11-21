@@ -46,6 +46,7 @@ bool SLAMSystem::initialize()
         mModuleFeatures.reset(new SLAMModuleFeatures(mProject));
         mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mProject));
         mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mProject));
+        mModuleTriReg.reset(new SLAMModuleTriReg(mProject));
     }
 
     if(ret == false)
@@ -120,6 +121,7 @@ void SLAMSystem::finalize()
     mModuleFeatures.reset();
     mModuleStereoMatcher.reset();
     mModuleTemporalMatcher.reset();
+    mModuleTriReg.reset();
 
     mProject.reset();
 
@@ -179,9 +181,13 @@ void SLAMSystem::handleFrame(FramePtr frame)
     {
         mModuleStereoMatcher->match(frame);
 
-        std::cout << "Number of stereo matches: " << frame->stereo_matching.size() << std::endl;
+        std::cout << "Number of stereo matches: " << frame->stereo_matches.size() << std::endl;
     }
 
     // perform triangulation of new map points and alignment of current keyframe.
+
+    {
+        mModuleTriReg->run(frame);
+    }
 }
 

@@ -14,6 +14,7 @@ class Frame;
 class MapPoint;
 
 typedef std::shared_ptr<Frame> FramePtr;
+typedef std::weak_ptr<Frame> FrameWeakPtr;
 typedef std::shared_ptr<MapPoint> MapPointPtr;
 
 class MapPoint
@@ -36,6 +37,10 @@ public:
     }
 
     int match_in_previous_frame;
+    /*
+    FrameWeakPtr previous_frame;
+    int previous_keypoint;
+    */
 
     MapPointPtr mappoint;
 };
@@ -51,7 +56,7 @@ public:
     std::vector<Track> tracks;
 };
 
-typedef std::vector< std::pair<int,int> > StereoMatching;
+typedef std::vector< std::pair<int,int> > StereoMatchList;
 
 class Frame
 {
@@ -60,8 +65,9 @@ public:
     int id;
     double timestamp;
     View views[2];
-    StereoMatching stereo_matching;
+    StereoMatchList stereo_matches;
     Sophus::SE3d world_to_frame;
+
     FramePtr previous_frame;
 };
 
