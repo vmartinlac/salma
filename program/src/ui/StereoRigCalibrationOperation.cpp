@@ -32,10 +32,13 @@ bool StereoRigCalibrationOperation::before()
 {
     mFrameCount = 0;
     mClock.start();
-    mPoses.clear();
 
     mLeftTracker.setUnitLength(mTargetCellLength);
     mRightTracker.setUnitLength(mTargetCellLength);
+
+    mLeftImagePoints.clear();
+    mRightImagePoints.clear();
+    mObjectPoints.clear();
 
     bool ok = true;
 
@@ -78,12 +81,13 @@ bool StereoRigCalibrationOperation::before()
 
 bool StereoRigCalibrationOperation::step()
 {
-    Sophus::SE3d left_camera_to_target;
-    Sophus::SE3d right_camera_to_target;
-
     bool ret = true;
 
     bool go_on = true;
+
+    std::vector<cv::Point2f> new_left_image_points;
+    std::vector<cv::Point2f> new_right_image_points;
+    std::vector<cv::Point3f> new_object_points;
 
     Image image;
     image.setInvalid();
@@ -129,7 +133,7 @@ bool StereoRigCalibrationOperation::step()
 
     if( go_on )
     {
-        go_on = image.isValid() && ( mPoses.empty() || mClock.elapsed() > mMillisecondsOfTemporisation );
+        go_on = image.isValid() && ( mLeftImagePoints.empty() || mClock.elapsed() > mMillisecondsOfTemporisation );
     }
 
     if( go_on )
@@ -151,12 +155,36 @@ bool StereoRigCalibrationOperation::step()
 
     if( go_on )
     {
-        go_on = computePose(mLeftTracker, mLeftCalibrationData, left_camera_to_target);
+        for(int i=0; i<mLeftTracker.pointIds().size(); i++)
+        {
+            const int id = mLeftTracker.pointIds()[i];
+
+            int j = 0;
+            while( j<mRightTracker.pointIds().size() && mRightTracker.pointIds()[j] != id )
+            {
+                j++;
+            }
+
+            if( j < mRightTracker.pointIds().size() )
+            {
+                if( mRightTracker.pointIds()[j] != id ) throw std::logic_error("internal error");
+
+                new_left_image_points.push_back(mLeftTracker.imagePoints()[i]);
+                new_right_image_points.push_back(mRightTracker.imagePoints()[j]);
+                new_object_points.push_back(mLeftTracker.objectPoints()[i]);
+            }
+        }
+
+        go_on = ( new_left_image_points.size() > 30 );
     }
 
     if( go_on )
     {
-        go_on = computePose(mRightTracker, mRightCalibrationData, right_camera_to_target);
+        mLeftImagePoints.push_back( std::move(new_left_image_points) );
+        mRightImagePoints.push_back( std::move(new_right_image_points) );
+        mObjectPoints.push_back( std::move(new_object_points) );
+
+        mClock.start();
     }
 
     /*
@@ -206,17 +234,7 @@ bool StereoRigCalibrationOperation::step()
     }
     */
 
-    if( go_on )
-    {
-        Sophus::SE3d right_camera_to_left_camera = left_camera_to_target.inverse() * right_camera_to_target;
-
-        mPoses.push_back( right_camera_to_left_camera );
-
-        mClock.start();
-    }
-
-
-    if( go_on && mPoses.size() >= mNumberOfPosesForCalibration )
+    if( go_on && mLeftImagePoints.size() >= mNumberOfPosesForCalibration )
     {
         calibrate();
         ret = false;
@@ -241,8 +259,8 @@ void StereoRigCalibrationOperation::writeOutputText()
 {
     std::stringstream s;
     s << "Frame count: " << mFrameCount << std::endl;
-    s << "Number of computed poses: " << mPoses.size() << std::endl;
-    s << "Number of poses left: " << mNumberOfPosesForCalibration - mPoses.size() << std::endl;
+    s << "Number of computed poses: " << mLeftImagePoints.size() << std::endl;
+    s << "Number of poses left: " << mNumberOfPosesForCalibration - mLeftImagePoints.size() << std::endl;
     s << std::endl;
     s << "Video input: " << mCamera->getHumanName() << std::endl;
     s << "Target cell length: " << mTargetCellLength << std::endl;
@@ -253,99 +271,47 @@ void StereoRigCalibrationOperation::writeOutputText()
     mStatsPort->endWrite();
 }
 
-bool StereoRigCalibrationOperation::computePose(target::Tracker& tracker, CameraCalibrationData& calibration, Sophus::SE3d& camera_to_target)
-{
-    cv::Mat pnp_rodrigues;
-    cv::Mat pnp_translation;
-
-    bool ok = true;
-
-    if( ok )
-    {
-        ok = ( tracker.objectPoints().size() >= 30 );
-    }
-
-    if( ok )
-    {
-        ok = cv::solvePnP(
-            tracker.objectPoints(),
-            tracker.imagePoints(),
-            calibration.calibration_matrix,
-            calibration.distortion_coefficients,
-            pnp_rodrigues,
-            pnp_translation,
-            false,
-            cv::SOLVEPNP_ITERATIVE );
-    }
-
-    if(ok)
-    {
-        convertPoseFromOpenCVToSophus(pnp_rodrigues, pnp_translation, camera_to_target);
-    }
-
-    return ok;
-}
-
 void StereoRigCalibrationOperation::calibrate()
 {
-    Sophus::optional< Sophus::SE3d > right_camera_to_left_camera;
-    double xdev = 0.0;
-    double ydev = 0.0;
-    double zdev = 0.0;
-    double thetadev = 0.0;
-    StereoRigCalibrationData calibration;
-    const char* error_message = "";
     bool ok = true;
+    const char* error_message = "";
 
-    mStatsPort->beginWrite();
-    mStatsPort->data().text = "Computing stereo-rig parameters...";
-    mStatsPort->endWrite();
+    StereoRigCalibrationData calibration;
+
+    cv::Mat R;
+    cv::Mat T;
+    cv::Mat E;
+    cv::Mat F;
+    double err = 0.0;
 
     if(ok)
     {
-        ok = (mPoses.size() > 1);
+        cv::TermCriteria term(
+            cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+            30, 1.0e-6);
+
+        err = cv::stereoCalibrate(
+            mObjectPoints,
+            mLeftImagePoints, mRightImagePoints,
+            mLeftCalibrationData.calibration_matrix, mLeftCalibrationData.distortion_coefficients,
+            mRightCalibrationData.calibration_matrix, mRightCalibrationData.distortion_coefficients,
+            mLeftCalibrationData.image_size, R, T, E, F,
+            cv::CALIB_FIX_INTRINSIC,
+            term);
     }
 
     if(ok)
     {
-        right_camera_to_left_camera = Sophus::average( mPoses );
-        ok = bool(right_camera_to_left_camera);
-        error_message = "Could not average calibration data.";
-    }
+        Eigen::Matrix3d Rbis;
+        Eigen::Vector3d Tbis;
 
-    if(ok)
-    {
-        xdev = 0.0;
-        ydev = 0.0;
-        zdev = 0.0;
-        thetadev = 0.0;
-
-        for( Sophus::SE3d& p : mPoses)
-        {
-            const double dx = p.translation().x() - right_camera_to_left_camera->translation().x();
-            const double dy = p.translation().y() - right_camera_to_left_camera->translation().y();
-            const double dz = p.translation().z() - right_camera_to_left_camera->translation().z();
-            const double dtheta = p.unit_quaternion().angularDistance( right_camera_to_left_camera->unit_quaternion() );
-
-            xdev += dx*dx;
-            ydev += dy*dy;
-            zdev += dz*dz;
-            thetadev += dtheta*dtheta;
-        }
-
-        xdev = std::sqrt( xdev/double(mPoses.size()) );
-        ydev = std::sqrt( ydev/double(mPoses.size()) );
-        zdev = std::sqrt( zdev/double(mPoses.size()) );
-        thetadev = std::sqrt( thetadev/double(mPoses.size()) );
-    }
-
-    if(ok)
-    {
-        //Sophus::interpolate( Sophus::SE3d(), right_camera_to_world, 0.5 );
-        // TODO: world should be half-way between left and right cameras.
+        cv::cv2eigen<double,3,3>(R, Rbis);
+        cv::cv2eigen<double,3,1>(T, Tbis);
 
         calibration.left_camera_to_world = Sophus::SE3d();
-        calibration.right_camera_to_world = *right_camera_to_left_camera;
+
+        calibration.right_camera_to_world.setRotationMatrix(Rbis.transpose());
+        calibration.right_camera_to_world.translation() = -Rbis.transpose() * Tbis;
     }
     
     if(ok)
@@ -357,6 +323,9 @@ void StereoRigCalibrationOperation::calibrate()
     if(ok)
     {
         std::stringstream s;
+
+        s << "Residual error = " << err << std::endl;
+        s << std::endl;
 
         s << "Left camera to world transformation:" << std::endl;
         s << "left_x = " << calibration.left_camera_to_world.translation().x() << std::endl;
@@ -378,12 +347,6 @@ void StereoRigCalibrationOperation::calibrate()
         s << "right_qw = " << calibration.right_camera_to_world.unit_quaternion().w() << std::endl;
         s << std::endl;
 
-        s << "x std-dev = " << xdev << std::endl;
-        s << "y std-dev = " << ydev << std::endl;
-        s << "z std-dev = " << zdev << std::endl;
-        s << "θ std-dev = " << thetadev << std::endl;
-        s << std::endl;
-
         mStatsPort->beginWrite();
         mStatsPort->data().text = s.str().c_str();
         mStatsPort->endWrite();
@@ -396,6 +359,7 @@ void StereoRigCalibrationOperation::calibrate()
     }
 }
 
+/*
 void StereoRigCalibrationOperation::convertPoseFromOpenCVToSophus(
     const cv::Mat& rodrigues,
     const cv::Mat& t,
@@ -450,4 +414,5 @@ void StereoRigCalibrationOperation::convertPoseFromOpenCVToSophus(
     camera_to_object.translation() = position;
     camera_to_object.setQuaternion(attitude);
 }
+*/
 

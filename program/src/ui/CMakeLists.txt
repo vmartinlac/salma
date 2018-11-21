@@ -65,6 +65,7 @@ target_link_libraries(
     opencv_calib3d
     Sophus::Sophus
     Threads::Threads
+    #g2o::core
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

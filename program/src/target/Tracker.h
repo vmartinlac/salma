@@ -27,6 +27,7 @@ namespace target
         const std::vector<cv::Point3f>& objectPoints();
         const std::vector<cv::Point2f>& imagePoints();
         const std::vector<cv::KeyPoint>& imageKeyPoints();
+        const std::vector<int>& pointIds();
 
         void clear();
 
@@ -142,6 +143,7 @@ namespace target
         bool find_cell_clockwise(int point, std::array<int,4>& cell);
         bool filter_circle(const Eigen::Matrix3d& H);
         bool save_results();
+        static int computeZSquaredToN(int i, int j);
 
     protected:
 
@@ -167,7 +169,8 @@ namespace target
         bool m_found;
         std::vector<cv::Point3f> m_object_points;
         std::vector<cv::Point2f> m_image_points;
-        std::vector<cv::KeyPoint> m_image_keypoints;
+        //std::vector<cv::KeyPoint> m_image_keypoints;
+        std::vector<int> m_point_ids;
     };
 
     inline void Tracker::setUnitLength(double length)
@@ -190,9 +193,10 @@ namespace target
         return m_image_points;
     }
 
-    inline const std::vector<cv::KeyPoint>& Tracker::imageKeyPoints()
+    inline const std::vector<int>& Tracker::pointIds()
     {
-        return m_image_keypoints;
+        return m_point_ids;
     }
+
 }
 

@@ -10,6 +10,7 @@
 #include <nanoflann.hpp>
 #include "Tracker.h"
 
+//#ifdef DEBUG_PRINT_COMPUTATION_TIME
 //#define TARGET_DETECTOR_DEBUG
 
 namespace target {
@@ -59,7 +60,9 @@ namespace target {
         std::chrono::time_point<std::chrono::system_clock> t1 = std::chrono::system_clock::now();
         const int dt = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
 
+#ifdef DEBUG_PRINT_COMPUTATION_TIME
         std::cout << "Computation time: " << dt << " ms" << std::endl;
+#endif
 
         return m_found;
     }
@@ -1183,7 +1186,7 @@ namespace target {
 
             m_object_points.resize(count);
             m_image_points.resize(count);
-            m_image_keypoints.resize(count);
+            m_point_ids.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -1200,7 +1203,7 @@ namespace target {
 
                     m_image_points[count] = pt.keypoint.pt;
 
-                    m_image_keypoints[count] = pt.keypoint;
+                    m_point_ids[count] = computeZSquaredToN(pt.coords2d[0], pt.coords2d[1]);
                 }
             }
 
@@ -1231,6 +1234,14 @@ namespace target {
         m_points.clear();
         m_greyscale.release();
         m_thresh.release();
+    }
+
+    int Tracker::computeZSquaredToN(int i, int j)
+    {
+        const int a = (i >= 0) ? 2*i : -2*i + 1;
+        const int b = (j >= 0) ? 2*j : -2*j + 1;
+
+        return (a+b)*(a+b+1)/2 + b;
     }
 }
 

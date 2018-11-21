@@ -11,6 +11,8 @@
 #include "CameraCalibrationOperation.h"
 #include "CameraCalibrationData.h"
 
+//#define DEBUG_SAVE_TRACKED_IMAGES
+
 CameraCalibrationOperation::CameraCalibrationOperation()
 {
     mTargetCellLength = 1.0;
@@ -108,6 +110,20 @@ bool CameraCalibrationOperation::step()
 
                 mImageSize = image.getFrame().size();
                 can_calibrate = (mObjectPoints.size() >= mRequestedSuccessfulFrameCount );
+                
+#ifdef DEBUG_SAVE_TRACKED_IMAGES
+                {
+                    cv::Mat im = image.getFrame().clone();
+
+                    for( const cv::Point2f& pt : mTracker.imagePoints() )
+                    {
+                        cv::circle(im, pt, 2, cv::Scalar(0,255,0));
+                    }
+
+                    cv::imwrite("image_"+std::to_string(mImagePoints.size())+".png", im);
+                }
+#endif
+
             }
 
             mAttemptedFrameCount++;
@@ -146,6 +162,19 @@ bool CameraCalibrationOperation::step()
         mStatsPort->data().text = "Computing calibration data ...";
         mStatsPort->endWrite();
 
+        const int flags = 0 |
+            /*
+            cv::CALIB_ZERO_TANGENT_DIST |
+            cv::CALIB_FIX_K1 |
+            cv::CALIB_FIX_K2 |
+            cv::CALIB_FIX_K3 |
+            cv::CALIB_FIX_K4 |
+            cv::CALIB_FIX_K5 |
+            cv::CALIB_FIX_K6 |
+            cv::CALIB_RATIONAL_MODEL |
+            */
+            0;
+
         const double err = cv::calibrateCamera(
             mObjectPoints,
             mImagePoints,
@@ -153,7 +182,8 @@ bool CameraCalibrationOperation::step()
             calibration.calibration_matrix,
             calibration.distortion_coefficients,
             rotations,
-            translations);
+            translations,
+            flags);
         
         const bool save_ret = calibration.saveToFile(mOutputPath);
 
