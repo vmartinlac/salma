@@ -37,12 +37,20 @@ public:
     }
 
     int match_in_previous_frame;
-    /*
-    FrameWeakPtr previous_frame;
-    int previous_keypoint;
-    */
 
     MapPointPtr mappoint;
+
+    /*
+    cv::Point2f opticalflow_point;
+    int opticalflow_frame;
+
+    int previous_keypoint_in_track;
+    int next_keypoint_in_track;
+    FrameWeakPtr previous_frame_in_track;
+    FrameWeakPtr next_frame_in_track;
+
+    MapPointPtr mappoint;
+    */
 };
 
 class View

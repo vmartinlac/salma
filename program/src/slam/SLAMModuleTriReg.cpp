@@ -10,6 +10,14 @@ void SLAMModuleTriReg::run(FramePtr frame)
 {
     if( frame->previous_frame )
     {
+        /*
+        const int k = 1;
+        FramePtr f = frame->previous_frame;
+        while( bool(f) && frame->id - f->id <= k )
+        {
+        }
+        */
+
         mMapPoints.resize( frame->stereo_matches.size() );
 
         const int left_N = frame->previous_frame->views[0].keypoints.size();
@@ -44,7 +52,7 @@ void SLAMModuleTriReg::run(FramePtr frame)
 
             if( i >= 0 && j >= 0 && acc(i,j) == 3 )
             {
-                tryTriangulate(p.first, p.second);
+                //tryTriangulate(p.first, p.second);
             }
         }
     }
