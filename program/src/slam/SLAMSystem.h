@@ -9,7 +9,8 @@
 #include "SLAMModuleFeatures.h"
 #include "SLAMModuleStereoMatcher.h"
 #include "SLAMModuleTemporalMatcher.h"
-#include "SLAMModuleTriReg.h"
+#include "SLAMModuleTriangulation.h"
+#include "SLAMModuleAlignment.h"
 
 class SLAMSystem
 {
@@ -34,7 +35,8 @@ protected:
     SLAMModuleFeaturesPtr mModuleFeatures;
     SLAMModuleStereoMatcherPtr mModuleStereoMatcher;
     SLAMModuleTemporalMatcherPtr mModuleTemporalMatcher;
-    SLAMModuleTriRegPtr mModuleTriReg;
+    SLAMModuleTriangulationPtr mModuleTriangulation;
+    SLAMModuleAlignmentPtr mModuleAlignment;
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;

@@ -18,7 +18,7 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMM
     mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.85);
 
     mCheckEpipolar = project->getParameterBoolean("stereo_matcher_check_epipolar", true);
-    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 8.0);
+    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 10.0);
 
     mCameraCalibration[0] = project->getLeftCameraCalibration();
     mCameraCalibration[1] = project->getRightCameraCalibration();
@@ -188,9 +188,8 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
     // proceed with matching.
 
-    StereoMatchList& matches = f->stereo_matches;
-
-    matches.clear();
+    //StereoMatchList& matches = f->stereo_matches;
+    //matches.clear();
 
     for(int i=0; i<f->views[0].keypoints.size(); i++)
     {
@@ -198,7 +197,9 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
         if( j >= 0 )
         {
-            matches.push_back( std::pair<int,int>(i, j) );
+            //matches.push_back( std::pair<int,int>(i, j) );
+            f->views[0].tracks[i].stereo_match = j;
+            f->views[1].tracks[j].stereo_match = i;
         }
     }
 

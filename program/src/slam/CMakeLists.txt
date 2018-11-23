@@ -15,8 +15,10 @@ add_library(
     SLAMModuleTemporalMatcher.h
     SLAMModuleStereoMatcher.cpp
     SLAMModuleStereoMatcher.h
-    SLAMModuleTriReg.cpp
-    SLAMModuleTriReg.h
+    SLAMModuleTriangulation.cpp
+    SLAMModuleTriangulation.h
+    SLAMModuleAlignment.cpp
+    SLAMModuleAlignment.h
     SLAMPyramid.h
     SLAMProject.cpp
     SLAMProject.h

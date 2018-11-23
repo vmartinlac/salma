@@ -46,7 +46,8 @@ bool SLAMSystem::initialize()
         mModuleFeatures.reset(new SLAMModuleFeatures(mProject));
         mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mProject));
         mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mProject));
-        mModuleTriReg.reset(new SLAMModuleTriReg(mProject));
+        mModuleTriangulation.reset(new SLAMModuleTriangulation(mProject));
+        mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
     }
 
     if(ret == false)
@@ -121,7 +122,7 @@ void SLAMSystem::finalize()
     mModuleFeatures.reset();
     mModuleStereoMatcher.reset();
     mModuleTemporalMatcher.reset();
-    mModuleTriReg.reset();
+    mModuleTriangulation.reset();
 
     mProject.reset();
 
@@ -166,7 +167,7 @@ void SLAMSystem::handleFrame(FramePtr frame)
 
         auto op = [] (int count, const Track& t)
         {
-            return ( t.match_in_previous_frame >= 0 ) ? count+1 : count;
+            return ( t.anterior_match >= 0 ) ? count+1 : count;
         };
 
         const int count_left = std::accumulate( frame->views[0].tracks.begin(), frame->views[0].tracks.end(), 0, op );
@@ -181,13 +182,23 @@ void SLAMSystem::handleFrame(FramePtr frame)
     {
         mModuleStereoMatcher->match(frame);
 
-        std::cout << "Number of stereo matches: " << frame->stereo_matches.size() << std::endl;
+        int count = 0;
+
+        for(int i=0; i<frame->views[0].tracks.size(); i++)
+        {
+            if( frame->views[0].tracks[i].stereo_match >= 0 )
+            {
+                count++;
+            }
+        }
+
+        std::cout << "Number of stereo matches: " << count << std::endl;
     }
 
     // perform triangulation of new map points and alignment of current keyframe.
 
     {
-        mModuleTriReg->run(frame);
+        mModuleTriangulation->run(frame);
     }
 }
 

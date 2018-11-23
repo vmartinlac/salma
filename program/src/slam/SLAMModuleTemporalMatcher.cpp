@@ -26,9 +26,6 @@ SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMProjectPtr project) : S
 
 void SLAMModuleTemporalMatcher::match(FramePtr frame)
 {
-    frame->views[0].tracks.resize( frame->views[0].keypoints.size() );
-    frame->views[1].tracks.resize( frame->views[1].keypoints.size() );
-
     if( frame->previous_frame )
     {
         processView(frame, 0);
@@ -78,12 +75,13 @@ void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
 
             if( j >= 0 )
             {
-                if( current_view.tracks[j].match_in_previous_frame >= 0 )
+                if( current_view.tracks[j].anterior_match >= 0 )
                 {
                     std::cerr << "Keypoint already matched!" << std::endl;
                 }
 
-                current_view.tracks[j].match_in_previous_frame = i;
+                current_view.tracks[j].anterior_match = i;
+                previous_view.tracks[i].posterior_match = j;
             }
         }
     }

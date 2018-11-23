@@ -27,6 +27,7 @@ void SLAMModuleFeatures::run(FramePtr frame)
     for(int i=0; i<2; i++)
     {
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
+        frame->views[i].tracks.resize( frame->views[i].keypoints.size() );
     }
 }
 
