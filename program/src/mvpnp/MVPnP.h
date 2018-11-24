@@ -10,10 +10,8 @@ namespace MVPnP
     {
     public:
 
-        // The three leftmost columns are 3d points in world frame.
-        // The two rightmost columns are their projection.
-
-        Eigen::Matrix<double, Eigen::Dynamic, 5, Eigen::RowMajor> points;
+        std::vector<cv::Point3f> points;
+        std::vector<cv::Point2f> projections;
         cv::Mat calibration_matrix;
         cv::Mat distortion_coefficients;
         Sophus::SE3d rig_to_camera;

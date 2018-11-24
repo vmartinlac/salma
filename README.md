@@ -3,9 +3,11 @@ Dependencies
 
 * Aravis
 * Eigen3
-* g2o
+* libLBFGS
 * nanoflann
 * OpenCV
 * Qt5
 * Sophus
 
+Pas de documentation.
+Pas de tests unitaires.

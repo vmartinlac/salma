@@ -18,7 +18,7 @@ find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Sophus REQUIRED)
-find_package(g2o REQUIRED)
+#find_package(g2o REQUIRED)
 find_package(Aravis REQUIRED)
 find_package(libLBFGS REQUIRED)
 

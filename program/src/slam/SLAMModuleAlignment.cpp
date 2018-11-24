@@ -39,7 +39,8 @@ void SLAMModuleAlignment::run(FramePtr frame)
                 0,
                 fn);
 
-            views[i].points.resize(num_points, 5);
+            views[i].points.resize(num_points);
+            views[i].projections.resize(num_points);
 
             int j = 0;
             int k = 0;
@@ -48,10 +49,12 @@ void SLAMModuleAlignment::run(FramePtr frame)
             {
                 if( frame->views[i].tracks[j].mappoint )
                 {
-                    views[i].points.block<1,3>(k, 0).transpose() = world_to_previous_frame * frame->views[i].tracks[j].mappoint->position;
+                    Eigen::Vector3d pt = world_to_previous_frame * frame->views[i].tracks[j].mappoint->position;
+                    views[i].points[k].x = pt.x();
+                    views[i].points[k].y = pt.y();
+                    views[i].points[k].z = pt.z();
 
-                    views[i].points(k, 3) = frame->views[i].keypoints[j].pt.x;
-                    views[i].points(k, 4) = frame->views[i].keypoints[j].pt.y;
+                    views[i].projections[k] = frame->views[i].keypoints[j].pt;
 
                     k++;
                 }

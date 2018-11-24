@@ -33,7 +33,7 @@ target_link_libraries(
     slam
     PUBLIC
     Threads::Threads
-    g2o::core
+    #g2o::core
     Qt5::Core
     Qt5::Widgets
     Eigen3::Eigen
