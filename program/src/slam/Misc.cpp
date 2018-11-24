@@ -33,7 +33,7 @@ Eigen::Matrix3d Misc::computeFundamentalMatrix( CameraCalibrationDataPtr left_ca
         transposed(left_x) * transposed(F) * right_x = 0
     */
 
-    const Sophus::SE3d transform = stereo_rig->right_camera_to_world.inverse() * stereo_rig->left_camera_to_world;
+    const Sophus::SE3d transform = stereo_rig->right_camera_to_rig.inverse() * stereo_rig->left_camera_to_rig;
 
     const Eigen::Matrix<double, 3, 4> transform34 = transform.matrix3x4();
 
@@ -54,13 +54,13 @@ Eigen::Matrix3d Misc::computeFundamentalMatrix( CameraCalibrationDataPtr left_ca
     /*
     for(double l=1.0; l<100.0; l+=0.25)
     {
-        const auto PL = stereo_rig->left_camera_to_world.matrix3x4();
-        const auto PR = stereo_rig->right_camera_to_world.matrix3x4();
+        const auto PL = stereo_rig->left_camera_to_rig.matrix3x4();
+        const auto PR = stereo_rig->right_camera_to_rig.matrix3x4();
 
         const Eigen::Vector3d X = PL.rightCols<1>() + PL.col(2) * l;
 
-        Eigen::Vector3d left_x = left_camera->calibrationMatrix() * ( stereo_rig->left_camera_to_world.inverse() * X );
-        Eigen::Vector3d right_x = right_camera->calibrationMatrix() * ( stereo_rig->right_camera_to_world.inverse() * X );
+        Eigen::Vector3d left_x = left_camera->calibrationMatrix() * ( stereo_rig->left_camera_to_rig.inverse() * X );
+        Eigen::Vector3d right_x = right_camera->calibrationMatrix() * ( stereo_rig->right_camera_to_rig.inverse() * X );
 
         std::cout << right_x.transpose() * F * left_x << std::endl;
     }

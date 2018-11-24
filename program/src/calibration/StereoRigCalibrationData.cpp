@@ -20,8 +20,8 @@ bool StereoRigCalibrationData::saveToFile(const std::string& path)
     try
     {
         QJsonObject obj;
-        obj["left_camera_to_world"] = Serialization::serializePose(left_camera_to_world);
-        obj["right_camera_to_world"] = Serialization::serializePose(right_camera_to_world);
+        obj["left_camera_to_rig"] = Serialization::serializePose(left_camera_to_rig);
+        obj["right_camera_to_rig"] = Serialization::serializePose(right_camera_to_rig);
 
         doc.setObject(obj);
     }
@@ -78,8 +78,8 @@ bool StereoRigCalibrationData::loadFromFile(const std::string& path)
         root = doc.object();
         try
         {
-            left_camera_to_world = Serialization::deserializePose(root["left_camera_to_world"]);
-            right_camera_to_world = Serialization::deserializePose(root["right_camera_to_world"]);
+            left_camera_to_rig = Serialization::deserializePose(root["left_camera_to_rig"]);
+            right_camera_to_rig = Serialization::deserializePose(root["right_camera_to_rig"]);
         }
         catch(SerializationError& err)
         {

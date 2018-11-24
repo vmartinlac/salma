@@ -14,7 +14,7 @@ public:
 
 protected:
 
-    void triangulate(FramePtr frame, int left_keypoint, int right_keypoint, MapPointPtr& mappoint);
+    MapPointPtr triangulate(FramePtr frame, int left_keypoint, int right_keypoint);
 
 protected:
 

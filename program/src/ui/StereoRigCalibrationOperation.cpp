@@ -312,10 +312,10 @@ void StereoRigCalibrationOperation::calibrate()
         cv::cv2eigen<double,3,3>(R, Rbis);
         cv::cv2eigen<double,3,1>(T, Tbis);
 
-        calibration.left_camera_to_world = Sophus::SE3d();
+        calibration.left_camera_to_rig = Sophus::SE3d();
 
-        calibration.right_camera_to_world.setRotationMatrix(Rbis.transpose());
-        calibration.right_camera_to_world.translation() = -Rbis.transpose() * Tbis;
+        calibration.right_camera_to_rig.setRotationMatrix(Rbis.transpose());
+        calibration.right_camera_to_rig.translation() = -Rbis.transpose() * Tbis;
 
         //cv::cv2eigen<double,3,3>(F, calibration.fundamental_matrix);
         //cv::cv2eigen<double,3,3>(E, calibration.essential_matrix);
@@ -334,24 +334,24 @@ void StereoRigCalibrationOperation::calibrate()
         s << "Residual error = " << err << std::endl;
         s << std::endl;
 
-        s << "Left camera to world transformation:" << std::endl;
-        s << "left_x = " << calibration.left_camera_to_world.translation().x() << std::endl;
-        s << "left_y = " << calibration.left_camera_to_world.translation().y() << std::endl;
-        s << "left_z = " << calibration.left_camera_to_world.translation().z() << std::endl;
-        s << "left_qx = " << calibration.left_camera_to_world.unit_quaternion().x() << std::endl;
-        s << "left_qy = " << calibration.left_camera_to_world.unit_quaternion().y() << std::endl;
-        s << "left_qz = " << calibration.left_camera_to_world.unit_quaternion().z() << std::endl;
-        s << "left_qw = " << calibration.left_camera_to_world.unit_quaternion().w() << std::endl;
+        s << "Left camera to rig transformation:" << std::endl;
+        s << "left_x = " << calibration.left_camera_to_rig.translation().x() << std::endl;
+        s << "left_y = " << calibration.left_camera_to_rig.translation().y() << std::endl;
+        s << "left_z = " << calibration.left_camera_to_rig.translation().z() << std::endl;
+        s << "left_qx = " << calibration.left_camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "left_qy = " << calibration.left_camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "left_qz = " << calibration.left_camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "left_qw = " << calibration.left_camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
-        s << "Right camera to world transformation:" << std::endl;
-        s << "right_x = " << calibration.right_camera_to_world.translation().x() << std::endl;
-        s << "right_y = " << calibration.right_camera_to_world.translation().y() << std::endl;
-        s << "right_z = " << calibration.right_camera_to_world.translation().z() << std::endl;
-        s << "right_qx = " << calibration.right_camera_to_world.unit_quaternion().x() << std::endl;
-        s << "right_qy = " << calibration.right_camera_to_world.unit_quaternion().y() << std::endl;
-        s << "right_qz = " << calibration.right_camera_to_world.unit_quaternion().z() << std::endl;
-        s << "right_qw = " << calibration.right_camera_to_world.unit_quaternion().w() << std::endl;
+        s << "Right camera to rig transformation:" << std::endl;
+        s << "right_x = " << calibration.right_camera_to_rig.translation().x() << std::endl;
+        s << "right_y = " << calibration.right_camera_to_rig.translation().y() << std::endl;
+        s << "right_z = " << calibration.right_camera_to_rig.translation().z() << std::endl;
+        s << "right_qx = " << calibration.right_camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "right_qy = " << calibration.right_camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "right_qz = " << calibration.right_camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "right_qw = " << calibration.right_camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
         mStatsPort->beginWrite();

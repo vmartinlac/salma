@@ -1,5 +1,5 @@
 {
-    "left_camera_to_world": [
+    "left_camera_to_rig": [
         0,
         0,
         0,
@@ -8,7 +8,7 @@
         0,
         0
     ],
-    "right_camera_to_world": [
+    "right_camera_to_rig": [
         -0.00013266357814134823,
         0.001205706788789277,
         -0.0022916441353058544,

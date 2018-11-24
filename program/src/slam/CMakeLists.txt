@@ -43,6 +43,7 @@ target_link_libraries(
     opencv_calib3d
     opencv_video
     video
+    mvpnp
     calibration
     buildinfo)
 

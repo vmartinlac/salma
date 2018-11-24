@@ -59,22 +59,21 @@ void SLAMModuleTriangulation::run(FramePtr frame)
                 }
                 else if( t.anterior_match >= 0 && right_tracks[t.stereo_match].anterior_match >= 0 )
                 {
-                    triangulate(
+                    right_point = left_point = triangulate(
                         frame->previous_frame,
                         t.anterior_match,
-                        right_tracks[t.stereo_match].anterior_match,
-                        left_point);
-
-                    right_point = left_point;
+                        right_tracks[t.stereo_match].anterior_match);
                 }
             }
         }
     }
 }
 
-void SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int right_keypoint, MapPointPtr& mappoint)
+MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int right_keypoint)
 {
     // TODO: stereo correction (Hartley ou Lindstrom).
+
+    MapPointPtr ret;
 
     const std::vector<cv::Point2f> distorted_left{ frame->views[0].keypoints[left_keypoint].pt };
     const std::vector<cv::Point2f> distorted_right{ frame->views[1].keypoints[right_keypoint].pt };
@@ -85,11 +84,11 @@ void SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int
     cv::undistortPoints(distorted_left, normalized_left, mLeftCamera->calibration_matrix, mLeftCamera->distortion_coefficients);
     cv::undistortPoints(distorted_right, normalized_right, mLeftCamera->calibration_matrix, mLeftCamera->distortion_coefficients);
 
-    const Eigen::Vector3d C0 = mRig->left_camera_to_world.translation();
-    const Eigen::Matrix3d R0 = mRig->left_camera_to_world.rotationMatrix();
+    const Eigen::Vector3d C0 = mRig->left_camera_to_rig.translation();
+    const Eigen::Matrix3d R0 = mRig->left_camera_to_rig.rotationMatrix();
 
-    const Eigen::Vector3d C1 = mRig->right_camera_to_world.translation();
-    const Eigen::Matrix3d R1 = mRig->right_camera_to_world.rotationMatrix();
+    const Eigen::Vector3d C1 = mRig->right_camera_to_rig.translation();
+    const Eigen::Matrix3d R1 = mRig->right_camera_to_rig.rotationMatrix();
 
     Eigen::Vector3d D0 = R0 * Eigen::Vector3d{normalized_left.front().x, normalized_left.front().y, 1.0};
     Eigen::Vector3d D1 = R1 * Eigen::Vector3d{normalized_right.front().x, normalized_right.front().y, 1.0};
@@ -128,10 +127,12 @@ void SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int
 
             if( mCheckPerpendicularLength == false || (X1-X0).norm() < mPerpendicularMaxLength )
             {
-                mappoint.reset(new MapPoint());
-                mappoint->position = frame->frame_to_world * ( 0.5 * (X0 + X1) );
+                ret.reset(new MapPoint());
+                ret->position = frame->frame_to_world * ( 0.5 * (X0 + X1) );
             }
         }
     }
+
+    return ret;
 }
 
