@@ -20,9 +20,15 @@ class MapPoint
 {
 public:
 
+    MapPoint()
+    {
+        id = -1;
+        track_count = 0;
+    }
+
     int id;
     Eigen::Vector3d position;
-    Eigen::Matrix3d covariance;
+    //Eigen::Matrix3d covariance;
     int track_count;
 };
 
@@ -62,7 +68,7 @@ public:
     int id;
     double timestamp;
     View views[2];
-    Sophus::SE3d world_to_frame;
+    Sophus::SE3d frame_to_world;
 
     FramePtr previous_frame;
 };

@@ -102,7 +102,7 @@ void SLAMSystem::run()
 
         mCurrentFrame.swap(new_frame);
 
-        std::cout << "Processing frame " << mCurrentFrame->id << std::endl;
+        std::cout << "=> Processing frame " << mCurrentFrame->id << std::endl;
         handleFrame(mCurrentFrame);
 
         video->read(im);
@@ -195,10 +195,41 @@ void SLAMSystem::handleFrame(FramePtr frame)
         std::cout << "Number of stereo matches: " << count << std::endl;
     }
 
+    /*
+    {
+        int n = 0;
+        for(Track& t : frame->views[0].tracks)
+        {
+            if( t.stereo_match >= 0 && t.anterior_match >= 0 && frame->views[1].tracks[t.stereo_match].anterior_match >= 0 )
+            {
+                n++;
+            }
+        }
+        std::cout << "COUNT = " << n << std::endl;
+    }
+    */
+
     // perform triangulation of new map points and alignment of current keyframe.
 
     {
         mModuleTriangulation->run(frame);
+
+        auto proc = [] (int count, const Track& t)
+        {
+            return (t.mappoint) ? count+1 : count;
+        };
+
+        int n = 0;
+        n = std::accumulate(frame->views[0].tracks.begin(), frame->views[0].tracks.end(), n, proc);
+        n = std::accumulate(frame->views[1].tracks.begin(), frame->views[1].tracks.end(), n, proc);
+
+        std::cout << "Number of projected map point before RANSAC: " << n << std::endl;
+    }
+
+    // align current frame with respect to previous frame.
+
+    {
+        mModuleAlignment->run(frame);
     }
 }
 
