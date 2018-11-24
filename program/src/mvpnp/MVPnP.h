@@ -6,6 +6,7 @@
 
 namespace MVPnP
 {
+
     class View
     {
     public:
@@ -21,10 +22,19 @@ namespace MVPnP
     {
     public:
 
-        bool run(
+        static Solver* create();
+
+        virtual ~Solver();
+
+        virtual bool run(
             const std::vector<View>& views,
             Sophus::SE3d& rig_to_world, // initial guess and output!
-            std::vector< std::vector<bool> >& inliers);
+            std::vector< std::vector<bool> >& inliers) = 0;
+
+    protected:
+
+        Solver();
     };
+
 }
 

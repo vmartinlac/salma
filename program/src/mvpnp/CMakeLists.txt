@@ -4,6 +4,8 @@ add_library(
     STATIC
     MVPnP.cpp
     MVPnP.h
+    MVPnPImpl.cpp
+    MVPnPImpl.h
 )
 
 target_link_libraries(

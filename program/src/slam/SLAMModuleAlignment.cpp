@@ -7,7 +7,8 @@ SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(pr
     mRig = project->getStereoRigCalibration();
 
     //mMaxNumberOfPreviousFrames = project->getParameterInteger("max_number_of_previous_frames", 5);
-    mSolver.reset(new MVPnP::Solver());
+
+    mSolver.reset(MVPnP::Solver::create());
 }
 
 void SLAMModuleAlignment::run(FramePtr frame)
@@ -50,6 +51,7 @@ void SLAMModuleAlignment::run(FramePtr frame)
                 if( frame->views[i].tracks[j].mappoint )
                 {
                     Eigen::Vector3d pt = world_to_previous_frame * frame->views[i].tracks[j].mappoint->position;
+
                     views[i].points[k].x = pt.x();
                     views[i].points[k].y = pt.y();
                     views[i].points[k].z = pt.z();
