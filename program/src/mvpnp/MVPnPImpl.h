@@ -1,6 +1,5 @@
 #pragma once
 
-#include <lbfgs.h>
 #include "MVPnP.h"
 
 namespace MVPnP
@@ -16,31 +15,18 @@ namespace MVPnP
 
         bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers) override;
 
-        const std::vector<View>* getViews();
+    protected:
+
+        typedef Eigen::Matrix<double, 6, 1> Vector6d;
+
+        double computeError(Vector6d& gradient);
+        void applyIncrement(double step, const Vector6d& direction);
+
+        Eigen::Vector3d quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J);
 
     protected:
 
-        static lbfgsfloatval_t evaluateProc(
-            void* data,
-            const lbfgsfloatval_t* x,
-            lbfgsfloatval_t* gradient,
-            const int n,
-            const lbfgsfloatval_t step);
-
-        static int progressProc(
-            void* data,
-            const lbfgsfloatval_t* x,
-            const lbfgsfloatval_t* gradient,
-            const lbfgsfloatval_t fx,
-            const lbfgsfloatval_t xnorm,
-            const lbfgsfloatval_t gnorm,
-            const lbfgsfloatval_t step,
-            int n,
-            int k,
-            int ls);
-
-    protected:
-
+        Sophus::SE3d mWorldToRig;
         const std::vector<View>* mViews;
     };
 }

@@ -12,28 +12,70 @@ MVPnP::SolverImpl::~SolverImpl()
 {
 }
 
-lbfgsfloatval_t MVPnP::SolverImpl::evaluateProc(
-    void* data,
-    const lbfgsfloatval_t* x,
-    lbfgsfloatval_t* gradient,
-    const int n,
-    const lbfgsfloatval_t step)
+double MVPnP::SolverImpl::computeError(Vector6d& gradient)
 {
-    if( n != 7 ) throw std::runtime_error("internal error");
+    std::cout << "Computing error" << std::endl;
 
-    SolverImpl* solver = static_cast<SolverImpl*>(data);
+    double error = 0.0;
 
-    lbfgsfloatval_t error = 0.0;
-    std::fill( gradient, gradient+7, 0.0);
+    gradient.setZero();
+
     int count = 0;
 
-    for( const MVPnP::View& v : *solver->getViews() )
+    for( const MVPnP::View& v : *mViews )
     {
+        const Eigen::Vector3d rig_to_camera_t = v.rig_to_camera.translation();
+        const Eigen::Quaterniond rig_to_camera_q = v.rig_to_camera.unit_quaternion();
+        const Eigen::Matrix3d rig_to_camera_R = rig_to_camera_q.toRotationMatrix();
+
         cv::Mat tvec;
         cv::Mat rvec;
-        // TODO: compute tvec and rvec.
+
         Eigen::Matrix<double, 6, 7> Q;
-        // TODO: compute Q.
+
+        // compute tvec, rvec and Q.
+        {
+            const Eigen::Vector3d world_to_camera_t = rig_to_camera_R * mWorldToRig.translation() + rig_to_camera_t;
+            const Eigen::Quaterniond world_to_camera_q = rig_to_camera_q * mWorldToRig.unit_quaternion();
+
+            Eigen::Matrix<double, 3, 4> L;
+            const Eigen::Vector3d world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
+
+            //std::cout << L << std::endl;
+
+            Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
+
+            // qx = aw*bx + bw*ax + ay*bz - az*by
+            M(0,0) = rig_to_camera_q.w();
+            M(0,1) = -rig_to_camera_q.z();
+            M(0,2) = rig_to_camera_q.y();
+            M(0,3) = rig_to_camera_q.x();
+
+            // qy = aw*by + bw*ay + az*bx - ax*bz
+            M(1,0) = rig_to_camera_q.z();
+            M(1,1) = rig_to_camera_q.w();
+            M(1,2) = -rig_to_camera_q.x();
+            M(1,3) = rig_to_camera_q.y();
+
+            // qz = aw*bz + bw*az + ax*by - ay*bx
+            M(2,0) = -rig_to_camera_q.y();
+            M(2,1) = rig_to_camera_q.x();
+            M(2,2) = rig_to_camera_q.w();
+            M(2,3) = rig_to_camera_q.z();
+
+            // qw = aw*bw - ( ax*bx + ay*by + az*bz )
+            M(3,0) = -rig_to_camera_q.x();
+            M(3,1) = -rig_to_camera_q.y();
+            M(3,2) = -rig_to_camera_q.z();
+            M(3,3) = rig_to_camera_q.w();
+
+            Q.setZero();
+            Q.block<3,3>(0,0) = rig_to_camera_R;
+            Q.block<3,4>(3,3) = L * M;
+
+            cv::eigen2cv(world_to_camera_t, tvec);
+            cv::eigen2cv(world_to_camera_rodrigues, rvec);
+        }
 
         std::vector<cv::Point2f> projections;
         cv::Mat jac_cv;
@@ -64,59 +106,55 @@ lbfgsfloatval_t MVPnP::SolverImpl::evaluateProc(
 
     // divide the error and the gradient by the number of points.
 
-    error /= lbfgsfloatval_t(count);
+    error /= double(count);
 
     for(int i=0; i<7; i++)
     {
-        gradient[i] /= lbfgsfloatval_t(count);
+        gradient[i] /= double(count);
     }
 
+    std::cout << "err = " << error << std::endl;
     return error;
-}
-
-int MVPnP::SolverImpl::progressProc(
-    void* data,
-    const lbfgsfloatval_t* x,
-    const lbfgsfloatval_t* gradient,
-    const lbfgsfloatval_t fx,
-    const lbfgsfloatval_t xnorm,
-    const lbfgsfloatval_t gnorm,
-    const lbfgsfloatval_t step,
-    int n,
-    int k,
-    int ls)
-{
-    std::cout << "Multiview PnP L2 reprojection error = " << std::sqrt(fx) << std::endl;
-    return 0;
 }
 
 bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
 {
-    mViews = &views;
-
-    lbfgs_parameter_t params;
-    lbfgsfloatval_t* x;
-    lbfgsfloatval_t fx;
-
+    ///////
+    /*
     {
-        lbfgs_parameter_init(&params);
+        Eigen::Matrix<double, 3, 4> J0;
+        Eigen::Matrix<double, 3, 4> JN;
 
-        Sophus::SE3d world_to_rig = rig_to_world.inverse();
+        Eigen::Quaterniond q(Eigen::AngleAxisd(0.3*M_PI, (Eigen::Vector3d::UnitY()+Eigen::Vector3d::UnitZ() ).normalized() ));
+        q.coeffs() *= -10.0;
 
-        x = lbfgs_malloc(7);
-        x[0] = world_to_rig.translation().x();
-        x[1] = world_to_rig.translation().y();
-        x[2] = world_to_rig.translation().z();
-        x[3] = world_to_rig.unit_quaternion().x();
-        x[4] = world_to_rig.unit_quaternion().y();
-        x[5] = world_to_rig.unit_quaternion().z();
-        x[6] = world_to_rig.unit_quaternion().w();
+        const Eigen::Vector3d r0 = quaternionToRodrigues(q, J0);
 
-        fx = 0.0;
+        const double eps = 5.0e-3;
+        for(int i=0; i<4; i++)
+        {
+            Eigen::Quaterniond tmp = q;
+            tmp.coeffs()(i) += eps;
+
+            Eigen::Matrix<double, 3, 4> J;
+            const Eigen::Vector3d r = quaternionToRodrigues(tmp, J);
+            JN.col(i) = (r - r0)*(1.0/eps);
+        }
+
+        std::cout << JN << std::endl;
+        std::cout << J0 << std::endl;
+
+        exit(0);
     }
+    */
+    ///////
 
-    const int status = lbfgs(7, x, &fx, evaluateProc, progressProc, this, &params);
+    mViews = &views;
+    mWorldToRig = rig_to_world.inverse();
 
+    //const int status = lbfgs(7, x, &fx, evaluateProc, progressProc, this, &params);
+
+    /*
     if( status == LBFGS_SUCCESS )
     {
         Eigen::Vector3d world_to_rig_t;
@@ -136,8 +174,7 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
 
         rig_to_world = world_to_rig.inverse();
     }
-
-    lbfgs_free(x);
+    */
 
     inliers.resize( views.size() );
 
@@ -146,29 +183,58 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
         inliers[i].assign(views[i].points.size(), true);
     }
 
-    return ( status == LBFGS_SUCCESS );
+    return false; //( status == LBFGS_SUCCESS );
 }
 
-const std::vector<MVPnP::View>* MVPnP::SolverImpl::getViews()
+Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
 {
-    return mViews;
+    const double N = q.vec().norm();
+    Eigen::Vector3d ret;
+
+    if( N < 1.0e-8 )
+    {
+        ret = q.vec();
+        J <<
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0;
+    }
+    else
+    {
+        double theta = 0.0;
+
+        Eigen::Matrix<double, 1, 4> ew;
+        ew << 0.0, 0.0, 0.0, 1.0;
+
+        const double alpha = 2.0 / ( N*N + q.w()*q.w() );
+
+        const Eigen::Matrix<double, 1, 4> J_N = Eigen::Vector4d::Constant(1.0/N);
+
+        Eigen::Matrix<double, 1, 4> J_theta;
+
+        if( N > std::fabs(q.w()) )
+        {
+            theta = M_PI - 2.0*std::atan(q.w() / N);
+            J_theta = -alpha*( N*ew - q.w() * J_N);
+        }
+        else
+        {
+            theta = 2.0*std::atan(N / q.w());
+            J_theta = alpha*( q.w()*J_N - N*ew );
+        }
+
+        const double theta_over_N = theta/N;
+
+        ret.x() = q.x() * theta_over_N;
+        ret.y() = q.y() * theta_over_N;
+        ret.z() = q.z() * theta_over_N;
+
+        J.setZero();
+        J.leftCols<3>() += Eigen::Matrix3d::Identity() * theta_over_N;
+        J += (1.0/N) * q.vec() * J_theta;
+        J -= (theta/(N*N)) * q.vec() * J_N;
+    }
+
+    return ret;
 }
-
-/*
-    void computeWorldToCamera(
-        const Eigen::Vector3d& point_in_world,
-        const Eigen::Vector3d& rig_to_camera_t,
-        const Eigen::Matrix3d& rig_to_camera_R,
-        const Eigen::Vector3d& world_to_rig_t,
-        const Eigen::Quaternio,
-        Eigen::Vector2d& point_in_camera,
-        Eigen::Matrix<double, >& jac_wrt_);
-
-    void projection(
-        const cv::Mat& calibration_matrix,
-        const cv::Mat& distortion_coefficients,
-        const Eigen::Vector3d& point,
-        Eigen::Vector2d& projection,
-        Eigen::Matrix<double, >& jac_wrt_point);
-*/
 

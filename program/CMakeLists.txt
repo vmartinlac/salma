@@ -20,7 +20,7 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Sophus REQUIRED)
 #find_package(g2o REQUIRED)
 find_package(Aravis REQUIRED)
-find_package(libLBFGS REQUIRED)
+#find_package(libLBFGS REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(app)

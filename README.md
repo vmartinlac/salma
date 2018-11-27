@@ -3,7 +3,6 @@ Dependencies
 
 * Aravis
 * Eigen3
-* libLBFGS
 * nanoflann
 * OpenCV
 * Qt5

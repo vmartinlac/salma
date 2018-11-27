@@ -14,8 +14,7 @@ target_link_libraries(
     Eigen3::Eigen
     Sophus::Sophus
     opencv_core
-    opencv_calib3d
-    libLBFGS)
+    opencv_calib3d)
 
 target_include_directories(mvpnp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
