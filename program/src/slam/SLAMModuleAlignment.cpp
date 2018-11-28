@@ -10,8 +10,6 @@ SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(pr
     mRightCamera = project->getRightCameraCalibration();
     mRig = project->getStereoRigCalibration();
 
-    //mMaxNumberOfPreviousFrames = project->getParameterInteger("max_number_of_previous_frames", 5);
-
     mSolver.reset(MVPnP::Solver::create());
 }
 
@@ -71,18 +69,18 @@ void SLAMModuleAlignment::run(FramePtr frame)
         views[1].distortion_coefficients = mRightCamera->distortion_coefficients;
         views[1].rig_to_camera = mRig->right_camera_to_rig.inverse();
 
+        auto counter = [] (int count, Track& t)
+        {
+            return (bool(t.mappoint)) ? count+1 : count;
+        };
+
         for(int i=0; i<2; i++)
         {
-            auto fn = [] (int count, Track& t)
-            {
-                return (bool(t.mappoint)) ? count+1 : count;
-            };
-
             const int num_points = std::accumulate(
                 frame->views[i].tracks.begin(),
                 frame->views[i].tracks.end(),
                 0,
-                fn);
+                counter);
 
             views[i].points.resize(num_points);
             views[i].projections.resize(num_points);
@@ -111,14 +109,14 @@ void SLAMModuleAlignment::run(FramePtr frame)
             if( k != num_points) throw std::logic_error("internal error");
         }
 
-        Sophus::SE3d frame_to_world = frame->previous_frame->frame_to_world;
+        frame->frame_to_world = frame->previous_frame->frame_to_world;
+
         std::vector< std::vector<bool> > inliers;
-        const bool ret = mSolver->run(views, frame_to_world, inliers);
+
+        const bool ret = mSolver->run(views, frame->frame_to_world, inliers);
 
         if(ret)
         {
-            frame->frame_to_world = frame_to_world;
-
             if( inliers.size() != 2 ) throw std::runtime_error("internal error");
 
             // TODO: remove outliers mappoints!

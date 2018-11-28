@@ -207,12 +207,25 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
     mUndistortedPoints[1].clear();
 
 #ifdef DEBUG_SHOW_MATCHES
-    Debug::stereoimshow(
-        f->views[0].image,
-        f->views[1].image,
-        f->views[0].keypoints,
-        f->views[1].keypoints,
-        f->stereo_matching);
+    {
+        std::vector< std::pair<int,int> > matching;
+
+        for(int i=0; i<f->views[0].keypoints.size(); i++)
+        {
+            const int j = f->views[0].tracks[i].stereo_match;
+            if( j >= 0 )
+            {
+                matching.push_back( std::pair<int,int>(i,j) );
+            }
+        }
+
+        Debug::stereoimshow(
+            f->views[0].image,
+            f->views[1].image,
+            f->views[0].keypoints,
+            f->views[1].keypoints,
+            matching);
+    }
 #endif
 }
 

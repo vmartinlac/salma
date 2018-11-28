@@ -5,7 +5,7 @@ SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(proj
 {
     const double scale_factor = project->getParameterReal("features_scale_factor", 1.1);
     const int min_width = project->getParameterInteger("features_min_width", 160);
-    const int max_features = project->getParameterInteger("features_max_features", 800); // 500 ?
+    const int max_features = project->getParameterInteger("features_max_features", 500);
     const int patch_size = project->getParameterInteger("features_patch_size", 31);
     const int fast_threshold = project->getParameterInteger("features_fast_threshold", 10);
 
