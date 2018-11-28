@@ -12,10 +12,13 @@ MVPnP::SolverImpl::~SolverImpl()
 {
 }
 
-double MVPnP::SolverImpl::computeError(Vector6d& gradient)
+void MVPnP::SolverImpl::applyIncrement(const TangentType& increment)
 {
-    std::cout << "Computing error" << std::endl;
+    ;
+}
 
+double MVPnP::SolverImpl::computeError(TangentType& gradient)
+{
     double error = 0.0;
 
     gradient.setZero();
@@ -31,16 +34,23 @@ double MVPnP::SolverImpl::computeError(Vector6d& gradient)
         cv::Mat tvec;
         cv::Mat rvec;
 
-        Eigen::Matrix<double, 6, 7> Q;
+        //Eigen::Matrix<double, 6, 7> Q;
 
         // compute tvec, rvec and Q.
         {
-            const Eigen::Vector3d world_to_camera_t = rig_to_camera_R * mWorldToRig.translation() + rig_to_camera_t;
-            const Eigen::Quaterniond world_to_camera_q = rig_to_camera_q * mWorldToRig.unit_quaternion();
+            Eigen::Vector3d world_to_camera_t = rig_to_camera_R * mWorldToRig.translation() + rig_to_camera_t;
+            Eigen::Quaterniond world_to_camera_q = rig_to_camera_q * mWorldToRig.unit_quaternion();
 
-            Eigen::Matrix<double, 3, 4> L;
-            const Eigen::Vector3d world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
+            Sophus::SE3d world_to_camera = v.rig_to_camera * mWorldToRig;
 
+            //Eigen::Matrix<double, 3, 4> L;
+            //world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
+            Eigen::Vector3d world_to_camera_rodrigues = world_to_camera.so3().log();
+
+            cv::eigen2cv(world_to_camera_rodrigues, rvec);
+            cv::eigen2cv(world_to_camera_t, tvec);
+
+            /*
             //std::cout << L << std::endl;
 
             Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
@@ -75,15 +85,22 @@ double MVPnP::SolverImpl::computeError(Vector6d& gradient)
 
             cv::eigen2cv(world_to_camera_t, tvec);
             cv::eigen2cv(world_to_camera_rodrigues, rvec);
+            */
         }
 
+        /*
+        cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
+        cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64F);
+        tvec = (cv::Mat_<double>(3,1) << -30.0, 0.0, 0.0);
+        */
+
         std::vector<cv::Point2f> projections;
-        cv::Mat jac_cv;
+        //cv::Mat jac_cv;
 
-        cv::projectPoints(v.points, rvec, tvec, v.calibration_matrix, v.distortion_coefficients, projections, jac_cv);
+        cv::projectPoints(v.points, rvec, tvec, v.calibration_matrix, v.distortion_coefficients, projections); //, jac_cv);
 
-        Eigen::MatrixXd jac;
-        cv::cv2eigen(jac_cv, jac);
+        //Eigen::MatrixXd jac;
+        //cv::cv2eigen(jac_cv, jac);
 
         for( int i=0; i<v.points.size(); i++ )
         {
@@ -91,12 +108,14 @@ double MVPnP::SolverImpl::computeError(Vector6d& gradient)
             const Eigen::Vector2d proj_ref{ v.projections[i].x, v.projections[i].y };
             const Eigen::Vector2d delta_proj = proj - proj_ref;
 
+            /*
             const Eigen::Matrix<double, 1, 7> grad = 2.0 * delta_proj.transpose() * jac.block<2,6>(2*i,0) * Q;
 
             for(int j=0; j<7; j++)
             {
                 gradient[j] += grad(j);
             }
+            */
 
             error += delta_proj.squaredNorm();
 
@@ -107,13 +126,10 @@ double MVPnP::SolverImpl::computeError(Vector6d& gradient)
     // divide the error and the gradient by the number of points.
 
     error /= double(count);
-
-    for(int i=0; i<7; i++)
-    {
-        gradient[i] /= double(count);
-    }
+    gradient /= double(count);
 
     std::cout << "err = " << error << std::endl;
+
     return error;
 }
 
@@ -152,6 +168,13 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     mViews = &views;
     mWorldToRig = rig_to_world.inverse();
 
+    for(int i=0; i<20; i++)
+    {
+        TangentType gradient;
+        computeError(gradient);
+        applyIncrement(-0.01*gradient);
+    }
+
     //const int status = lbfgs(7, x, &fx, evaluateProc, progressProc, this, &params);
 
     /*
@@ -183,7 +206,7 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
         inliers[i].assign(views[i].points.size(), true);
     }
 
-    return false; //( status == LBFGS_SUCCESS );
+    return false;
 }
 
 Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
@@ -236,5 +259,10 @@ Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaternion
     }
 
     return ret;
+}
+
+MVPnP::Solver* MVPnP::Solver::create()
+{
+    return new SolverImpl();
 }
 

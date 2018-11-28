@@ -17,10 +17,11 @@ namespace MVPnP
 
     protected:
 
-        typedef Eigen::Matrix<double, 6, 1> Vector6d;
+        typedef Eigen::Matrix<double, 6, 1> TangentType;
 
-        double computeError(Vector6d& gradient);
-        void applyIncrement(double step, const Vector6d& direction);
+        double computeError(TangentType& gradient);
+
+        void applyIncrement(const TangentType& increment);
 
         Eigen::Vector3d quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J);
 

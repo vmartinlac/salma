@@ -1,3 +1,5 @@
+add_subdirectory(testmvpnp)
+
 #add_executable(
     #testslam
     #TestSLAM.h
