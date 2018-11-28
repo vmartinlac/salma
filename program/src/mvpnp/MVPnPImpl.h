@@ -17,7 +17,7 @@ namespace MVPnP
 
     protected:
 
-        typedef Eigen::Matrix<double, 6, 1> TangentType;
+        typedef Eigen::Matrix<double, 7, 1> TangentType;
 
         double computeError(TangentType& gradient);
 

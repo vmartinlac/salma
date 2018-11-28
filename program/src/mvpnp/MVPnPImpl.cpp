@@ -1,6 +1,7 @@
 #include <Eigen/Eigen>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <random>
 #include <iostream>
 #include "MVPnPImpl.h"
 
@@ -14,7 +15,13 @@ MVPnP::SolverImpl::~SolverImpl()
 
 void MVPnP::SolverImpl::applyIncrement(const TangentType& increment)
 {
-    ;
+    Eigen::Quaterniond q = mWorldToRig.unit_quaternion();
+    q.vec() += increment.segment<3>(3);
+    q.w() += increment(6);
+    q.normalize();
+
+    mWorldToRig.translation() += increment.head<3>();
+    //mWorldToRig.setQuaternion(q);
 }
 
 double MVPnP::SolverImpl::computeError(TangentType& gradient)
@@ -34,7 +41,7 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
         cv::Mat tvec;
         cv::Mat rvec;
 
-        //Eigen::Matrix<double, 6, 7> Q;
+        Eigen::Matrix<double, 6, 7> Q;
 
         // compute tvec, rvec and Q.
         {
@@ -43,15 +50,13 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
 
             Sophus::SE3d world_to_camera = v.rig_to_camera * mWorldToRig;
 
-            //Eigen::Matrix<double, 3, 4> L;
-            //world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
-            Eigen::Vector3d world_to_camera_rodrigues = world_to_camera.so3().log();
+            Eigen::Matrix<double, 3, 4> L;
+            Eigen::Vector3d world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
+            //Eigen::Vector3d world_to_camera_rodrigues = world_to_camera.so3().log();
 
             cv::eigen2cv(world_to_camera_rodrigues, rvec);
             cv::eigen2cv(world_to_camera_t, tvec);
 
-            /*
-            //std::cout << L << std::endl;
 
             Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
 
@@ -82,25 +87,15 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
             Q.setZero();
             Q.block<3,3>(0,0) = rig_to_camera_R;
             Q.block<3,4>(3,3) = L * M;
-
-            cv::eigen2cv(world_to_camera_t, tvec);
-            cv::eigen2cv(world_to_camera_rodrigues, rvec);
-            */
         }
 
-        /*
-        cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
-        cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64F);
-        tvec = (cv::Mat_<double>(3,1) << -30.0, 0.0, 0.0);
-        */
-
         std::vector<cv::Point2f> projections;
-        //cv::Mat jac_cv;
+        cv::Mat jac_cv;
 
-        cv::projectPoints(v.points, rvec, tvec, v.calibration_matrix, v.distortion_coefficients, projections); //, jac_cv);
+        cv::projectPoints(v.points, rvec, tvec, v.calibration_matrix, v.distortion_coefficients, projections, jac_cv);
 
-        //Eigen::MatrixXd jac;
-        //cv::cv2eigen(jac_cv, jac);
+        Eigen::MatrixXd jac;
+        cv::cv2eigen(jac_cv, jac);
 
         for( int i=0; i<v.points.size(); i++ )
         {
@@ -108,14 +103,9 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
             const Eigen::Vector2d proj_ref{ v.projections[i].x, v.projections[i].y };
             const Eigen::Vector2d delta_proj = proj - proj_ref;
 
-            /*
             const Eigen::Matrix<double, 1, 7> grad = 2.0 * delta_proj.transpose() * jac.block<2,6>(2*i,0) * Q;
 
-            for(int j=0; j<7; j++)
-            {
-                gradient[j] += grad(j);
-            }
-            */
+            gradient += 2.0 * delta_proj.transpose() * jac.block<2,6>(2*i,0) * Q;
 
             error += delta_proj.squaredNorm();
 
@@ -129,6 +119,7 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
     gradient /= double(count);
 
     std::cout << "err = " << error << std::endl;
+    //std::cout << "grad = " << gradient.transpose() << std::endl;
 
     return error;
 }
@@ -168,12 +159,32 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     mViews = &views;
     mWorldToRig = rig_to_world.inverse();
 
-    for(int i=0; i<20; i++)
+    std::normal_distribution<double> normal(0.0, 1.0);
+    std::default_random_engine engine;
+
+    TangentType gradient;
+    double prev = computeError(gradient);
+    Sophus::SE3d good_world_to_rig = mWorldToRig;
+    double step = 1.0e-4;
+
+    for(int i=0; i<20000; i++)
     {
-        TangentType gradient;
-        computeError(gradient);
-        applyIncrement(-0.01*gradient);
+        applyIncrement(-step * gradient);
+        double curr = computeError(gradient);
+        if( curr < prev )
+        {
+            prev = curr;
+            good_world_to_rig = mWorldToRig;
+            step *= 1.5;
+        }
+        else
+        {
+            mWorldToRig = good_world_to_rig;
+            step /= 1.5;
+        }
     }
+    std::cout << prev << std::endl;
+    std::cout << mWorldToRig.inverse().translation() << std::endl;
 
     //const int status = lbfgs(7, x, &fx, evaluateProc, progressProc, this, &params);
 
@@ -199,6 +210,8 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     }
     */
 
+    rig_to_world = mWorldToRig.inverse();
+
     inliers.resize( views.size() );
 
     for( int i=0; i<views.size(); i++ )
@@ -206,7 +219,7 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
         inliers[i].assign(views[i].points.size(), true);
     }
 
-    return false;
+    return true;
 }
 
 Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
