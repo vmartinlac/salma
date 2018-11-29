@@ -90,6 +90,7 @@ int main(int num_args, char** args)
     const bool ret = s->run(views, rig_to_world, inliers);
 
     std::cout << "Solver::run() returned " << ret << std::endl;
+    std::cout << rig_to_world.translation().transpose() << std::endl;
 
     return 0;
 }

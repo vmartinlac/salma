@@ -19,6 +19,8 @@ add_library(
     SLAMModuleTriangulation.h
     SLAMModuleAlignment.cpp
     SLAMModuleAlignment.h
+    SLAMModuleDenseReconstruction.cpp
+    SLAMModuleDenseReconstruction.h
     SLAMPyramid.h
     SLAMProject.cpp
     SLAMProject.h

@@ -34,6 +34,7 @@ bool SLAMSystem::initialize()
 
     parser.process(*QCoreApplication::instance());
 
+    if(ret)
     {
         mProject.reset(new SLAMProject());
         const std::string project_path = parser.positionalArguments().front().toStdString();
@@ -48,6 +49,7 @@ bool SLAMSystem::initialize()
         mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mProject));
         mModuleTriangulation.reset(new SLAMModuleTriangulation(mProject));
         mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
+        mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mProject));
     }
 
     if(ret == false)
@@ -230,6 +232,17 @@ void SLAMSystem::handleFrame(FramePtr frame)
 
     {
         mModuleAlignment->run(frame);
+
+        std::cout << "Alignment status: " << ( (frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
+
+        std::cout << "Position: " << frame->frame_to_world.translation().transpose() << std::endl;
+        std::cout << "Attitude: " << frame->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
+    }
+
+    // feed the dense reconstruction.
+
+    {
+        mModuleDenseReconstruction->run(frame);
     }
 }
 

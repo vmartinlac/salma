@@ -46,6 +46,9 @@ void SLAMModuleTriangulation::run(FramePtr frame)
                 MapPointPtr& left_point = t.mappoint;
                 MapPointPtr& right_point = right_tracks[t.stereo_match].mappoint;
 
+                const int left_prev = t.anterior_match;
+                const int right_prev = right_tracks[t.stereo_match].anterior_match;
+
                 if( bool(left_point) && bool(right_point) )
                 {
                 }
@@ -57,12 +60,9 @@ void SLAMModuleTriangulation::run(FramePtr frame)
                 {
                     left_point = right_point;
                 }
-                else if( t.anterior_match >= 0 && right_tracks[t.stereo_match].anterior_match >= 0 )
+                else if( left_prev >= 0 && right_prev >= 0 )
                 {
-                    right_point = left_point = triangulate(
-                        frame->previous_frame,
-                        t.anterior_match,
-                        right_tracks[t.stereo_match].anterior_match);
+                    right_point = left_point = triangulate( frame->previous_frame, left_prev, right_prev );
                 }
             }
         }

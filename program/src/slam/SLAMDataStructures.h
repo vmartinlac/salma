@@ -65,10 +65,18 @@ class Frame
 {
 public:
 
+    Frame()
+    {
+        id = -1;
+        timestamp = 0.0;
+        aligned_wrt_previous_frame = false;
+    }
+
     int id;
     double timestamp;
     View views[2];
     Sophus::SE3d frame_to_world;
+    bool aligned_wrt_previous_frame;
 
     FramePtr previous_frame;
 };

@@ -11,6 +11,7 @@
 #include "SLAMModuleTemporalMatcher.h"
 #include "SLAMModuleTriangulation.h"
 #include "SLAMModuleAlignment.h"
+#include "SLAMModuleDenseReconstruction.h"
 
 class SLAMSystem
 {
@@ -37,6 +38,7 @@ protected:
     SLAMModuleTemporalMatcherPtr mModuleTemporalMatcher;
     SLAMModuleTriangulationPtr mModuleTriangulation;
     SLAMModuleAlignmentPtr mModuleAlignment;
+    SLAMModuleDenseReconstructionPtr mModuleDenseReconstruction;
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;

@@ -6,6 +6,8 @@ add_library(
     MVPnP.h
     MVPnPImpl.cpp
     MVPnPImpl.h
+    MVPnPMono.cpp
+    MVPnPMono.h
 )
 
 target_link_libraries(

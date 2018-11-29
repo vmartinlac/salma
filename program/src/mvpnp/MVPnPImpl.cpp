@@ -274,8 +274,3 @@ Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaternion
     return ret;
 }
 
-MVPnP::Solver* MVPnP::Solver::create()
-{
-    return new SolverImpl();
-}
-
