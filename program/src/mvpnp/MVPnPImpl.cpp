@@ -155,7 +155,7 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
         }
 
         std::cout << JN-J0 << std::endl;
-        std::cout << J0 << std::endl;
+        //std::cout << J0 << std::endl;
         std::cout << std::endl;
 
     }
@@ -166,15 +166,33 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     mViews = &views;
     mWorldToRig = rig_to_world.inverse();
 
-    TangentType gradient;
-    const double step = 1.0e-7;
+    double step = 1.0e-5;
 
-    for(int i=0; i<35; i++)
+    Sophus::SE3d prev_pose = mWorldToRig;
+    TangentType prev_gradient;
+    double prev_err = computeError(prev_gradient);
+
+    for(int i=0; ; i++)
     {
-        const double err = computeError(gradient);
-        std::cout << "Least square reprojection error is " << err << std::endl;
+        applyIncrement(-step * prev_gradient);
 
-        applyIncrement(-step * gradient);
+        TangentType curr_gradient;
+        const double curr_err = computeError(curr_gradient);
+
+        if(curr_err < prev_err)
+        {
+            prev_pose = mWorldToRig;
+            prev_gradient = curr_gradient;
+            prev_err = curr_err;
+            std::cout << i << " least square reprojection error is " << prev_err << std::endl;
+            step *= 2.0;
+        }
+        else
+        {
+            mWorldToRig = prev_pose;
+            step *= 0.6;
+            std::cout << i << " too long a step" << std::endl;
+        }
     }
 
     rig_to_world = mWorldToRig.inverse();
@@ -193,68 +211,64 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
 
 Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
 {
-    const double N = q.vec().norm();
-    const Eigen::Vector3d ret = Sophus::SO3d(q).log();
-    Eigen::Vector3d ret2;
+    const double squared_n = q.vec().squaredNorm();
+    const double n = std::sqrt(squared_n);
+    const double w = q.w();
+    const double squared_w = w * w;
 
-    if( N < 1.0e-8 )
+    double two_atan_nbyw_by_n;
+    Eigen::Matrix<double, 1, 4> Jcte;
+
+    Eigen::Matrix<double, 1, 4> Jw;
+    Jw << 0.0, 0.0, 0.0, 1.0;
+
+    const double epsilon = 1.0e-7;
+
+    if( n < epsilon )
     {
-        ret2 = q.vec();
-        J <<
-            2.0, 0.0, 0.0, 0.0,
-            0.0, 2.0, 0.0, 0.0,
-            0.0, 0.0, 2.0, 0.0;
-        //std::cout << "A" << std::endl;
+        if( std::abs(w) < epsilon ) throw std::runtime_error("Quaternion should be normalized!");
+
+        Eigen::Matrix<double, 1, 4> Jn2;
+        Jn2.head<3>() = 2.0 * q.vec();
+        Jn2(3) = 0.0;
+
+        two_atan_nbyw_by_n = 2.0 / w - 2.0 * (squared_n) / (w * squared_w);
+
+        Jcte = -2.0/squared_w * Jw - (2.0/(w*squared_w))*Jn2 + 6.0*squared_n/(squared_w*squared_w) * Jw;
     }
     else
     {
-        double theta = 0.0;
+        Eigen::Matrix<double, 1, 4> Jn;
+        Jn.head<3>() = (1.0/n) * q.vec();
+        Jn(3) = 0.0;
 
-        Eigen::Matrix<double, 1, 4> ew;
-        ew << 0.0, 0.0, 0.0, 1.0;
-
-        const double alpha = 2.0 / ( N*N + q.w()*q.w() );
-
-        Eigen::Matrix<double, 1, 4> J_N;
-        J_N.head<3>() = q.vec()/N;
-        J_N(3) = 0.0;
-
-        Eigen::Matrix<double, 1, 4> J_theta;
-
-        if( N > std::fabs(q.w()) )
+        if( std::fabs(w) < epsilon )
         {
-            //std::cout << "A" << std::endl;
-            theta = M_PI - 2.0*std::atan(q.w() / N);
-            J_theta = -alpha*( N*ew - q.w() * J_N);
+            if( w > 0.0 )
+            {
+                two_atan_nbyw_by_n = M_PI / n;
+                Jcte = -M_PI / squared_n * Jn;
+            }
+            else
+            {
+                two_atan_nbyw_by_n = -M_PI / n;
+                Jcte = M_PI / squared_n * Jn;
+            }
         }
         else
         {
-            //std::cout << "B" << std::endl;
-            theta = 2.0*std::atan(N / q.w());
-            J_theta = alpha*( q.w()*J_N - N*ew );
+            two_atan_nbyw_by_n = 2.0 * atan(n / w) / n;
+            //Jcte = 2.0 / (n * (squared_w + squared_n)) * (w * Jn - n*Jw);
+            Jcte = (-2.0*atan(n/w) / squared_n) * Jn + (2.0/(n*(1+(n/w)*(n/w)))) * ( (1.0/w)*Jn - (n/squared_w)*Jw );
         }
-
-        const double theta_over_N = theta/N;
-
-        ret2 = q.vec() * theta_over_N;
-
-        Eigen::Matrix<double, 3, 4> tmp;
-        tmp.setZero();
-        tmp.leftCols<3>() = Eigen::Matrix3d::Identity();
-
-        J = theta_over_N * tmp + (1.0/N) * q.vec() * J_theta - (theta/(N*N)) * q.vec() * J_N;
-
-        /*
-        J.setZero();
-        J.leftCols<3>() += Eigen::Matrix3d::Identity() * theta_over_N;
-        J += (1.0/N) * q.vec() * J_theta;
-        J -= (theta/(N*N)) * q.vec() * J_N;
-        */
     }
 
-    //std::cout << ret2.transpose() << std::endl;
-    //std::cout << ret.transpose() << std::endl;
+    Eigen::Matrix<double, 3, 4> tmp;
+    tmp.leftCols<3>().setIdentity();
+    tmp.rightCols<1>().setZero();
 
-    return ret;
+    J = two_atan_nbyw_by_n * tmp + q.vec() * Jcte;
+
+    return two_atan_nbyw_by_n * q.vec();
 }
 
