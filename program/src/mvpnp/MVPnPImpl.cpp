@@ -21,7 +21,7 @@ void MVPnP::SolverImpl::applyIncrement(const TangentType& increment)
     q.normalize();
 
     mWorldToRig.translation() += increment.head<3>();
-    //mWorldToRig.setQuaternion(q);
+    mWorldToRig.setQuaternion(q);
 }
 
 double MVPnP::SolverImpl::computeError(TangentType& gradient)
@@ -57,7 +57,6 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
             cv::eigen2cv(world_to_camera_rodrigues, rvec);
             cv::eigen2cv(world_to_camera_t, tvec);
 
-
             Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
 
             // qx = aw*bx + bw*ax + ay*bz - az*by
@@ -85,8 +84,8 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
             M(3,3) = rig_to_camera_q.w();
 
             Q.setZero();
-            Q.block<3,3>(0,0) = rig_to_camera_R;
-            Q.block<3,4>(3,3) = L * M;
+            Q.block<3,4>(0,3) = L * M;
+            Q.block<3,3>(3,0) = rig_to_camera_R;
         }
 
         std::vector<cv::Point2f> projections;
@@ -118,7 +117,7 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
     error /= double(count);
     gradient /= double(count);
 
-    std::cout << "err = " << error << std::endl;
+    //std::cout << "err = " << error << std::endl;
     //std::cout << "grad = " << gradient.transpose() << std::endl;
 
     return error;
@@ -126,18 +125,25 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
 
 bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
 {
-    ///////
     /*
+    ///////
+    std::default_random_engine engine;
+    std::normal_distribution<double> normal(0.0, 1.0);
+    for(int i=0; i<10; i++)
     {
         Eigen::Matrix<double, 3, 4> J0;
         Eigen::Matrix<double, 3, 4> JN;
 
-        Eigen::Quaterniond q(Eigen::AngleAxisd(0.3*M_PI, (Eigen::Vector3d::UnitY()+Eigen::Vector3d::UnitZ() ).normalized() ));
-        q.coeffs() *= -10.0;
+        Eigen::Quaterniond q;
+        q.x() = normal(engine);
+        q.y() = normal(engine);
+        q.z() = normal(engine);
+        q.w() = normal(engine);
+        q.normalize();
 
         const Eigen::Vector3d r0 = quaternionToRodrigues(q, J0);
 
-        const double eps = 5.0e-3;
+        const double eps = 1.0e-5;
         for(int i=0; i<4; i++)
         {
             Eigen::Quaterniond tmp = q;
@@ -148,69 +154,32 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
             JN.col(i) = (r - r0)*(1.0/eps);
         }
 
-        std::cout << JN << std::endl;
+        std::cout << JN-J0 << std::endl;
         std::cout << J0 << std::endl;
+        std::cout << std::endl;
 
-        exit(0);
     }
-    */
+    exit(0);
     ///////
+    */
 
     mViews = &views;
     mWorldToRig = rig_to_world.inverse();
 
-    std::normal_distribution<double> normal(0.0, 1.0);
-    std::default_random_engine engine;
-
     TangentType gradient;
-    double prev = computeError(gradient);
-    Sophus::SE3d good_world_to_rig = mWorldToRig;
-    double step = 1.0e-4;
+    const double step = 1.0e-7;
 
-    for(int i=0; i<20000; i++)
+    for(int i=0; i<35; i++)
     {
+        const double err = computeError(gradient);
+        std::cout << "Least square reprojection error is " << err << std::endl;
+
         applyIncrement(-step * gradient);
-        double curr = computeError(gradient);
-        if( curr < prev )
-        {
-            prev = curr;
-            good_world_to_rig = mWorldToRig;
-            step *= 1.5;
-        }
-        else
-        {
-            mWorldToRig = good_world_to_rig;
-            step /= 1.5;
-        }
     }
-    std::cout << prev << std::endl;
-    std::cout << mWorldToRig.inverse().translation() << std::endl;
-
-    //const int status = lbfgs(7, x, &fx, evaluateProc, progressProc, this, &params);
-
-    /*
-    if( status == LBFGS_SUCCESS )
-    {
-        Eigen::Vector3d world_to_rig_t;
-        world_to_rig_t.x() = x[0];
-        world_to_rig_t.y() = x[1];
-        world_to_rig_t.z() = x[2];
-
-        Eigen::Quaterniond world_to_rig_q;
-        world_to_rig_q.x() = x[3];
-        world_to_rig_q.y() = x[4];
-        world_to_rig_q.z() = x[5];
-        world_to_rig_q.w() = x[6];
-
-        Sophus::SE3d world_to_rig;
-        world_to_rig.translation() = world_to_rig_t;
-        world_to_rig.setQuaternion(world_to_rig_q);
-
-        rig_to_world = world_to_rig.inverse();
-    }
-    */
 
     rig_to_world = mWorldToRig.inverse();
+
+    std::cout << rig_to_world.translation() << std::endl;
 
     inliers.resize( views.size() );
 
@@ -219,21 +188,23 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
         inliers[i].assign(views[i].points.size(), true);
     }
 
-    return true;
+    return false;
 }
 
 Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
 {
     const double N = q.vec().norm();
-    Eigen::Vector3d ret;
+    const Eigen::Vector3d ret = Sophus::SO3d(q).log();
+    Eigen::Vector3d ret2;
 
     if( N < 1.0e-8 )
     {
-        ret = q.vec();
+        ret2 = q.vec();
         J <<
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0;
+            2.0, 0.0, 0.0, 0.0,
+            0.0, 2.0, 0.0, 0.0,
+            0.0, 0.0, 2.0, 0.0;
+        //std::cout << "A" << std::endl;
     }
     else
     {
@@ -244,32 +215,45 @@ Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaternion
 
         const double alpha = 2.0 / ( N*N + q.w()*q.w() );
 
-        const Eigen::Matrix<double, 1, 4> J_N = Eigen::Vector4d::Constant(1.0/N);
+        Eigen::Matrix<double, 1, 4> J_N;
+        J_N.head<3>() = q.vec()/N;
+        J_N(3) = 0.0;
 
         Eigen::Matrix<double, 1, 4> J_theta;
 
         if( N > std::fabs(q.w()) )
         {
+            //std::cout << "A" << std::endl;
             theta = M_PI - 2.0*std::atan(q.w() / N);
             J_theta = -alpha*( N*ew - q.w() * J_N);
         }
         else
         {
+            //std::cout << "B" << std::endl;
             theta = 2.0*std::atan(N / q.w());
             J_theta = alpha*( q.w()*J_N - N*ew );
         }
 
         const double theta_over_N = theta/N;
 
-        ret.x() = q.x() * theta_over_N;
-        ret.y() = q.y() * theta_over_N;
-        ret.z() = q.z() * theta_over_N;
+        ret2 = q.vec() * theta_over_N;
 
+        Eigen::Matrix<double, 3, 4> tmp;
+        tmp.setZero();
+        tmp.leftCols<3>() = Eigen::Matrix3d::Identity();
+
+        J = theta_over_N * tmp + (1.0/N) * q.vec() * J_theta - (theta/(N*N)) * q.vec() * J_N;
+
+        /*
         J.setZero();
         J.leftCols<3>() += Eigen::Matrix3d::Identity() * theta_over_N;
         J += (1.0/N) * q.vec() * J_theta;
         J -= (theta/(N*N)) * q.vec() * J_N;
+        */
     }
+
+    //std::cout << ret2.transpose() << std::endl;
+    //std::cout << ret.transpose() << std::endl;
 
     return ret;
 }
