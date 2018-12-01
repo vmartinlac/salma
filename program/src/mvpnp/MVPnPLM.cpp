@@ -1,24 +1,22 @@
 #include <Eigen/Eigen>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
-#include <random>
 #include <iostream>
-#include "MVPnPImpl.h"
+#include "MVPnPLM.h"
 
-MVPnP::SolverImpl::SolverImpl()
+MVPnP::SolverLM::SolverLM()
 {
     mParameters.printError = true;
     mParameters.LMFirstLambda = 1.0;
     mParameters.LMFactor = 1.75;
     mParameters.maxNumberOfIterations = 1000;
-    mParameters.inlierThreshold = 8.0;
 }
 
-MVPnP::SolverImpl::~SolverImpl()
+MVPnP::SolverLM::~SolverLM()
 {
 }
 
-void MVPnP::SolverImpl::applyIncrement(Sophus::SE3d& world_to_rig, const IncrementType& increment)
+void MVPnP::SolverLM::applyIncrement(Sophus::SE3d& world_to_rig, const IncrementType& increment)
 {
     Eigen::Quaterniond q = world_to_rig.unit_quaternion();
     q.vec() += increment.segment<3>(3);
@@ -29,7 +27,7 @@ void MVPnP::SolverImpl::applyIncrement(Sophus::SE3d& world_to_rig, const Increme
     world_to_rig.setQuaternion(q);
 }
 
-double MVPnP::SolverImpl::computeErrorResidualsAndJacobianOfF( const Sophus::SE3d& world_to_rig, Eigen::Matrix<double, Eigen::Dynamic, 7>& JF, Eigen::VectorXd& residuals )
+double MVPnP::SolverLM::computeErrorResidualsAndJacobianOfF( const Sophus::SE3d& world_to_rig, Eigen::Matrix<double, Eigen::Dynamic, 7>& JF, Eigen::VectorXd& residuals )
 {
     double error = 0.0;
 
@@ -176,22 +174,13 @@ double MVPnP::SolverImpl::computeErrorResidualsAndJacobianOfF( const Sophus::SE3
     return std::sqrt(error / double(count));
 }
 
-bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers)
+bool MVPnP::SolverLM::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers )
 {
-    if( use_ransac == false )
+    if( use_ransac )
     {
-        return runLM( views, rig_to_world, inliers );
+        throw std::runtime_error("Can not use RANSAC with this MVPnP solver.");
     }
-    else
-    {
-        //std::default_random_engine engine;
-        //std::uniform_integer_distribution<int> distrib(0,1);
-        return false;
-    }
-}
 
-bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
-{
     bool ret = true;
 
     if( ret )
@@ -286,21 +275,28 @@ bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig
         }
     }
 
-    inliers.resize( views.size() );
-
-    for( int i=0; i<views.size(); i++ )
-    {
-        inliers[i].assign(views[i].points.size(), true);
-    }
+    // TODO: fill inliers correctly.
+    fillSelection( views, inliers, true );
 
     return ret;
 }
 
-void MVPnP::SolverImpl::printError(double error)
+void MVPnP::SolverLM::printError(double error)
 {
     if(mParameters.printError)
     {
         std::cout << "L2 reprojection error is: " << error << std::endl;
     }
 }
+
+void MVPnP::SolverLM::fillSelection(const std::vector<View>& views, std::vector< std::vector<bool> >& selection, bool value)
+{
+    selection.resize( views.size() );
+
+    for(int i=0; i<views.size(); i++)
+    {
+        selection[i].assign( views[i].points.size(), value );
+    }
+}
+
 

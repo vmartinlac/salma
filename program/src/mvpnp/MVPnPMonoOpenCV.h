@@ -5,13 +5,13 @@
 namespace MVPnP
 {
 
-    class SolverMono : public Solver
+    class SolverMonoOpenCV : public Solver
     {
     public:
 
-        SolverMono();
+        SolverMonoOpenCV();
 
-        virtual ~SolverMono();
+        virtual ~SolverMonoOpenCV();
 
         bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers) override;
     };

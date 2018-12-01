@@ -3,17 +3,17 @@
 #include <opencv2/core/eigen.hpp>
 #include <random>
 #include <iostream>
-#include "MVPnPMono.h"
+#include "MVPnPMonoOpenCV.h"
 
-MVPnP::SolverMono::SolverMono()
+MVPnP::SolverMonoOpenCV::SolverMonoOpenCV()
 {
 }
 
-MVPnP::SolverMono::~SolverMono()
+MVPnP::SolverMonoOpenCV::~SolverMonoOpenCV()
 {
 }
 
-bool MVPnP::SolverMono::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers)
+bool MVPnP::SolverMonoOpenCV::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers)
 {
     if( views.empty() ) throw std::runtime_error("no view was provided");
 

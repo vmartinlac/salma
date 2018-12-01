@@ -4,10 +4,12 @@ add_library(
     STATIC
     MVPnP.cpp
     MVPnP.h
-    MVPnPImpl.cpp
-    MVPnPImpl.h
-    MVPnPMono.cpp
-    MVPnPMono.h
+    MVPnPLM.cpp
+    MVPnPLM.h
+    MVPnPRANSACLM.cpp
+    MVPnPRANSACLM.h
+    MVPnPMonoOpenCV.cpp
+    MVPnPMonoOpenCV.h
 )
 
 target_link_libraries(

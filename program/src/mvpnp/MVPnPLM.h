@@ -5,17 +5,21 @@
 namespace MVPnP
 {
 
-    class SolverImpl : public Solver
+    class SolverLM : public Solver
     {
     public:
 
-        SolverImpl();
+        SolverLM();
 
-        virtual ~SolverImpl();
+        virtual ~SolverLM();
 
-        bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers) override;
+        bool run(
+            const std::vector<View>& views,
+            Sophus::SE3d& rig_to_world,
+            bool use_ransac,
+            std::vector< std::vector<bool> >& inliers) override;
 
-    protected:
+    private:
 
         typedef Eigen::Matrix<double, 7, 1> IncrementType;
 
@@ -27,22 +31,15 @@ namespace MVPnP
             bool printError;
             double LMFactor;
             double LMFirstLambda;
-            double inlierThreshold;
         };
 
         struct State
         {
             const std::vector<View>* views;
-            std::vector< std::vector<bool> > selection;
             int totalNumberOfPoints;
         };
 
-    protected:
-
-        bool runLM(
-            const std::vector<View>& views,
-            Sophus::SE3d& rig_to_world,
-            std::vector< std::vector<bool> >& inliers);
+    private:
 
         double computeErrorResidualsAndJacobianOfF(
             const Sophus::SE3d& world_to_rig,
@@ -51,12 +48,17 @@ namespace MVPnP
 
         void applyIncrement(
             Sophus::SE3d& world_to_rig,
-            const IncrementType& increment);
+            const IncrementType& increment );
 
         void printError(
-            double error);
+            double error );
 
-    protected:
+        static void fillSelection(
+            const std::vector<View>& views,
+            std::vector< std::vector<bool> >& selection,
+            bool value );
+
+    private:
 
         State mState;
         Parameters mParameters;
