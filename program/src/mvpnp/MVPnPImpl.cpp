@@ -7,10 +7,11 @@
 
 MVPnP::SolverImpl::SolverImpl()
 {
-    mPrintError = true;
-    mLMFirstLambda = 1.0;
-    mLMFactor = 1.75;
-    mMaxNumberOfIterations = 1000;
+    mParameters.printError = true;
+    mParameters.LMFirstLambda = 1.0;
+    mParameters.LMFactor = 1.75;
+    mParameters.maxNumberOfIterations = 1000;
+    mParameters.inlierThreshold = 8.0;
 }
 
 MVPnP::SolverImpl::~SolverImpl()
@@ -32,12 +33,12 @@ double MVPnP::SolverImpl::computeErrorResidualsAndJacobianOfF( const Sophus::SE3
 {
     double error = 0.0;
 
-    JF.resize(2*mTotalNumberOfPoints, 7);
-    residuals.resize(2*mTotalNumberOfPoints);
+    JF.resize(2*mState.totalNumberOfPoints, 7);
+    residuals.resize(2*mState.totalNumberOfPoints);
 
     int count = 0;
 
-    for( const MVPnP::View& v : *mViews )
+    for( const MVPnP::View& v : *mState.views )
     {
         const Sophus::SE3d world_to_camera = v.rig_to_camera * world_to_rig;
 
@@ -170,7 +171,7 @@ double MVPnP::SolverImpl::computeErrorResidualsAndJacobianOfF( const Sophus::SE3
         }
     }
 
-    if(count != mTotalNumberOfPoints) throw std::runtime_error("internal error");
+    if(count != mState.totalNumberOfPoints) throw std::runtime_error("internal error");
 
     return std::sqrt(error / double(count));
 }
@@ -183,6 +184,8 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     }
     else
     {
+        //std::default_random_engine engine;
+        //std::uniform_integer_distribution<int> distrib(0,1);
         return false;
     }
 }
@@ -193,22 +196,22 @@ bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig
 
     if( ret )
     {
-        mViews = &views;
+        mState.views = &views;
 
-        mTotalNumberOfPoints = 0;
+        mState.totalNumberOfPoints = 0;
 
         for( const View& v : views )
         {
-            mTotalNumberOfPoints += v.points.size();
+            mState.totalNumberOfPoints += v.points.size();
         }
 
-        ret = ( mTotalNumberOfPoints > 10 );
+        ret = ( mState.totalNumberOfPoints > 10 );
     }
 
     if( ret )
     {
         Sophus::SE3d world_to_rig = rig_to_world.inverse();
-        double lambda = mLMFirstLambda;
+        double lambda = mParameters.LMFirstLambda;
         double error = 0.0;
         Eigen::Matrix<double, Eigen::Dynamic, 7> JF;
         Eigen::VectorXd residuals;
@@ -259,18 +262,18 @@ bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig
                     JF.swap(candidate_JF);
                     residuals.swap(candidate_residuals);
                     world_to_rig = candidate_world_to_rig;
-                    lambda /= mLMFactor;
+                    lambda /= mParameters.LMFactor;
 
                     printError(error);
                 }
                 else
                 {
-                    lambda *= mLMFactor;
+                    lambda *= mParameters.LMFactor;
                 }
             }
 
             num_iterations++;
-            if( num_iterations > mMaxNumberOfIterations )
+            if( num_iterations > mParameters.maxNumberOfIterations )
             {
                 ret = false;
                 go_on = false;
@@ -295,7 +298,7 @@ bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig
 
 void MVPnP::SolverImpl::printError(double error)
 {
-    if(mPrintError)
+    if(mParameters.printError)
     {
         std::cout << "L2 reprojection error is: " << error << std::endl;
     }

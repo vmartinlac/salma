@@ -21,6 +21,22 @@ namespace MVPnP
 
         typedef Eigen::Matrix<double, Eigen::Dynamic, 7> JacobianType;
 
+        struct Parameters
+        {
+            int maxNumberOfIterations;
+            bool printError;
+            double LMFactor;
+            double LMFirstLambda;
+            double inlierThreshold;
+        };
+
+        struct State
+        {
+            const std::vector<View>* views;
+            std::vector< std::vector<bool> > selection;
+            int totalNumberOfPoints;
+        };
+
     protected:
 
         bool runLM(
@@ -42,12 +58,8 @@ namespace MVPnP
 
     protected:
 
-        const std::vector<View>* mViews;
-        int mTotalNumberOfPoints;
-        int mMaxNumberOfIterations;
-        bool mPrintError;
-        double mLMFactor;
-        double mLMFirstLambda;
+        State mState;
+        Parameters mParameters;
     };
 }
 
