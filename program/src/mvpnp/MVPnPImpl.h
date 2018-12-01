@@ -17,18 +17,37 @@ namespace MVPnP
 
     protected:
 
-        typedef Eigen::Matrix<double, 7, 1> TangentType;
+        typedef Eigen::Matrix<double, 7, 1> IncrementType;
 
-        double computeError(TangentType& gradient);
-
-        void applyIncrement(const TangentType& increment);
-
-        Eigen::Vector3d quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J);
+        typedef Eigen::Matrix<double, Eigen::Dynamic, 7> JacobianType;
 
     protected:
 
-        Sophus::SE3d mWorldToRig;
+        bool computeIncrement(
+            double lambda,
+            const Sophus::SE3d& world_to_rig,
+            IncrementType& increment);
+
+        double computeErrorResidualsAndJacobianOfF(
+            const Sophus::SE3d& world_to_rig,
+            Eigen::Matrix<double, Eigen::Dynamic, 7>& JF,
+            Eigen::VectorXd& residuals );
+
+        void applyIncrement(
+            Sophus::SE3d& world_to_rig,
+            const IncrementType& increment);
+
+        void printError(
+            double error);
+
+    protected:
+
         const std::vector<View>* mViews;
+        int mTotalNumberOfPoints;
+        int mMaxNumberOfIterations;
+        bool mPrintError;
+        double mLMFactor;
+        double mLMFirstLambda;
     };
 }
 

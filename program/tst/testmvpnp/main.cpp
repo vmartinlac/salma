@@ -83,7 +83,9 @@ int main(int num_args, char** args)
 
     Sophus::SE3d rig_to_world;
     rig_to_world.setRotationMatrix(tmp);
-    rig_to_world.translation() << 2.0, 6.03, 0.0;
+    rig_to_world.translation() << 2.0, 6.06, 0.0;
+    //rig_to_world.translation() << 2.0, 6.00, 0.0;
+    rig_to_world.setQuaternion( rig_to_world.unit_quaternion() * Eigen::Quaterniond(Eigen::AngleAxisd(0.01*M_PI, Eigen::Vector3d::UnitX())) );
 
     std::shared_ptr<MVPnP::Solver> s( MVPnP::Solver::create() );
 
