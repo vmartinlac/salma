@@ -34,67 +34,35 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
 
     for( const MVPnP::View& v : *mViews )
     {
-        const Eigen::Vector3d rig_to_camera_t = v.rig_to_camera.translation();
-        const Eigen::Quaterniond rig_to_camera_q = v.rig_to_camera.unit_quaternion();
-        const Eigen::Matrix3d rig_to_camera_R = rig_to_camera_q.toRotationMatrix();
+        const Sophus::SE3d world_to_camera = v.rig_to_camera * mWorldToRig;
 
-        cv::Mat tvec;
-        cv::Mat rvec;
+        std::vector<cv::Point3f> points_in_camera_frame(v.points.size());
 
-        Eigen::Matrix<double, 6, 7> Q;
-
-        // compute tvec, rvec and Q.
+        for(int i=0; i<v.points.size(); i++)
         {
-            Eigen::Vector3d world_to_camera_t = rig_to_camera_R * mWorldToRig.translation() + rig_to_camera_t;
-            Eigen::Quaterniond world_to_camera_q = rig_to_camera_q * mWorldToRig.unit_quaternion();
+            Eigen::Vector3d in_world_frame;
+            in_world_frame.x() = v.points[i].x;
+            in_world_frame.y() = v.points[i].y;
+            in_world_frame.z() = v.points[i].z;
 
-            Sophus::SE3d world_to_camera = v.rig_to_camera * mWorldToRig;
+            Eigen::Vector3d in_camera_frame = world_to_camera * in_world_frame;
 
-            Eigen::Matrix<double, 3, 4> L;
-            Eigen::Vector3d world_to_camera_rodrigues = quaternionToRodrigues(world_to_camera_q, L);
-            //Eigen::Vector3d world_to_camera_rodrigues = world_to_camera.so3().log();
-
-            cv::eigen2cv(world_to_camera_rodrigues, rvec);
-            cv::eigen2cv(world_to_camera_t, tvec);
-
-            Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
-
-            // qx = aw*bx + bw*ax + ay*bz - az*by
-            M(0,0) = rig_to_camera_q.w();
-            M(0,1) = -rig_to_camera_q.z();
-            M(0,2) = rig_to_camera_q.y();
-            M(0,3) = rig_to_camera_q.x();
-
-            // qy = aw*by + bw*ay + az*bx - ax*bz
-            M(1,0) = rig_to_camera_q.z();
-            M(1,1) = rig_to_camera_q.w();
-            M(1,2) = -rig_to_camera_q.x();
-            M(1,3) = rig_to_camera_q.y();
-
-            // qz = aw*bz + bw*az + ax*by - ay*bx
-            M(2,0) = -rig_to_camera_q.y();
-            M(2,1) = rig_to_camera_q.x();
-            M(2,2) = rig_to_camera_q.w();
-            M(2,3) = rig_to_camera_q.z();
-
-            // qw = aw*bw - ( ax*bx + ay*by + az*bz )
-            M(3,0) = -rig_to_camera_q.x();
-            M(3,1) = -rig_to_camera_q.y();
-            M(3,2) = -rig_to_camera_q.z();
-            M(3,3) = rig_to_camera_q.w();
-
-            Q.setZero();
-            Q.block<3,4>(0,3) = L * M;
-            Q.block<3,3>(3,0) = rig_to_camera_R;
+            points_in_camera_frame[i].x = in_camera_frame.x();
+            points_in_camera_frame[i].y = in_camera_frame.y();
+            points_in_camera_frame[i].z = in_camera_frame.z();
         }
 
         std::vector<cv::Point2f> projections;
-        cv::Mat jac_cv;
+        cv::Mat jacobian;
 
-        cv::projectPoints(v.points, rvec, tvec, v.calibration_matrix, v.distortion_coefficients, projections, jac_cv);
-
-        Eigen::MatrixXd jac;
-        cv::cv2eigen(jac_cv, jac);
+        cv::projectPoints(
+            points_in_camera_frame,
+            cv::Mat::zeros(3, 1, CV_64F),
+            cv::Mat::zeros(3, 1, CV_64F),
+            v.calibration_matrix,
+            v.distortion_coefficients,
+            projections,
+            jacobian);
 
         for( int i=0; i<v.points.size(); i++ )
         {
@@ -102,9 +70,20 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
             const Eigen::Vector2d proj_ref{ v.projections[i].x, v.projections[i].y };
             const Eigen::Vector2d delta_proj = proj - proj_ref;
 
-            const Eigen::Matrix<double, 1, 7> grad = 2.0 * delta_proj.transpose() * jac.block<2,6>(2*i,0) * Q;
+            Eigen::Matrix<double, 2, 3> A;
+            cv::cv2eigen( jacobian(cv::Range(2*i+0, 2*i+2), cv::Range(3, 6)), A);
 
-            gradient += 2.0 * delta_proj.transpose() * jac.block<2,6>(2*i,0) * Q;
+            //gradient += 2.0 * delta_proj.transpose() * A * ;
+
+            /*
+
+            (t_world2rig, q_world2rig) -> X_rig -> X_camera
+
+            X_camera = t_rig2camera + R_rig2camera * ( t_world2rig + R_world2rig * X_world )
+
+            d_X_camera = R_rig2camera * ( d_t_world2rig + d_R_world2rig * X_world )
+
+            */
 
             error += delta_proj.squaredNorm();
 
@@ -117,7 +96,7 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
     error /= double(count);
     gradient /= double(count);
 
-    //std::cout << "err = " << error << std::endl;
+    std::cout << "err = " << error << std::endl;
     //std::cout << "grad = " << gradient.transpose() << std::endl;
 
     return error;
@@ -125,44 +104,6 @@ double MVPnP::SolverImpl::computeError(TangentType& gradient)
 
 bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
 {
-    /*
-    ///////
-    std::default_random_engine engine;
-    std::normal_distribution<double> normal(0.0, 1.0);
-    for(int i=0; i<10; i++)
-    {
-        Eigen::Matrix<double, 3, 4> J0;
-        Eigen::Matrix<double, 3, 4> JN;
-
-        Eigen::Quaterniond q;
-        q.x() = normal(engine);
-        q.y() = normal(engine);
-        q.z() = normal(engine);
-        q.w() = normal(engine);
-        q.normalize();
-
-        const Eigen::Vector3d r0 = quaternionToRodrigues(q, J0);
-
-        const double eps = 1.0e-5;
-        for(int i=0; i<4; i++)
-        {
-            Eigen::Quaterniond tmp = q;
-            tmp.coeffs()(i) += eps;
-
-            Eigen::Matrix<double, 3, 4> J;
-            const Eigen::Vector3d r = quaternionToRodrigues(tmp, J);
-            JN.col(i) = (r - r0)*(1.0/eps);
-        }
-
-        std::cout << JN-J0 << std::endl;
-        //std::cout << J0 << std::endl;
-        std::cout << std::endl;
-
-    }
-    exit(0);
-    ///////
-    */
-
     mViews = &views;
     mWorldToRig = rig_to_world.inverse();
 
@@ -172,7 +113,7 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     TangentType prev_gradient;
     double prev_err = computeError(prev_gradient);
 
-    for(int i=0; ; i++)
+    for(int i=0; i<10; i++)
     {
         applyIncrement(-step * prev_gradient);
 
@@ -207,68 +148,5 @@ bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_t
     }
 
     return false;
-}
-
-Eigen::Vector3d MVPnP::SolverImpl::quaternionToRodrigues(const Eigen::Quaterniond& q, Eigen::Matrix<double, 3, 4>& J)
-{
-    const double squared_n = q.vec().squaredNorm();
-    const double n = std::sqrt(squared_n);
-    const double w = q.w();
-    const double squared_w = w * w;
-
-    double two_atan_nbyw_by_n;
-    Eigen::Matrix<double, 1, 4> Jcte;
-
-    Eigen::Matrix<double, 1, 4> Jw;
-    Jw << 0.0, 0.0, 0.0, 1.0;
-
-    const double epsilon = 1.0e-7;
-
-    if( n < epsilon )
-    {
-        if( std::abs(w) < epsilon ) throw std::runtime_error("Quaternion should be normalized!");
-
-        Eigen::Matrix<double, 1, 4> Jn2;
-        Jn2.head<3>() = 2.0 * q.vec();
-        Jn2(3) = 0.0;
-
-        two_atan_nbyw_by_n = 2.0 / w - 2.0 * (squared_n) / (w * squared_w);
-
-        Jcte = -2.0/squared_w * Jw - (2.0/(w*squared_w))*Jn2 + 6.0*squared_n/(squared_w*squared_w) * Jw;
-    }
-    else
-    {
-        Eigen::Matrix<double, 1, 4> Jn;
-        Jn.head<3>() = (1.0/n) * q.vec();
-        Jn(3) = 0.0;
-
-        if( std::fabs(w) < epsilon )
-        {
-            if( w > 0.0 )
-            {
-                two_atan_nbyw_by_n = M_PI / n;
-                Jcte = -M_PI / squared_n * Jn;
-            }
-            else
-            {
-                two_atan_nbyw_by_n = -M_PI / n;
-                Jcte = M_PI / squared_n * Jn;
-            }
-        }
-        else
-        {
-            two_atan_nbyw_by_n = 2.0 * atan(n / w) / n;
-            //Jcte = 2.0 / (n * (squared_w + squared_n)) * (w * Jn - n*Jw);
-            Jcte = (-2.0*atan(n/w) / squared_n) * Jn + (2.0/(n*(1+(n/w)*(n/w)))) * ( (1.0/w)*Jn - (n/squared_w)*Jw );
-        }
-    }
-
-    Eigen::Matrix<double, 3, 4> tmp;
-    tmp.leftCols<3>().setIdentity();
-    tmp.rightCols<1>().setZero();
-
-    J = two_atan_nbyw_by_n * tmp + q.vec() * Jcte;
-
-    return two_atan_nbyw_by_n * q.vec();
 }
 
