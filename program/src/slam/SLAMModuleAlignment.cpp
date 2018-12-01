@@ -71,7 +71,7 @@ void SLAMModuleAlignment::run(FramePtr frame)
 
         std::vector< std::vector<bool> > inliers;
 
-        const bool ret = mSolver->run(views, frame->frame_to_world, inliers);
+        const bool ret = mSolver->run(views, frame->frame_to_world, true, inliers);
 
         frame->aligned_wrt_previous_frame = ret;
 

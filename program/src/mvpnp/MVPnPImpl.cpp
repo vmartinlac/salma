@@ -175,7 +175,19 @@ double MVPnP::SolverImpl::computeErrorResidualsAndJacobianOfF( const Sophus::SE3
     return std::sqrt(error / double(count));
 }
 
-bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
+bool MVPnP::SolverImpl::run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers)
+{
+    if( use_ransac == false )
+    {
+        return runLM( views, rig_to_world, inliers );
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool MVPnP::SolverImpl::runLM( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers)
 {
     bool ret = true;
 

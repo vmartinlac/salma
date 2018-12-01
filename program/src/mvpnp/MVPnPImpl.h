@@ -13,7 +13,7 @@ namespace MVPnP
 
         virtual ~SolverImpl();
 
-        bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, std::vector< std::vector<bool> >& inliers) override;
+        bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers) override;
 
     protected:
 
@@ -23,10 +23,10 @@ namespace MVPnP
 
     protected:
 
-        bool computeIncrement(
-            double lambda,
-            const Sophus::SE3d& world_to_rig,
-            IncrementType& increment);
+        bool runLM(
+            const std::vector<View>& views,
+            Sophus::SE3d& rig_to_world,
+            std::vector< std::vector<bool> >& inliers);
 
         double computeErrorResidualsAndJacobianOfF(
             const Sophus::SE3d& world_to_rig,

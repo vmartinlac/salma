@@ -29,6 +29,7 @@ namespace MVPnP
         virtual bool run(
             const std::vector<View>& views,
             Sophus::SE3d& rig_to_world, // initial guess and output!
+            bool use_ransac,
             std::vector< std::vector<bool> >& inliers) = 0;
 
     protected:
