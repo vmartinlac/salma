@@ -30,14 +30,16 @@ namespace MVPnP
             bool use_ransac,
             std::vector< std::vector<bool> >& inliers) = 0;
 
-        static double computeReprojectionError(
+        static int findInliers(
             const std::vector<View>& views,
-            const Sophus::SE3d& rig_to_world);
+            const Sophus::SE3d& rig_to_world,
+            double threshold,
+            std::vector< std::vector<bool> >& inliers);
 
-        static double computeReprojectionError(
+        static int extractSelection(
             const std::vector<View>& views,
-            const std::vector< std::vector<bool> >& inliers,
-            const Sophus::SE3d& rig_to_world);
+            const std::vector< std::vector<bool> >& selection,
+            std::vector<View>& new_views);
 
     protected:
 

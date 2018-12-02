@@ -42,19 +42,8 @@ namespace MVPnP
             int maxsize,
             std::vector<View>& subviews);
 
-        int extractSelection(
-            const std::vector<View>& views,
-            std::vector< std::vector<bool> >& selection,
-            std::vector<View>& new_views);
-
         void buildWholeSampleArray(
             const std::vector<View>& views);
-
-        int findInliers(
-            const std::vector<View>& views,
-            const Sophus::SE3d& rig_to_world,
-            double threshold,
-            std::vector< std::vector<bool> >& inliers);
 
     private:
 
