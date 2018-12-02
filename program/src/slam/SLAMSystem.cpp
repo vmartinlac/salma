@@ -34,7 +34,9 @@ bool SLAMSystem::initialize()
         parser.addHelpOption();
         parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
 
-        parser.addOption(QCommandLineOption("skip-to", "Index of first frame which will be processed", "FIRST_FRAME"));
+        QCommandLineOption skip_to_option("skip-to", "Index of first frame which will be processed", "FIRST_FRAME");
+        skip_to_option.setDefaultValue("0");
+        parser.addOption(skip_to_option);
     }
 
     if( ret )
