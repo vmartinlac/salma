@@ -16,6 +16,7 @@
 
 SLAMSystem::SLAMSystem()
 {
+    mSkipTo = 0;
 }
 
 SLAMSystem::~SLAMSystem()
@@ -28,11 +29,37 @@ bool SLAMSystem::initialize()
     bool ret = true;
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("Perform SLAM on given video. Writen by Victor Martin Lac in 2018.");
-    parser.addHelpOption();
-    parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
+    {
+        parser.setApplicationDescription("Perform SLAM on given video. Writen by Victor Martin Lac in 2018.");
+        parser.addHelpOption();
+        parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
 
-    parser.process(*QCoreApplication::instance());
+        parser.addOption(QCommandLineOption("skip-to", "Index of first frame which will be processed", "FIRST_FRAME"));
+    }
+
+    if( ret )
+    {
+        ret = parser.parse(QCoreApplication::arguments());
+        error = "Incorrect command line!";
+    }
+
+    if( ret )
+    {
+        ret = (parser.positionalArguments().size() == 1);
+        error = "Incorrect command line!";
+    }
+
+    if(ret)
+    {
+        mSkipTo = parser.value("skip-to").toInt(&ret);
+        error = "Incorrect value for skip-to argument!";
+    }
+
+    if(ret)
+    {
+        ret = (mSkipTo >= 0);
+        error = "Incorrect value for skip-to argument!";
+    }
 
     if(ret)
     {
@@ -64,6 +91,7 @@ void SLAMSystem::run()
 {
     Image im;
     VideoSourcePtr video;
+    int count = 0;
     bool ok = true;
 
     printWelcomeMessage();
@@ -94,18 +122,24 @@ void SLAMSystem::run()
     {
         video->trigger();
 
-        FramePtr new_frame(new Frame());
+        if( count >= mSkipTo )
+        {
+            FramePtr new_frame(new Frame());
 
-        new_frame->previous_frame = mCurrentFrame;
-        new_frame->id = (bool(mCurrentFrame)) ? mCurrentFrame->id+1 : 0;
-        new_frame->timestamp = im.getTimestamp();
-        new_frame->views[0].image = im.getFrame(0);
-        new_frame->views[1].image = im.getFrame(1);
+            new_frame->previous_frame = mCurrentFrame;
+            new_frame->id = count;
+            new_frame->timestamp = im.getTimestamp();
+            new_frame->views[0].image = im.getFrame(0);
+            new_frame->views[1].image = im.getFrame(1);
 
-        mCurrentFrame.swap(new_frame);
 
-        std::cout << "=> Processing frame " << mCurrentFrame->id << std::endl;
-        handleFrame(mCurrentFrame);
+            mCurrentFrame.swap(new_frame);
+
+            std::cout << "=> Processing frame " << mCurrentFrame->id << std::endl;
+            handleFrame(mCurrentFrame);
+        }
+
+        count++;
 
         video->read(im);
     }

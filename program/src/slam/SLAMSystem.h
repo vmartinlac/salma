@@ -42,6 +42,8 @@ protected:
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
+
+    int mSkipTo;
 };
 
 typedef std::shared_ptr<SLAMSystem> SLAMSystemPtr;

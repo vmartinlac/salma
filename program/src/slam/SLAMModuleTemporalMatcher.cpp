@@ -46,26 +46,15 @@ void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
     std::vector<cv::Point2f> opticalflow_post;
     std::vector<uint8_t> opticalflow_status;
 
-    mLKT->calc(
-        previous_view.image,
-        current_view.image,
-        opticalflow_pre,
-        opticalflow_post,
-        opticalflow_status);
-
-#ifdef DEBUG_SHOW_OPTICAL_FLOW
+    if( N > 0 )
     {
-        cv::Mat image = current_view.image;
-
-        for(int i=0; i<N; i++)
-        {
-            cv::line(image, opticalflow_pre[i], opticalflow_post[i], cv::Scalar(0, 255, 0), 4);
-            cv::circle(image, opticalflow_post[i], 3, cv::Scalar(0, 255, 0), -1);
-        }
-
-        Debug::imshow(image);
+        mLKT->calc(
+            previous_view.image,
+            current_view.image,
+            opticalflow_pre,
+            opticalflow_post,
+            opticalflow_status);
     }
-#endif
 
     for(int i=0; i<N; i++)
     {

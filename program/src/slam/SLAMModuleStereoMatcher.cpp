@@ -173,17 +173,24 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
     for(int k=0; k<2; k++)
     {
-        std::vector<cv::Point2f> tmp;
+        if( f->views[k].keypoints.empty() )
+        {
+            mUndistortedPoints[k].clear();
+        }
+        else
+        {
+            std::vector<cv::Point2f> tmp;
 
-        cv::KeyPoint::convert( f->views[k].keypoints, tmp );
+            cv::KeyPoint::convert( f->views[k].keypoints, tmp );
 
-        cv::undistortPoints(
-            tmp,
-            mUndistortedPoints[k], 
-            mCameraCalibration[k]->calibration_matrix,
-            mCameraCalibration[k]->distortion_coefficients,
-            cv::noArray(),
-            mCameraCalibration[k]->calibration_matrix);
+            cv::undistortPoints(
+                tmp,
+                mUndistortedPoints[k], 
+                mCameraCalibration[k]->calibration_matrix,
+                mCameraCalibration[k]->distortion_coefficients,
+                cv::noArray(),
+                mCameraCalibration[k]->calibration_matrix);
+        }
     }
 
     // proceed with matching.

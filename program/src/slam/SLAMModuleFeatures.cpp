@@ -1,5 +1,8 @@
+#include "Debug.h"
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleFeatures.h"
+
+#define DEBUG_SHOW_FEATURES
 
 SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(project)
 {
@@ -29,6 +32,14 @@ void SLAMModuleFeatures::run(FramePtr frame)
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
         frame->views[i].tracks.resize( frame->views[i].keypoints.size() );
     }
+
+#ifdef DEBUG_SHOW_FEATURES
+    Debug::stereoimshow(
+        frame->views[0].image,
+        frame->views[1].image,
+        frame->views[0].keypoints,
+        frame->views[1].keypoints );
+#endif
 }
 
 void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
