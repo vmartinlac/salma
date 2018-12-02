@@ -5,14 +5,14 @@
 #include <sophus/se3.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
-#include <MVPnP.h>
+#include <MVPnPRANSACLM.h>
 
 int main(int num_args, char** args)
 {
     std::vector<cv::Point3f> points;
+    std::default_random_engine en;
 
     {
-        std::default_random_engine en;
         std::uniform_real_distribution<double> rx(8.0, 10.0);
         std::uniform_real_distribution<double> ry(2.0, 4.0);
         std::uniform_real_distribution<double> rz(-1.0, 1.0);
@@ -69,8 +69,17 @@ int main(int num_args, char** args)
         views[0].distortion_coefficients,
         views[0].projections);
 
+    std::bernoulli_distribution bern(0.1);
     for(int i=0; i<views[0].points.size(); i++)
     {
+        if( bern(en) )
+        {
+            views[0].points[i].x = 0.0;
+            views[0].points[i].y = 0.0;
+            views[0].points[i].z = 0.0;
+            views[0].projections[i].x = 0.0;
+            views[0].projections[i].y = 0.0;
+        }
         std::cout
             << views[0].points[i].x << ' '
             << views[0].points[i].y << ' '
@@ -87,9 +96,10 @@ int main(int num_args, char** args)
     //rig_to_world.translation() << 2.0, 6.00, 0.0;
     rig_to_world.setQuaternion( rig_to_world.unit_quaternion() * Eigen::Quaterniond(Eigen::AngleAxisd(0.01*M_PI, Eigen::Vector3d::UnitX())) );
 
-    std::shared_ptr<MVPnP::Solver> s( MVPnP::Solver::create() );
+    std::unique_ptr<MVPnP::SolverRANSACLM> s( new MVPnP::SolverRANSACLM() );
+    s->setInlierThreshold(1.5);
 
-    const bool ret = s->run(views, rig_to_world, false, inliers);
+    const bool ret = s->run(views, rig_to_world, true, inliers);
 
     std::cout << "Solver::run() returned " << ret << std::endl;
     std::cout << rig_to_world.translation().transpose() << std::endl;

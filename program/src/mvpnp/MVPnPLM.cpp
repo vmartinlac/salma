@@ -6,7 +6,7 @@
 
 MVPnP::SolverLM::SolverLM()
 {
-    mParameters.printError = true;
+    mParameters.printError = false;
     mParameters.LMFirstLambda = 1.0;
     mParameters.LMFactor = 1.75;
     mParameters.maxNumberOfIterations = 1000;
@@ -275,8 +275,8 @@ bool MVPnP::SolverLM::run( const std::vector<View>& views, Sophus::SE3d& rig_to_
         }
     }
 
-    // TODO: fill inliers correctly.
-    fillSelection( views, inliers, true );
+    // No RANSAC, so inliers array is not filled.
+    inliers.clear();
 
     return ret;
 }

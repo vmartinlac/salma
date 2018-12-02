@@ -10,7 +10,10 @@ SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(pr
     mRightCamera = project->getRightCameraCalibration();
     mRig = project->getStereoRigCalibration();
 
-    mSolver.reset(MVPnP::Solver::create());
+    mSolver.reset(new MVPnP::SolverRANSACLM());
+
+    mSolver->setInlierRate( project->getParameterReal("alignment_ransac_inlier_rate", 0.8) );
+    mSolver->setInlierThreshold( project->getParameterReal("alignment_ransac_inlier_threshold", 8.0) );
 }
 
 void SLAMModuleAlignment::run(FramePtr frame)

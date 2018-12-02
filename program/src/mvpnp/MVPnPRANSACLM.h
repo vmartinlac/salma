@@ -13,6 +13,12 @@ namespace MVPnP
 
         virtual ~SolverRANSACLM();
 
+        void setInlierRate(double rate);
+        void setInlierThreshold(double threshold);
+        void setSuccessProbability(double probability);
+
+        int getNumberOfRANSACIterations();
+
         bool run( const std::vector<View>& views, Sophus::SE3d& rig_to_world, bool use_ransac, std::vector< std::vector<bool> >& inliers) override;
 
     private:
@@ -36,6 +42,11 @@ namespace MVPnP
             int maxsize,
             std::vector<View>& subviews);
 
+        int extractSelection(
+            const std::vector<View>& views,
+            std::vector< std::vector<bool> >& selection,
+            std::vector<View>& new_views);
+
         void buildWholeSampleArray(
             const std::vector<View>& views);
 
@@ -49,6 +60,10 @@ namespace MVPnP
 
         std::default_random_engine mEngine;
         std::vector<Sample> mWholeSample;
+        double mInlierThreshold;
+        double mInlierRate;
+        double mSuccessProbability;
+        int mMinimumNumberOfObservations;
     };
 }
 

@@ -4,7 +4,7 @@
 #include <memory>
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
-#include "MVPnP.h"
+#include "MVPnPRANSACLM.h"
 
 class SLAMModuleAlignment : public SLAMModule
 {
@@ -20,7 +20,7 @@ protected:
     CameraCalibrationDataPtr mRightCamera;
     StereoRigCalibrationDataPtr mRig;
 
-    std::shared_ptr<MVPnP::Solver> mSolver;
+    std::shared_ptr<MVPnP::SolverRANSACLM> mSolver;
 };
 
 typedef std::shared_ptr<SLAMModuleAlignment> SLAMModuleAlignmentPtr;

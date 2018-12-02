@@ -22,8 +22,6 @@ namespace MVPnP
     {
     public:
 
-        static Solver* create();
-
         virtual ~Solver();
 
         virtual bool run(
@@ -31,6 +29,15 @@ namespace MVPnP
             Sophus::SE3d& rig_to_world, // initial guess and output!
             bool use_ransac,
             std::vector< std::vector<bool> >& inliers) = 0;
+
+        static double computeReprojectionError(
+            const std::vector<View>& views,
+            const Sophus::SE3d& rig_to_world);
+
+        static double computeReprojectionError(
+            const std::vector<View>& views,
+            const std::vector< std::vector<bool> >& inliers,
+            const Sophus::SE3d& rig_to_world);
 
     protected:
 

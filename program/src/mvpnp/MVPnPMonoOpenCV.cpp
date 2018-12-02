@@ -19,6 +19,8 @@ bool MVPnP::SolverMonoOpenCV::run( const std::vector<View>& views, Sophus::SE3d&
 
     bool ret = false;
 
+    inliers.clear();
+
     if( views.front().points.size() >= 10 )
     {
         Sophus::SE3d world_to_camera = views.front().rig_to_camera * rig_to_world.inverse();
@@ -52,13 +54,6 @@ bool MVPnP::SolverMonoOpenCV::run( const std::vector<View>& views, Sophus::SE3d&
         }
         else
         {
-            inliers.resize( views.size() );
-
-            for( int i=0; i<views.size(); i++ )
-            {
-                inliers[i].assign(views[i].points.size(), true);
-            }
-
             ret = cv::solvePnP(
                 views.front().points,
                 views.front().projections,

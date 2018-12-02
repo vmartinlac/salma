@@ -11,10 +11,17 @@ MVPnP::Solver::~Solver()
 {
 }
 
-MVPnP::Solver* MVPnP::Solver::create()
+double MVPnP::Solver::computeReprojectionError(
+    const std::vector<View>& views,
+    const Sophus::SE3d& rig_to_world)
 {
-    return new SolverRANSACLM();
-    //return new SolverLM();
-    //return new SolverMonoOpenCV();
+    return 0.0;
 }
 
+double MVPnP::Solver::computeReprojectionError(
+    const std::vector<View>& views,
+    const std::vector< std::vector<bool> >& inliers,
+    const Sophus::SE3d& rig_to_world)
+{
+    return 0.0;
+}
