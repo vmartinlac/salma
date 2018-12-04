@@ -195,8 +195,8 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
     // proceed with matching.
 
-    //StereoMatchList& matches = f->stereo_matches;
-    //matches.clear();
+    std::vector< std::pair<int,int> >& matches = f->stereo_matches;
+    matches.clear();
 
     for(int i=0; i<f->views[0].keypoints.size(); i++)
     {
@@ -204,9 +204,9 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
         if( j >= 0 )
         {
-            //matches.push_back( std::pair<int,int>(i, j) );
-            f->views[0].tracks[i].stereo_match = j;
-            f->views[1].tracks[j].stereo_match = i;
+            matches.push_back( std::pair<int,int>(i, j) );
+            //f->views[0].tracks[i].stereo_match = j;
+            //f->views[1].tracks[j].stereo_match = i;
         }
     }
 

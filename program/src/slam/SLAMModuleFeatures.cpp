@@ -2,7 +2,7 @@
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleFeatures.h"
 
-#define DEBUG_SHOW_FEATURES
+//#define DEBUG_SHOW_FEATURES
 
 SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(project)
 {
@@ -30,7 +30,6 @@ void SLAMModuleFeatures::run(FramePtr frame)
     for(int i=0; i<2; i++)
     {
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
-        frame->views[i].tracks.resize( frame->views[i].keypoints.size() );
     }
 
 #ifdef DEBUG_SHOW_FEATURES
@@ -46,4 +45,56 @@ void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& ke
 {
     mFeature2d->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
 }
+
+/*
+const int N = keypoints.size();
+
+const int M = 400;
+if( N <= M ) return;
+
+std::vector<int> selection(N);
+for(int i=0; i<N; i++)
+{
+    selection[i] = i;
+}
+
+std::sort( selection.begin(), selection.end(), [&keypoints] (int i, int j) { return keypoints[i].response > keypoints[j].response; } );
+
+std::vector<double> radius(N);
+
+for(int i=0; i<N; i++)
+{
+    double value = std::numeric_limits<double>::max();
+
+    const double kappa = 0.9;
+
+    for(int j=0; j<i && keypoints[selection[i]].response < kappa*keypoints[selection[j]].response; j++)
+    {
+        value = std::min(value, cv::norm( keypoints[selection[i]].pt - keypoints[selection[j]].pt ));
+    }
+
+    radius[selection[i]] = value;
+}
+
+std::vector<double> sorted_radii(N);
+std::copy(radius.begin(), radius.end(), sorted_radii.begin());
+std::sort(sorted_radii.begin(), sorted_radii.end());
+
+std::vector<cv::KeyPoint> fkeypoints(M);
+cv::Mat fdescriptors(M, descriptors.cols, descriptors.type());
+
+int k = 0;
+for(int i=0; k < M && i<N; i++)
+{
+    if( radius[i] >= sorted_radii[M] )
+    {
+        fkeypoints[k] = keypoints[i];
+        fdescriptors.row(k) = descriptors.row(i);
+        k++;
+    }
+}
+
+fkeypoints.swap(keypoints);
+descriptors = std::move(fdescriptors);
+*/
 

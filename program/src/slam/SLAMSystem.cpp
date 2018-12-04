@@ -73,11 +73,13 @@ bool SLAMSystem::initialize()
 
     if(ret)
     {
+        mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mProject));
+        mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
+
         mModuleFeatures.reset(new SLAMModuleFeatures(mProject));
         mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mProject));
-        mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mProject));
         mModuleTriangulation.reset(new SLAMModuleTriangulation(mProject));
-        mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
+
         mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mProject));
     }
 
@@ -137,8 +139,12 @@ void SLAMSystem::run()
 
             mCurrentFrame.swap(new_frame);
 
-            std::cout << "=> Processing frame " << mCurrentFrame->id << std::endl;
+            //std::cout << "===> PROCESSING FRAME " << mCurrentFrame->id << " <===" <<std::endl;
+            std::cout << "PROCESSING FRAME " << mCurrentFrame->id << std::endl;
+
             handleFrame(mCurrentFrame);
+
+            std::cout << std::endl;
         }
 
         count++;
@@ -157,10 +163,14 @@ void SLAMSystem::run()
 
 void SLAMSystem::finalize()
 {
+    mModuleOpticalFlow.reset();
+    mModuleAlignment.reset();
+
     mModuleFeatures.reset();
     mModuleStereoMatcher.reset();
-    mModuleTemporalMatcher.reset();
     mModuleTriangulation.reset();
+
+    mModuleDenseReconstruction.reset();
 
     mProject.reset();
 
@@ -170,17 +180,12 @@ void SLAMSystem::finalize()
 
 void SLAMSystem::printWelcomeMessage()
 {
-    std::cout << std::endl;
-    std::cout << "   _____         _      __  __  " << std::endl;
-    std::cout << "  / ____|  /\\   | |    |  \\/  | " << std::endl;
-    std::cout << " | (___   /  \\  | |    | \\  / | " << std::endl;
-    std::cout << "  \\___ \\ / /\\ \\ | |    | |\\/| | " << std::endl;
-    std::cout << "  ____) / ____ \\| |____| |  | | " << std::endl;
-    std::cout << " |_____/_/    \\_\\______|_|  |_| " << std::endl;
+    const std::string logo = BuildInfo::getAsciiLogo();
+
+    std::cout << logo << std::endl;
+    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
     std::cout << std::endl;
     std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
-    std::cout << std::endl;
-    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
     std::cout << std::endl;
     std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
     std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
@@ -189,95 +194,69 @@ void SLAMSystem::printWelcomeMessage()
 
 void SLAMSystem::handleFrame(FramePtr frame)
 {
-    // detect features.
+    /////////////// TRACKING
+
+    // optical flow.
 
     {
-        mModuleFeatures->run(frame);
+        std::cout << "   OPTICAL FLOW" << std::endl;
 
-        std::cout << "Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
-        std::cout << "Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+        mModuleOpticalFlow->run(frame);
+
+        std::cout << "      Number of projections on left view: " << frame->views[0].projections.size() << std::endl;
+        std::cout << "      Number of projections on right view: " << frame->views[1].projections.size() << std::endl;
     }
 
-    // perform temporal matching.
+    // alignment.
 
     {
-        mModuleTemporalMatcher->match(frame);
+        std::cout << "   ALIGNMENT" << std::endl;
 
-        auto op = [] (int count, const Track& t)
-        {
-            return ( t.anterior_match >= 0 ) ? count+1 : count;
-        };
-
-        const int count_left = std::accumulate( frame->views[0].tracks.begin(), frame->views[0].tracks.end(), 0, op );
-        const int count_right = std::accumulate( frame->views[1].tracks.begin(), frame->views[1].tracks.end(), 0, op );
-
-        std::cout << "Num temporal matches in left view: " << count_left << std::endl;
-        std::cout << "Num temporal matches in right view: " << count_right << std::endl;
-    }
-
-    // perform stereo matching.
-
-    {
-        mModuleStereoMatcher->match(frame);
-
-        int count = 0;
-
-        for(int i=0; i<frame->views[0].tracks.size(); i++)
-        {
-            if( frame->views[0].tracks[i].stereo_match >= 0 )
-            {
-                count++;
-            }
-        }
-
-        std::cout << "Number of stereo matches: " << count << std::endl;
-    }
-
-    /*
-    {
-        int n = 0;
-        for(Track& t : frame->views[0].tracks)
-        {
-            if( t.stereo_match >= 0 && t.anterior_match >= 0 && frame->views[1].tracks[t.stereo_match].anterior_match >= 0 )
-            {
-                n++;
-            }
-        }
-        std::cout << "COUNT = " << n << std::endl;
-    }
-    */
-
-    // perform triangulation of new map points and alignment of current keyframe.
-
-    {
-        mModuleTriangulation->run(frame);
-
-        auto proc = [] (int count, const Track& t)
-        {
-            return (t.mappoint) ? count+1 : count;
-        };
-
-        int n = 0;
-        n = std::accumulate(frame->views[0].tracks.begin(), frame->views[0].tracks.end(), n, proc);
-        n = std::accumulate(frame->views[1].tracks.begin(), frame->views[1].tracks.end(), n, proc);
-
-        std::cout << "Number of projected map point before RANSAC: " << n << std::endl;
-    }
-
-    // align current frame with respect to previous frame.
-
-    {
         mModuleAlignment->run(frame);
 
-        std::cout << "Alignment status: " << ( (frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
-
-        std::cout << "Position: " << frame->frame_to_world.translation().transpose() << std::endl;
-        std::cout << "Attitude: " << frame->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
+        std::cout << "      Alignment status: " << ( (frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
+        std::cout << "      Position: " << frame->frame_to_world.translation().transpose() << std::endl;
+        std::cout << "      Attitude: " << frame->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
     }
 
-    // feed the dense reconstruction.
+    /////////////// MAPPING
+
+    // features detection.
 
     {
+        std::cout << "   FEATURES DETECTION" << std::endl;
+
+        mModuleFeatures->run(frame);
+
+        std::cout << "      Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
+        std::cout << "      Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+    }
+
+    // stereo matching.
+
+    {
+        std::cout << "   STEREO MATCHING" << std::endl;
+
+        mModuleStereoMatcher->match(frame);
+
+        std::cout << "      Number of stereo matches: " << frame->stereo_matches.size() << std::endl;
+    }
+
+    // triangulation.
+
+    {
+        std::cout << "   TRIANGULATION" << std::endl;
+
+        mModuleTriangulation->run(frame);
+    }
+
+    /////////////// RECONSTRUCTION
+
+    // dense reconstruction.
+
+    {
+        std::cout << "   DENSE RECONSTRUCTION" << std::endl;
+
         mModuleDenseReconstruction->run(frame);
     }
 }

@@ -11,60 +11,31 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMM
     mMinAngleBetweenRays = project->getParameterReal("triangulation_min_angle_between_rays", 3.0) * M_PI / 180.0;
     mCheckPerpendicularLength = project->getParameterBoolean("triangulation_check_perpendicular_length", false);
     mPerpendicularMaxLength = project->getParameterReal("triangulation_perpendicular_max_length", 0.0);
+    mInitialLifeTime = project->getParameterInteger("track_lifetime", 4);
 }
 
 void SLAMModuleTriangulation::run(FramePtr frame)
 {
-    if( frame->previous_frame )
+    for( std::pair<int,int>& p : frame->stereo_matches )
     {
-        std::vector<Track>& left_tracks = frame->views[0].tracks;
-        std::vector<Track>& right_tracks = frame->views[1].tracks;
+        MapPointPtr world_point = triangulate( frame, p.first, p.second );
 
-        std::vector<Track>& prev_left_tracks = frame->previous_frame->views[0].tracks;
-        std::vector<Track>& prev_right_tracks = frame->previous_frame->views[1].tracks;
-
-        for(Track& t : left_tracks)
+        if(world_point)
         {
-            if( t.anterior_match >= 0 )
-            {
-                t.mappoint = prev_left_tracks[t.anterior_match].mappoint;
-            }
-        }
+            Projection left_proj;
+            Projection right_proj;
 
-        for(Track& t : right_tracks)
-        {
-            if( t.anterior_match >= 0 )
-            {
-                t.mappoint = prev_right_tracks[t.anterior_match].mappoint;
-            }
-        }
+            left_proj.mappoint = world_point;
+            right_proj.mappoint = world_point;
 
-        for(Track& t : left_tracks)
-        {
-            if( t.stereo_match >= 0 )
-            {
-                MapPointPtr& left_point = t.mappoint;
-                MapPointPtr& right_point = right_tracks[t.stereo_match].mappoint;
+            left_proj.point = frame->views[0].keypoints[p.first].pt;
+            right_proj.point = frame->views[1].keypoints[p.second].pt;
 
-                const int left_prev = t.anterior_match;
-                const int right_prev = right_tracks[t.stereo_match].anterior_match;
+            left_proj.max_lifetime = mInitialLifeTime;
+            right_proj.max_lifetime = mInitialLifeTime;
 
-                if( bool(left_point) && bool(right_point) )
-                {
-                }
-                else if( bool(left_point) )
-                {
-                    right_point = left_point;
-                }
-                else if( bool(right_point) )
-                {
-                    left_point = right_point;
-                }
-                else if( left_prev >= 0 && right_prev >= 0 )
-                {
-                    right_point = left_point = triangulate( frame->previous_frame, left_prev, right_prev );
-                }
-            }
+            frame->views[0].projections.push_back( left_proj );
+            frame->views[1].projections.push_back( right_proj );
         }
     }
 }

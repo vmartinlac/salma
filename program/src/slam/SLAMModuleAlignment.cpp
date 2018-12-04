@@ -30,53 +30,25 @@ void SLAMModuleAlignment::run(FramePtr frame)
         views[1].distortion_coefficients = mRightCamera->distortion_coefficients;
         views[1].rig_to_camera = mRig->right_camera_to_rig.inverse();
 
-        auto counter = [] (int count, Track& t)
-        {
-            return (bool(t.mappoint)) ? count+1 : count;
-        };
-
         for(int i=0; i<2; i++)
         {
-            const int num_points = std::accumulate(
-                frame->views[i].tracks.begin(),
-                frame->views[i].tracks.end(),
-                0,
-                counter);
-
-            views[i].points.resize(num_points);
-            views[i].projections.resize(num_points);
-
-            int j = 0;
-            int k = 0;
-
-            while( k < num_points && j<frame->views[i].keypoints.size() )
+            for( Projection& p : frame->views[i].projections )
             {
-                if( frame->views[i].tracks[j].mappoint )
-                {
-                    const Eigen::Vector3d pt = frame->views[i].tracks[j].mappoint->position;
+                cv::Point3f world;
+                world.x = p.mappoint->position.x();
+                world.y = p.mappoint->position.y();
+                world.z = p.mappoint->position.z();
 
-                    views[i].points[k].x = pt.x();
-                    views[i].points[k].y = pt.y();
-                    views[i].points[k].z = pt.z();
-
-                    views[i].projections[k] = frame->views[i].keypoints[j].pt;
-
-                    k++;
-                }
-
-                j++;
+                views[i].projections.push_back( p.point );
+                views[i].points.push_back( world );
             }
-
-            if( k != num_points) throw std::logic_error("internal error");
         }
-
-        frame->frame_to_world = frame->previous_frame->frame_to_world;
 
         std::vector< std::vector<bool> > inliers;
 
-        const bool ret = mSolver->run(views, frame->frame_to_world, true, inliers);
+        frame->frame_to_world = frame->previous_frame->frame_to_world;
 
-        frame->aligned_wrt_previous_frame = ret;
+        const bool ret = mSolver->run(views, frame->frame_to_world, true, inliers);
 
         if(ret)
         {
@@ -84,27 +56,35 @@ void SLAMModuleAlignment::run(FramePtr frame)
 
             for(int i=0; i<2; i++)
             {
-                for(int j=0; j<frame->views[i].keypoints.size(); j++)
+                int j = 0;
+                while( j < frame->views[i].projections.size() )
                 {
-                    if( inliers[i][j] == false )
+                    if( inliers[i][j] )
                     {
-                        frame->views[i].tracks[j].mappoint.reset();
+                        j++;
+                    }
+                    else
+                    {
+                        frame->views[i].projections[j] = frame->views[i].projections.back();
+                        frame->views[i].projections.pop_back();
                     }
                 }
             }
+
+            frame->aligned_wrt_previous_frame = true;
         }
         else
         {
             frame->frame_to_world = Sophus::SE3d();
-
-            for(int i=0; i<2; i++)
-            {
-                for(int j=0; j<frame->views[i].keypoints.size(); j++)
-                {
-                    frame->views[i].tracks[j].mappoint.reset();
-                }
-            }
+            frame->aligned_wrt_previous_frame = false;
+            frame->views[0].projections.clear();
+            frame->views[1].projections.clear();
         }
+    }
+    else
+    {
+        frame->frame_to_world = Sophus::SE3d();
+        frame->aligned_wrt_previous_frame = false;
     }
 }
 

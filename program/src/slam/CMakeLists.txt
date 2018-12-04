@@ -9,16 +9,16 @@ add_library(
     Misc.h
     SLAMModule.cpp
     SLAMModule.h
+    SLAMModuleOpticalFlow.cpp
+    SLAMModuleOpticalFlow.h
+    SLAMModuleAlignment.cpp
+    SLAMModuleAlignment.h
     SLAMModuleFeatures.cpp
     SLAMModuleFeatures.h
-    SLAMModuleTemporalMatcher.cpp
-    SLAMModuleTemporalMatcher.h
     SLAMModuleStereoMatcher.cpp
     SLAMModuleStereoMatcher.h
     SLAMModuleTriangulation.cpp
     SLAMModuleTriangulation.h
-    SLAMModuleAlignment.cpp
-    SLAMModuleAlignment.h
     SLAMModuleDenseReconstruction.cpp
     SLAMModuleDenseReconstruction.h
     SLAMPyramid.h

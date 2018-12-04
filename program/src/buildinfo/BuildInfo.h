@@ -13,5 +13,7 @@ public:
     static std::string getBuildType();
     static std::string getCompilerName();
     static std::string getCompilationDate();
+
+    static std::string getAsciiLogo();
 };
 

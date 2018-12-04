@@ -35,3 +35,17 @@ std::string BuildInfo::getVersionString()
     return std::to_string(BI_VERSION_MAJOR) + "." + std::to_string(BI_VERSION_MINOR) + "." + std::to_string(BI_VERSION_REVISION);
 }
 
+std::string BuildInfo::getAsciiLogo()
+{
+    const std::string ret =
+        "   _____         _      __  __          \n"
+        "  / ____|  /\\   | |    |  \\/  |   /\\    \n"
+        " | (___   /  \\  | |    | \\  / |  /  \\   \n"
+        "  \\___ \\ / /\\ \\ | |    | |\\/| | / /\\ \\  \n"
+        "  ____) / ____ \\| |____| |  | |/ ____ \\ \n"
+        " |_____/_/    \\_\\______|_|  |_/_/    \\_\\\n"
+        "                                        \n";
+
+    return ret;
+}
+

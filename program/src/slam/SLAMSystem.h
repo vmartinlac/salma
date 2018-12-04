@@ -6,11 +6,14 @@
 #include "VideoReader.h"
 #include "SLAMDataStructures.h"
 #include "SLAMProject.h"
+
+#include "SLAMModuleOpticalFlow.h"
+#include "SLAMModuleAlignment.h"
+
 #include "SLAMModuleFeatures.h"
 #include "SLAMModuleStereoMatcher.h"
-#include "SLAMModuleTemporalMatcher.h"
 #include "SLAMModuleTriangulation.h"
-#include "SLAMModuleAlignment.h"
+
 #include "SLAMModuleDenseReconstruction.h"
 
 class SLAMSystem
@@ -31,19 +34,21 @@ protected:
 
 protected:
 
+    int mSkipTo;
+
     SLAMProjectPtr mProject;
+
+    SLAMModuleOpticalFlowPtr mModuleOpticalFlow;
+    SLAMModuleAlignmentPtr mModuleAlignment;
 
     SLAMModuleFeaturesPtr mModuleFeatures;
     SLAMModuleStereoMatcherPtr mModuleStereoMatcher;
-    SLAMModuleTemporalMatcherPtr mModuleTemporalMatcher;
     SLAMModuleTriangulationPtr mModuleTriangulation;
-    SLAMModuleAlignmentPtr mModuleAlignment;
+
     SLAMModuleDenseReconstructionPtr mModuleDenseReconstruction;
 
     FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
-
-    int mSkipTo;
 };
 
 typedef std::shared_ptr<SLAMSystem> SLAMSystemPtr;

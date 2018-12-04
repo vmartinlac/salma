@@ -24,6 +24,7 @@ protected:
     double mMinAngleBetweenRays;
     double mPerpendicularMaxLength;
     bool mCheckPerpendicularLength;
+    int mInitialLifeTime;
 };
 
 typedef std::shared_ptr<SLAMModuleTriangulation> SLAMModuleTriangulationPtr;

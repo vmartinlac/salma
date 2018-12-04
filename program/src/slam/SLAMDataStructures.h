@@ -20,34 +20,15 @@ class MapPoint
 {
 public:
 
-    MapPoint()
-    {
-        id = -1;
-        track_count = 0;
-    }
-
-    int id;
     Eigen::Vector3d position;
-    //Eigen::Matrix3d covariance;
-    int track_count;
 };
 
-class Track
+class Projection
 {
 public:
-
-    Track()
-    {
-        anterior_match = -1;
-        posterior_match = -1;
-        stereo_match = -1;
-    }
-
-    int anterior_match; // match in same view of previous keyframe.
-    int posterior_match; // match in same view of next keyframe.
-    int stereo_match; // match in opposite view of current keyframe.
-
     MapPointPtr mappoint;
+    cv::Point2f point;
+    int max_lifetime;
 };
 
 class View
@@ -58,7 +39,7 @@ public:
 
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
-    std::vector<Track> tracks;
+    std::vector<Projection> projections;
 };
 
 class Frame
@@ -75,6 +56,7 @@ public:
     int id;
     double timestamp;
     View views[2];
+    std::vector< std::pair<int,int> > stereo_matches;
     Sophus::SE3d frame_to_world;
     bool aligned_wrt_previous_frame;
 
