@@ -1,4 +1,8 @@
-find_package(OpenSceneGraph COMPONENTS osg osgGA osgViewer osgDB REQUIRED)
-add_library(OpenSceneGraph INTERFACE)
-target_include_directories(OpenSceneGraph INTERFACE ${OPENSCENEGRAPH_INCLUDE_DIRS})
-target_link_libraries(OpenSceneGraph INTERFACE ${OPENSCENEGRAPH_LIBRARIES})
+find_package(PkgConfig REQUIRED)
+
+pkg_search_module(OSG REQUIRED openscenegraph)
+
+add_library(openscenegraph INTERFACE)
+target_include_directories(openscenegraph INTERFACE ${OSG_INCLUDE_DIRS})
+target_link_libraries(openscenegraph INTERFACE ${OSG_LDFLAGS})
+

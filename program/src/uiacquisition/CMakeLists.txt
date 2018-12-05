@@ -1,15 +1,9 @@
 
 add_library(
-    ui
+    uiacquisition
     STATIC
-    PathWidget.h
-    PathWidget.cpp
-    AboutDialog.cpp
-    AboutDialog.h
     MainWindow.cpp
     MainWindow.h
-    Port.cpp
-    Port.h
     StatsWidget.cpp
     StatsWidget.h
     VideoWidget.cpp
@@ -53,8 +47,10 @@ add_library(
 )
 
 target_link_libraries(
-    ui PUBLIC
+    uiacquisition
+    PUBLIC
     buildinfo
+    uicommon
     video
     target
     Qt5::Widgets
@@ -65,8 +61,7 @@ target_link_libraries(
     opencv_calib3d
     Sophus::Sophus
     Threads::Threads
-    #g2o::core
 )
 
-target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(uiacquisition INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -18,9 +18,8 @@ find_package(OpenCV REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(Sophus REQUIRED)
-#find_package(g2o REQUIRED)
 find_package(Aravis REQUIRED)
-#find_package(libLBFGS REQUIRED)
+find_package(OSG REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(app)
@@ -28,10 +27,11 @@ add_subdirectory(tst)
 
 # Old stuff:
 
+#find_package(g2o REQUIRED)
+#find_package(libLBFGS REQUIRED)
 #find_package(Vimba REQUIRED)
 #find_package(OSG REQUIRED)
 #find_package(Curses REQUIRED)
-#find_package(Aravis REQUIRED)
 #find_package(Boost 1.60.0 REQUIRED COMPONENTS math_tr1 random program_options)
 #find_package(OpenMP REQUIRED)
 

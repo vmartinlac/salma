@@ -5,5 +5,5 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(calibrateandrecordui PUBLIC ui)
+target_link_libraries(calibrateandrecordui PUBLIC uiacquisition)
 

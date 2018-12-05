@@ -1,3 +1,4 @@
 add_subdirectory(calibrateandrecordui)
+add_subdirectory(visualization)
 add_subdirectory(reconstruction)
 
