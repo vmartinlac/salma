@@ -70,6 +70,7 @@ void SLAMModuleOpticalFlow::processView(const View& prev_view, View& curr_view)
                 proj.point = points_curr[i];
                 proj.mappoint = proj_prev[i].mappoint;
                 proj.max_lifetime = proj_prev[i].max_lifetime - 1;
+                proj.type = PROJECTION_TRACKED;
 
                 proj_curr.push_back(proj);
             }

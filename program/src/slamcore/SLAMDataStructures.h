@@ -23,11 +23,18 @@ public:
     Eigen::Vector3d position;
 };
 
+enum ProjectionType
+{
+    PROJECTION_MAPPED,
+    PROJECTION_TRACKED
+};
+
 class Projection
 {
 public:
     MapPointPtr mappoint;
     cv::Point2f point;
+    ProjectionType type;
     int max_lifetime;
 };
 
