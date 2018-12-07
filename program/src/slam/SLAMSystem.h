@@ -34,7 +34,9 @@ protected:
 
 protected:
 
-    int mSkipTo;
+    int mOptionFirst;
+    int mOptionCount;
+    std::string mOptionName;
 
     SLAMProjectPtr mProject;
 

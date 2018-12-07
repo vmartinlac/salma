@@ -16,7 +16,8 @@
 
 SLAMSystem::SLAMSystem()
 {
-    mSkipTo = 0;
+    mOptionFirst = 0;
+    mOptionCount = 0;
 }
 
 SLAMSystem::~SLAMSystem()
@@ -25,53 +26,95 @@ SLAMSystem::~SLAMSystem()
 
 bool SLAMSystem::initialize()
 {
-    const char* error = "";
-    bool ret = true;
-
     QCommandLineParser parser;
+    bool go_on = true;
+
     {
         parser.setApplicationDescription("Perform SLAM on given video. Writen by Victor Martin Lac in 2018.");
         parser.addHelpOption();
         parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
 
-        QCommandLineOption skip_to_option("skip-to", "Index of first frame which will be processed", "FIRST_FRAME");
-        skip_to_option.setDefaultValue("0");
-        parser.addOption(skip_to_option);
+        QCommandLineOption option_first("first", "Index of the first frame to be processed", "FIRST_FRAME");
+        option_first.setDefaultValue("0");
+        parser.addOption(option_first);
+
+        QCommandLineOption option_count("count", "Number of frames to be processed", "NUMBER_OF_FRAMES");
+        option_count.setDefaultValue("-1");
+        parser.addOption(option_count);
+
+        QCommandLineOption option_name("name", "Name of saved reconstruction", "NAME");
+        parser.addOption(option_name);
     }
 
-    if( ret )
+    if(go_on)
     {
-        ret = parser.parse(QCoreApplication::arguments());
-        error = "Incorrect command line!";
+        go_on = parser.parse(QCoreApplication::arguments());
+
+        if(go_on == false)
+        {
+            std::cout << "Incorrect command line!" << std::endl;
+        }
     }
 
-    if( ret )
+    if( go_on && parser.isSet("help") )
     {
-        ret = (parser.positionalArguments().size() == 1);
-        error = "Incorrect command line!";
+        std::cout << parser.helpText().toStdString() << std::endl;
+        go_on = false;
     }
 
-    if(ret)
+    if(go_on)
     {
-        mSkipTo = parser.value("skip-to").toInt(&ret);
-        error = "Incorrect value for skip-to argument!";
+        go_on = (parser.positionalArguments().size() == 1);
+
+        if(go_on == false)
+        {
+            std::cout << "Incorrect command line!" << std::endl;
+        }
     }
 
-    if(ret)
+    if(go_on)
     {
-        ret = (mSkipTo >= 0);
-        error = "Incorrect value for skip-to argument!";
+        mOptionFirst = parser.value("first").toInt(&go_on);
+
+        if(go_on == false)
+        {
+            std::cout << "Incorrect command line arguments!" << std::endl;
+        }
     }
 
-    if(ret)
+    if(go_on)
+    {
+        mOptionCount = parser.value("count").toInt(&go_on);
+
+        if(go_on == false)
+        {
+            std::cout << "Incorrect command line arguments!" << std::endl;
+        }
+    }
+
+    if(go_on)
+    {
+        mOptionName = parser.value("name").toStdString();
+
+        if(go_on == false)
+        {
+            go_on = "Incorrect command line arguments!";
+        }
+    }
+
+    if(go_on)
     {
         mProject.reset(new SLAMProject());
         const std::string project_path = parser.positionalArguments().front().toStdString();
-        ret = mProject->load(project_path.c_str());
-        error = "Could not load project!";
+        go_on = mProject->load(project_path.c_str());
+
+        if(go_on == false)
+        {
+            std::cout << "Could not load project!" << std::endl;
+        }
     }
 
-    if(ret)
+    if(go_on)
     {
         mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mProject));
         mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
@@ -83,55 +126,51 @@ bool SLAMSystem::initialize()
         mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mProject));
     }
 
-    if(ret == false)
-    {
-        std::cerr << error << std::endl;
-    }
-
-    return ret;
+    return go_on;
 }
 
 void SLAMSystem::run()
 {
     Image im;
     VideoSourcePtr video;
-    int count = 0;
-    bool ok = true;
+    int image_count = 0;
+    int frame_count = 0;
+    bool go_on = true;
 
     printWelcomeMessage();
 
-    if( ok )
+    if( go_on )
     {
-        ok = initialize();
+        go_on = initialize();
     }
 
-    if( ok )
+    if( go_on )
     {
         video = mProject->getVideo();
-        ok = bool(video);
+        go_on = bool(video);
     }
 
-    if(ok)
+    if(go_on)
     {
-        ok = video->open();
+        go_on = video->open();
     }
 
-    if(ok)
+    if(go_on)
     {
         video->trigger();
         video->read(im);
     }
 
-    while(ok && im.isValid())
+    while( (mOptionCount < 0 || frame_count < mOptionCount) && go_on && im.isValid() )
     {
         video->trigger();
 
-        if( count >= mSkipTo )
+        if( image_count >= mOptionFirst )
         {
             FramePtr new_frame(new Frame());
 
             new_frame->previous_frame = mCurrentFrame;
-            new_frame->id = count;
+            new_frame->id = image_count;
             new_frame->timestamp = im.getTimestamp();
             new_frame->views[0].image = im.getFrame(0);
             new_frame->views[1].image = im.getFrame(1);
@@ -145,14 +184,16 @@ void SLAMSystem::run()
             handleFrame(mCurrentFrame);
 
             std::cout << std::endl;
+
+            frame_count++;
         }
 
-        count++;
+        image_count++;
 
         video->read(im);
     }
 
-    if( ok )
+    if( go_on )
     {
         video->close();
         video.reset();

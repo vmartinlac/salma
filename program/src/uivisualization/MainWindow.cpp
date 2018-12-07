@@ -1,3 +1,4 @@
+#include <QToolBar>
 #include "MainWindow.h"
 
 MainWindow::MainWindow(QWidget* parent)
