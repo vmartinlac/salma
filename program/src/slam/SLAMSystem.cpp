@@ -288,6 +288,8 @@ void SLAMSystem::handleFrame(FramePtr frame)
         std::cout << "   TRIANGULATION" << std::endl;
 
         mModuleTriangulation->run(frame);
+
+        std::cout << "      Number of new mappoints: " << mModuleTriangulation->getNumberOfNewMapPoints() << std::endl;
     }
 
     /////////////// RECONSTRUCTION

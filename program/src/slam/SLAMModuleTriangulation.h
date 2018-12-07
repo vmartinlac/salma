@@ -12,6 +12,8 @@ public:
 
     void run(FramePtr frame);
 
+    int getNumberOfNewMapPoints();
+
 protected:
 
     MapPointPtr triangulate(FramePtr frame, int left_keypoint, int right_keypoint);
@@ -30,7 +32,10 @@ protected:
     double mMinAngleBetweenRays;
     double mPerpendicularMaxLength;
     bool mCheckPerpendicularLength;
+    double mMaxReprojectionError;
     int mInitialLifeTime;
+
+    int mNumberOfNewMapPoints;
 };
 
 typedef std::shared_ptr<SLAMModuleTriangulation> SLAMModuleTriangulationPtr;

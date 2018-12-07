@@ -1,3 +1,4 @@
+#include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <Eigen/Eigen>
 #include "TwoViewGeometry.h"
@@ -16,19 +17,17 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMM
     mMinAngleBetweenRays = project->getParameterReal("triangulation_min_angle_between_rays", 3.0) * M_PI / 180.0;
     mCheckPerpendicularLength = project->getParameterBoolean("triangulation_check_perpendicular_length", false);
     mPerpendicularMaxLength = project->getParameterReal("triangulation_perpendicular_max_length", 0.0);
+    mMaxReprojectionError = project->getParameterReal("triangulation_max_reprojection_error", 2.0);
     mInitialLifeTime = project->getParameterInteger("track_lifetime", 4);
 }
 
 void SLAMModuleTriangulation::run(FramePtr frame)
 {
+    mNumberOfNewMapPoints = 0;
+
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
         MapPointPtr world_point = triangulate( frame, p.first, p.second );
-
-        if(world_point)
-        {
-            ;
-        }
 
         if(world_point)
         {
@@ -49,15 +48,26 @@ void SLAMModuleTriangulation::run(FramePtr frame)
 
             frame->views[0].projections.push_back( left_proj );
             frame->views[1].projections.push_back( right_proj );
+
+            mNumberOfNewMapPoints++;
         }
     }
 }
 
+int SLAMModuleTriangulation::getNumberOfNewMapPoints()
+{
+    return mNumberOfNewMapPoints;
+}
+
 MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int right_keypoint)
 {
-    // TODO: stereo correction (Hartley ou Lindstrom).
+    // Declare some variables.
 
+    bool ok = true;
+    Eigen::Vector3d result;
     MapPointPtr ret;
+
+    // Compute normalized points.
 
     const std::vector<cv::Point2f> distorted_left{ frame->views[0].keypoints[left_keypoint].pt };
     const std::vector<cv::Point2f> distorted_right{ frame->views[1].keypoints[right_keypoint].pt };
@@ -78,7 +88,12 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
     normalized_right.y() = normalized_right_arr.front().y;
     normalized_right.z() = 1.0;
 
+    // Computed corrected normalized points with Lindstrom method.
+
     correctWithLindstrom( normalized_left, normalized_right );
+
+    // Triangulate first in rig frame. It will be transformed to world frame at the very end of this function.
+    // We use the middle of the common perpendicular of the two rays.
 
     const Eigen::Vector3d C0 = mRig->left_camera_to_rig.translation();
     const Eigen::Matrix3d R0 = mRig->left_camera_to_rig.rotationMatrix();
@@ -105,8 +120,12 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
 
     const double max_det = std::min( std::pow(std::cos(mMinAngleBetweenRays), 2.0) - 1.0, -1.0e-8 );
 
-    if( det < max_det )
+    ok = ( det < max_det );
+
+    if(ok)
     {
+        ok = false;
+
         Eigen::Matrix2d invA;
 
         invA(0,0) = A(1,1)/det;
@@ -123,10 +142,70 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
 
             if( mCheckPerpendicularLength == false || (X1-X0).norm() < mPerpendicularMaxLength )
             {
-                ret.reset(new MapPoint());
-                ret->position = frame->frame_to_world * ( 0.5 * (X0 + X1) );
+                result = 0.5 * (X0 + X1);
+                ok = true;
             }
         }
+    }
+
+    // Check reprojection.
+
+    if(ok)
+    {
+        const Eigen::Vector3d in_left_camera = mRig->left_camera_to_rig.inverse() * result;
+        const Eigen::Vector3d in_right_camera = mRig->right_camera_to_rig.inverse() * result;
+
+        ok = (in_left_camera.z() > 0.0 && in_right_camera.z() > 0.0);
+
+        if(ok)
+        {
+            cv::Point3f in_left_camera_cv;
+            in_left_camera_cv.x = in_left_camera.x();
+            in_left_camera_cv.y = in_left_camera.y();
+            in_left_camera_cv.z = in_left_camera.z();
+
+            cv::Point3f in_right_camera_cv;
+            in_right_camera_cv.x = in_right_camera.x();
+            in_right_camera_cv.y = in_right_camera.y();
+            in_right_camera_cv.z = in_right_camera.z();
+
+            std::vector<cv::Point3f> in_left_camera_arr{ in_left_camera_cv };
+            std::vector<cv::Point3f> in_right_camera_arr{ in_right_camera_cv };
+
+            std::vector<cv::Point2f> projected_left;
+            std::vector<cv::Point2f> projected_right;
+
+            cv::projectPoints(
+                in_left_camera_arr,
+                cv::Mat::zeros(3,1,CV_64F),
+                cv::Mat::zeros(3,1,CV_64F),
+                mLeftCamera->calibration_matrix,
+                mLeftCamera->distortion_coefficients,
+                projected_left);
+
+            cv::projectPoints(
+                in_right_camera_arr,
+                cv::Mat::zeros(3,1,CV_64F),
+                cv::Mat::zeros(3,1,CV_64F),
+                mRightCamera->calibration_matrix,
+                mRightCamera->distortion_coefficients,
+                projected_right);
+
+            const double error_left = cv::norm( projected_left.front() - distorted_left.front() );
+            const double error_right = cv::norm( projected_right.front() - distorted_right.front() );
+
+            //std::cout << error_left << " " << error_right << std::endl;
+
+            ok = (error_left < mMaxReprojectionError && error_right < mMaxReprojectionError);
+        }
+    }
+
+    // Convert point from rig frame to world frame.
+
+    if(ok)
+    {
+        ret.reset(new MapPoint());
+        ret->position = frame->frame_to_world * result;
     }
 
     return ret;
