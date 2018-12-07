@@ -1,9 +1,11 @@
-#include <utility>
+#include <Eigen/Eigen>
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
+#include <utility>
 #include "SLAMModuleStereoMatcher.h"
 #include "FinitePriorityQueue.h"
-#include "Misc.h"
 #include "Debug.h"
+#include "TwoViewGeometry.h"
 
 //#define DEBUG_SHOW_EPIPOLAR_LINES
 //#define DEBUG_SHOW_MATCHES
@@ -24,8 +26,8 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMM
     mCameraCalibration[1] = project->getRightCameraCalibration();
     mStereoRigCalibration = project->getStereoRigCalibration();
 
-    mFundamentalMatrices[0] = Misc::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
-    mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
+    mFundamentalMatrices[1] = TwoViewGeometry::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
+    mFundamentalMatrices[0] = mFundamentalMatrices[1].transpose();
 
 }
 
@@ -215,23 +217,12 @@ void SLAMModuleStereoMatcher::match(FramePtr f)
 
 #ifdef DEBUG_SHOW_MATCHES
     {
-        std::vector< std::pair<int,int> > matching;
-
-        for(int i=0; i<f->views[0].keypoints.size(); i++)
-        {
-            const int j = f->views[0].tracks[i].stereo_match;
-            if( j >= 0 )
-            {
-                matching.push_back( std::pair<int,int>(i,j) );
-            }
-        }
-
         Debug::stereoimshow(
             f->views[0].image,
             f->views[1].image,
             f->views[0].keypoints,
             f->views[1].keypoints,
-            matching);
+            matches);
     }
 #endif
 }

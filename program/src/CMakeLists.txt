@@ -7,4 +7,5 @@ add_subdirectory(uiacquisition)
 add_subdirectory(uivisualization)
 add_subdirectory(video)
 add_subdirectory(slam)
+add_subdirectory(slamcore)
 

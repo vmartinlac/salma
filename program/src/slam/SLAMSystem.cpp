@@ -12,7 +12,6 @@
 #include "BuildInfo.h"
 #include "SLAMSystem.h"
 #include "Debug.h"
-#include "Misc.h"
 
 SLAMSystem::SLAMSystem()
 {
