@@ -12,6 +12,7 @@ add_library(
 target_link_libraries(
     slamcore
     PUBLIC
+    #openscenegraph
     Qt5::Core
     Qt5::Widgets
     Qt5::Sql

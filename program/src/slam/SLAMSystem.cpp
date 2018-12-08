@@ -28,21 +28,18 @@ bool SLAMSystem::initialize()
     QCommandLineParser parser;
     bool go_on = true;
 
+    mOptionFirst = 0;
+    mOptionCount = -1;
+    mOptionName = "myreconstruction";
+
     {
         parser.setApplicationDescription("Perform SLAM on given video. Writen by Victor Martin Lac in 2018.");
         parser.addHelpOption();
         parser.addPositionalArgument("PROJECT_PATH", "Path to project root directory");
 
-        QCommandLineOption option_first("first", "Index of the first frame to be processed", "FIRST_FRAME");
-        option_first.setDefaultValue("0");
-        parser.addOption(option_first);
-
-        QCommandLineOption option_count("count", "Number of frames to be processed", "NUMBER_OF_FRAMES");
-        option_count.setDefaultValue("-1");
-        parser.addOption(option_count);
-
-        QCommandLineOption option_name("name", "Name of saved reconstruction", "NAME");
-        parser.addOption(option_name);
+        parser.addOption(QCommandLineOption("first", "Index of the first frame to be processed", "FIRST_FRAME", "0"));
+        parser.addOption(QCommandLineOption("count", "Number of frames to be processed", "NUMBER_OF_FRAMES", "-1"));
+        parser.addOption(QCommandLineOption("recname", "Name of saved reconstruction", "NAME", "myreconstruction"));
     }
 
     if(go_on)
@@ -52,6 +49,7 @@ bool SLAMSystem::initialize()
         if(go_on == false)
         {
             std::cout << "Incorrect command line!" << std::endl;
+            std::cout << parser.errorText().toStdString() << std::endl;
         }
     }
 
@@ -93,11 +91,13 @@ bool SLAMSystem::initialize()
 
     if(go_on)
     {
-        mOptionName = parser.value("name").toStdString();
+        mOptionName = parser.value("recname").toStdString();
+
+        go_on = (mOptionName.empty() == false);
 
         if(go_on == false)
         {
-            go_on = "Incorrect command line arguments!";
+            std::cout << "Incorrect command line arguments!" << std::endl;
         }
     }
 
@@ -197,6 +197,11 @@ void SLAMSystem::run()
         video->close();
         video.reset();
 
+        if(mCurrentFrame)
+        {
+            mProject->exportReconstruction(mCurrentFrame, mOptionName);
+        }
+
         finalize();
     }
 }
@@ -214,7 +219,6 @@ void SLAMSystem::finalize()
 
     mProject.reset();
 
-    mFirstFrame.reset();
     mCurrentFrame.reset();
 }
 

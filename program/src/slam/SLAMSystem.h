@@ -49,7 +49,6 @@ protected:
 
     SLAMModuleDenseReconstructionPtr mModuleDenseReconstruction;
 
-    FramePtr mFirstFrame;
     FramePtr mCurrentFrame;
 };
 
