@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QByteArray>
 #include "SLAMProject.h"
+#include "SLAMReconstructionDB.h"
 #include "VideoSystem.h"
 
 SLAMProject::SLAMProject()
@@ -193,6 +194,30 @@ bool SLAMProject::exportReconstruction(FramePtr last_frame, const std::string& n
     return ok;
 
     */
-    return false;
+
+    SLAMReconstructionDB db;
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = db.open( mDir.absoluteFilePath("reconstructions.sqlite").toStdString() );
+    }
+
+    if(ok)
+    {
+        ok = db.saveReconstruction(last_frame, name);
+    }
+
+    if(ok)
+    {
+        db.close();
+    }
+
+    if(ok == false)
+    {
+        std::cout << "Error when saving reconstruction!" << std::endl;
+    }
+
+    return ok;
 }
 

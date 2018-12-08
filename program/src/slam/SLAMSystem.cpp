@@ -174,7 +174,6 @@ void SLAMSystem::run()
             new_frame->views[0].image = im.getFrame(0);
             new_frame->views[1].image = im.getFrame(1);
 
-
             mCurrentFrame.swap(new_frame);
 
             //std::cout << "===> PROCESSING FRAME " << mCurrentFrame->id << " <===" <<std::endl;
@@ -183,6 +182,9 @@ void SLAMSystem::run()
             handleFrame(mCurrentFrame);
 
             std::cout << std::endl;
+
+            // free the image to reduce memory consumption.
+            freeOldImages(mCurrentFrame, 2);
 
             frame_count++;
         }
@@ -304,6 +306,22 @@ void SLAMSystem::handleFrame(FramePtr frame)
         std::cout << "   DENSE RECONSTRUCTION" << std::endl;
 
         mModuleDenseReconstruction->run(frame);
+    }
+}
+
+void SLAMSystem::freeOldImages(FramePtr frame, int num_to_keep)
+{
+    if( frame )
+    {
+        if( num_to_keep > 0 )
+        {
+            freeOldImages(frame->previous_frame, num_to_keep-1);
+        }
+        else
+        {
+            frame->views[0].image = cv::Mat();
+            frame->views[1].image = cv::Mat();
+        }
     }
 }
 

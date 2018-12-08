@@ -12,28 +12,20 @@ CREATE TABLE poses(
 CREATE TABLE reconstructions(
   id INTEGER PRIMARY KEY,
   name TEXT,
-  reconstruction_date DATE,
-  camera0_to_rig INTEGER,
-  camera1_to_rig INTEGER
-);
-
-CREATE TABLE segments(
-  id INTEGER PRIMARY KEY,
-  dataset_id INTEGER,
-  rank INTEGER
+  reconstruction_date DATE
 );
 
 CREATE TABLE frames(
   id INTEGER PRIMARY KEY,
-  segment_id INTEGER,
-  rank INTEGER
-  rig_to_world INTEGER
+  reconstruction_id INTEGER,
+  rank INTEGER,
+  rig_to_world INTEGER,
+  aligned_wrt_previous BOOLEAN
 );
 
 CREATE TABLE views(
   id INTEGER PRIMARY KEY,
   frame_id INTEGER,
-  image_path TEXT,
   rank INTEGER
 );
 
