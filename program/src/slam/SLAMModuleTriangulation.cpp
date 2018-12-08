@@ -19,6 +19,7 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMM
     mPerpendicularMaxLength = project->getParameterReal("triangulation_perpendicular_max_length", 0.0);
     mMaxReprojectionError = project->getParameterReal("triangulation_max_reprojection_error", 2.0);
     mInitialLifeTime = project->getParameterInteger("track_lifetime", 4);
+    mUseLindstrom = project->getParameterBoolean("triangulation_use_lindstrom", true);
 }
 
 void SLAMModuleTriangulation::run(FramePtr frame)
@@ -90,7 +91,12 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
 
     // Computed corrected normalized points with Lindstrom method.
 
-    correctWithLindstrom( normalized_left, normalized_right );
+    if( mUseLindstrom )
+    {
+        //std::cout << normalized_left.transpose() << " " << normalized_right.transpose() << std::endl;
+        correctWithLindstrom( normalized_left, normalized_right );
+        //std::cout << normalized_left.transpose() << " " << normalized_right.transpose() << std::endl;
+    }
 
     // Triangulate first in rig frame. It will be transformed to world frame at the very end of this function.
     // We use the middle of the common perpendicular of the two rays.
@@ -134,6 +140,7 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
         invA(1,0) = -A(1,0)/det;
 
         const Eigen::Vector2d coords = invA * Y;
+        //std::cout << coords.transpose() << std::endl;
 
         if( coords(0) > 0.0 && coords(1) > 0.0 )
         {

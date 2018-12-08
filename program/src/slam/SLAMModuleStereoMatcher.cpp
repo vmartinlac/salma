@@ -26,8 +26,8 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMM
     mCameraCalibration[1] = project->getRightCameraCalibration();
     mStereoRigCalibration = project->getStereoRigCalibration();
 
-    mFundamentalMatrices[1] = TwoViewGeometry::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
-    mFundamentalMatrices[0] = mFundamentalMatrices[1].transpose();
+    mFundamentalMatrices[0] = TwoViewGeometry::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
+    mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
 
 }
 
@@ -122,6 +122,10 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
 
     if( ret >= 0 && mCheckEpipolar )
     {
+        const int j = ret;
+
+        ret = -1;
+
         Eigen::Vector3d pointi;
         pointi <<
             mUndistortedPoints[view][i].x,
@@ -130,11 +134,11 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
 
         Eigen::Vector3d pointj;
         pointj <<
-            mUndistortedPoints[other_view][ret].x,
-            mUndistortedPoints[other_view][ret].y,
+            mUndistortedPoints[other_view][j].x,
+            mUndistortedPoints[other_view][j].y,
             1.0;
 
-        Eigen::Vector3d line = mFundamentalMatrices[view] * pointi;
+        Eigen::Vector3d line = mFundamentalMatrices[view] * pointj;
 
         const double l = line.head<2>().norm();
 
@@ -142,17 +146,14 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
         {
             line /= l;
 
-            const double val = pointj.transpose() * line;
+            const double val = pointi.transpose() * line;
             //std::cout << val << std::endl;
 
-            if( std::fabs(val) > mEpipolarThreshold )
+            if( std::fabs(val) < mEpipolarThreshold )
             {
-                ret = -1;
+                //ok = true;
+                ret = j;
             }
-        }
-        else
-        {
-            ret = -1;
         }
     }
 
@@ -165,6 +166,37 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
             ret = -1;
         }
     }
+
+    /*
+    if( ret >= 0 )
+    {
+        const int j = ret;
+
+        Eigen::Vector3d pointi;
+        pointi <<
+            mUndistortedPoints[view][i].x,
+            mUndistortedPoints[view][i].y,
+            1.0;
+
+        Eigen::Vector3d pointj;
+        pointj <<
+            mUndistortedPoints[other_view][j].x,
+            mUndistortedPoints[other_view][j].y,
+            1.0;
+
+        Eigen::Vector3d line = mFundamentalMatrices[view] * pointj;
+
+        const double l = line.head<2>().norm();
+
+        if( l > 1.0e-7 )
+        {
+            line /= l;
+
+            const double val = pointi.transpose() * line;
+            std::cout << val << std::endl;
+        }
+    }
+    */
 
     return ret;
 }

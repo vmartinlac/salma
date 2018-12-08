@@ -43,24 +43,28 @@ void SLAMModuleOpticalFlow::processView(const View& prev_view, View& curr_view)
 
     if( proj_prev.empty() == false );
     {
-        std::vector<cv::Point2f> points_prev;
+        const int N = proj_prev.size();
 
-        for( const Projection& p : proj_prev )
+        std::vector<cv::Point2f> points_prev(N);
+
+        for(int i=0; i<N; i++)
         {
-            points_prev.push_back( p.point );
+            points_prev[i] = proj_prev[i].point;
         }
 
         std::vector<cv::Point2f> points_curr;
         std::vector<uint8_t> status;
 
-        mLKT->calc(
-            prev_view.image,
-            curr_view.image,
-            points_prev,
-            points_curr,
-            status);
+        if( N > 0 )
+        {
+            mLKT->calc(
+                prev_view.image,
+                curr_view.image,
+                points_prev,
+                points_curr,
+                status);
+        }
 
-        const int N = proj_prev.size();
 
         for(int i=0; i<N; i++)
         {

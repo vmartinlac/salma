@@ -1,3 +1,5 @@
+#include <Eigen/Eigen>
+#include <opencv2/core/eigen.hpp>
 #include "TwoViewGeometry.h"
 
 Eigen::Matrix3d TwoViewGeometry::vectorialProductMatrix(const Eigen::Vector3d& v)
@@ -49,6 +51,8 @@ Eigen::Matrix3d TwoViewGeometry::computeFundamentalMatrix(
 
             const Eigen::Vector3d XL = KL * (rig_to_left * P);
             const Eigen::Vector3d XR = KR * (rig_to_right * P);
+
+            std::cout << XL.transpose() * F * XR << std::endl;
         }
         exit(0);
     }

@@ -34,6 +34,7 @@ protected:
     bool mCheckPerpendicularLength;
     double mMaxReprojectionError;
     int mInitialLifeTime;
+    bool mUseLindstrom;
 
     int mNumberOfNewMapPoints;
 };

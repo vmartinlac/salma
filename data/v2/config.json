@@ -1,0 +1,26 @@
+{
+    "features_scale_factor":1.1,
+    "features_min_width":160,
+    "features_max_features":500,
+    "features_patch_size":31,
+    "features_fast_threshold":10,
+
+    "temporal_matcher_check_symmetry":true,
+    "temporal_matcher_check_lowe":true,
+    "temporal_matcher_lowe_ratio":0.85,
+    "temporal_matcher_check_octave":true,
+    "temporal_matcher_prediction_radius":30.0,
+    "temporal_matcher_window_size":21,
+
+    "stereo_matcher_check_octave":false,
+    "stereo_matcher_check_symmetry":true,
+    "stereo_matcher_check_lowe":false,
+    "stereo_matcher_lowe_ratio":0.85,
+    "stereo_matcher_check_epipolar":true,
+    "stereo_matcher_epipolar_threshold":7.0,
+
+    "triangulation_min_angle_between_rays":3.0,
+    "triangulation_check_perpendicular_length":false,
+    "triangulation_perpendicular_max_length":0.0
+}
+

@@ -11,7 +11,7 @@ CREATE TABLE poses(
 
 CREATE TABLE reconstructions(
   id INTEGER PRIMARY KEY,
-  name VARCHAR(1024),
+  name TEXT,
   reconstruction_date DATE,
   camera0_to_rig INTEGER,
   camera1_to_rig INTEGER
@@ -33,7 +33,7 @@ CREATE TABLE frames(
 CREATE TABLE views(
   id INTEGER PRIMARY KEY,
   frame_id INTEGER,
-  image_path VARCHAR(512),
+  image_path TEXT,
   rank INTEGER
 );
 
