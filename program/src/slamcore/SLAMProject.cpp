@@ -205,7 +205,7 @@ bool SLAMProject::exportReconstruction(FramePtr last_frame, const std::string& n
 
     if(ok)
     {
-        ok = db.saveReconstruction(last_frame, name);
+        ok = db.save(last_frame, name);
     }
 
     if(ok)

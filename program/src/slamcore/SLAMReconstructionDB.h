@@ -15,15 +15,23 @@ public:
     void close();
 
     int getNumberOfReconstructions();
-    std::string getReconstructionName(int id);
+    std::string getReconstructionName(int i);
 
-    bool loadReconstruction(int id, FramePtr& reconstruction);
+    bool save(FramePtr last_frame, const std::string& name);
 
-    bool saveReconstruction(FramePtr last_frame, const std::string& reconstruction_name);
+    bool load(int i, FramePtr& last_frame);
 
 protected:
 
     void refreshListOfReconstructions();
+
+    int mapProjectionTypeToDB(ProjectionType type);
+
+    bool mapProjectionTypeFromDB(int dbtype, ProjectionType& type);
+
+    bool loadReconstruction(int id, FramePtr& reconstruction);
+
+    bool saveReconstruction(FramePtr last_frame, const std::string& reconstruction_name);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
 
@@ -37,10 +45,20 @@ protected:
 
     bool loadView(int frame_id, int rank, View& view);
 
+    bool saveMapPoint(MapPointPtr mappoint, int& id);
+
+    bool loadMapPoint(int id, MapPointPtr& mappoint);
+
 protected:
 
     QSqlDatabase mDB;
+
+    //QSqlQuery mStmtInsertProjection;
+    //QSqlQuery mStmtSelectReconstructions;
+    //QSqlQuery mStmtSelectFrames;
+
     std::vector< std::pair<int,std::string> > mAvailableReconstructions;
-    std::map<int,int> mMapPoints;
+    std::map<int,MapPointPtr> mLoadedMapPoints; // DB it --> mappoint
+    std::map<int,int> mSavedMapPoints; // mappoint id --> DB id
 };
 

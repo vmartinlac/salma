@@ -42,11 +42,56 @@ std::string SLAMReconstructionDB::getReconstructionName(int id)
     return mAvailableReconstructions.at(id).second;
 }
 
+bool SLAMReconstructionDB::save(FramePtr last_frame, const std::string& name)
+{
+    mDB.transaction();
+
+    mSavedMapPoints.clear();
+
+    const bool ret = saveReconstruction(last_frame, name);
+
+    mSavedMapPoints.clear();
+
+    if(ret)
+    {
+        mDB.commit();
+    }
+
+    refreshListOfReconstructions();
+
+    return ret;
+}
+
+bool SLAMReconstructionDB::load(int i, FramePtr& last_frame)
+{
+    mLoadedMapPoints.clear();
+
+    const bool ret = loadReconstruction(mAvailableReconstructions[i].first, last_frame);
+
+    mLoadedMapPoints.clear();
+
+    if( ret == false )
+    {
+        last_frame.reset();
+    }
+
+    return ret;
+}
+
 bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
 {
     bool ok = true;
 
     reconstruction.reset();
+
+    if(ok)
+    {
+        // just check that the reconstruction exists.
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM reconstructions WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+    }
 
     if(ok)
     {
@@ -56,28 +101,25 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
 
         ok = q.exec();
 
-        if(ok)
+        while(ok && q.next())
         {
-            while(ok && q.next())
+            FramePtr newframe;
+            ok = loadFrame(id, newframe);
+
+            if(ok)
             {
-                FramePtr newframe;
-                ok = loadFrame(id, newframe);
+                ok = bool(newframe);
+            }
 
-                if(ok)
-                {
-                    ok = bool(newframe);
-                }
+            if(ok)
+            {
+                newframe->previous_frame = reconstruction;
+                reconstruction = newframe;
+            }
 
-                if(ok)
-                {
-                    newframe->previous_frame = reconstruction;
-                    reconstruction = newframe;
-                }
-
-                if(ok && bool(newframe->previous_frame))
-                {
-                    ok = (newframe->previous_frame->id+1 == newframe->id);
-                }
+            if(ok && bool(newframe->previous_frame))
+            {
+                ok = ( newframe->previous_frame->id+1 == newframe->id );
             }
         }
     }
@@ -106,12 +148,6 @@ bool SLAMReconstructionDB::saveReconstruction(FramePtr last_frame, const std::st
         {
             reconstruction_id = q.lastInsertId().toInt();
         }
-        /*
-        else
-        {
-            std::cout << q.lastError().driverText().toStdString() << std::endl;
-        }
-        */
     }
 
     if(ok)
@@ -266,12 +302,20 @@ bool SLAMReconstructionDB::saveView(int frame_id, int rank, View& view, int& id)
         {
             Projection& p = view.projections[i];
 
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO projections(view_id, type, u, v, mappoint_id) VALUES(?,?,?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(p.point.x);
-            q.addBindValue(p.point.y);
-            ok = q.exec();
+            int mappoint_id;
+            ok = saveMapPoint(p.mappoint, mappoint_id);
+
+            if(ok)
+            {
+                QSqlQuery q(mDB);
+                q.prepare("INSERT INTO projections(view_id, type, u, v, mappoint_id) VALUES(?,?,?,?,?)");
+                q.addBindValue(id);
+                q.addBindValue(mapProjectionTypeToDB(p.type));
+                q.addBindValue(p.point.x);
+                q.addBindValue(p.point.y);
+                q.addBindValue(mappoint_id);
+                ok = q.exec();
+            }
         }
     }
 
@@ -353,17 +397,128 @@ bool SLAMReconstructionDB::loadView(int frame_id, int rank, View& view)
 
         if(ok)
         {
-            while(q.next())
+            while(ok && q.next())
             {
                 Projection p;
-                // TODO: map point and type.
+
                 p.point.x = q.value(1).toFloat();
                 p.point.y = q.value(2).toFloat();
-                view.projections.push_back(p);
+
+                ok = loadMapPoint(q.value(3).toInt(), p.mappoint);
+
+                if(ok)
+                {
+                    ok = mapProjectionTypeFromDB(q.value(0).toInt(), p.type);
+                }
+
+                if(ok)
+                {
+                    view.projections.push_back(p);
+                }
             }
         }
     }
 
     return ok;
+}
+
+bool SLAMReconstructionDB::saveMapPoint(MapPointPtr mappoint, int& id)
+{
+    std::map<int,int>::iterator it = mSavedMapPoints.find(mappoint->id);
+    bool ok = bool(mappoint);
+
+    if( it == mSavedMapPoints.end() )
+    {
+        QSqlQuery q(mDB);
+
+        q.prepare("INSERT INTO mappoints(rank,world_x,world_y,world_z) VALUES(?,?,?,?)");
+
+        q.addBindValue( mappoint->id );
+        q.addBindValue( mappoint->position.x() );
+        q.addBindValue( mappoint->position.y() );
+        q.addBindValue( mappoint->position.z() );
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+            mSavedMapPoints[mappoint->id] = id;
+        }
+    }
+    else
+    {
+        id = it->second;
+    }
+
+    return ok;
+}
+
+bool SLAMReconstructionDB::loadMapPoint(int id, MapPointPtr& mappoint)
+{
+    std::map<int,MapPointPtr>::iterator it = mLoadedMapPoints.find(id);
+    bool ok = true;
+
+    if( it == mLoadedMapPoints.end() )
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rank,world_x,world_y,world_z FROM mappoints WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            mappoint.reset(new MapPoint());
+            mappoint->id = q.value(0).toInt();
+            mappoint->position.x() = q.value(1).toFloat();
+            mappoint->position.y() = q.value(2).toFloat();
+            mappoint->position.z() = q.value(3).toFloat();
+            mLoadedMapPoints[id] = mappoint;
+        }
+    }
+    else
+    {
+        mappoint = it->second;
+    }
+
+    if(ok == false)
+    {
+        mappoint.reset();
+    }
+
+    return ok;
+}
+
+int SLAMReconstructionDB::mapProjectionTypeToDB(ProjectionType type)
+{
+    switch(type)
+    {
+    case PROJECTION_MAPPED:
+        return 0;
+    case PROJECTION_TRACKED:
+        return 1;
+    default:
+        throw std::runtime_error("incorrect projection type");
+    }
+}
+
+bool SLAMReconstructionDB::mapProjectionTypeFromDB(int dbtype, ProjectionType& type)
+{
+    bool ret = true;
+
+    switch(dbtype)
+    {
+    case 0:
+        type = PROJECTION_MAPPED;
+        break;
+    case 1:
+        type = PROJECTION_TRACKED;
+        break;
+    defult:
+        ret = false;
+        break;
+    }
+
+    return ret;
 }
 

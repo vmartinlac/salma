@@ -31,6 +31,7 @@ CREATE TABLE views(
 
 CREATE TABLE mappoints(
   id INTEGER PRIMARY KEY,
+  rank INTEGER,
   world_x FLOAT,
   world_y FLOAT,
   world_z FLOAT
