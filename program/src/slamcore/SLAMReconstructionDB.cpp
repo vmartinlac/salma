@@ -21,6 +21,11 @@ bool SLAMReconstructionDB::open(const std::string& path)
 
     ok = mDB.open();
 
+    if(ok)
+    {
+        refreshListOfReconstructions();
+    }
+
     return ok;
 }
 

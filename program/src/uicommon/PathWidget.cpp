@@ -27,15 +27,16 @@ void PathWidget::selectFile()
     switch(mMode)
     {
     case GET_EXISTING_DIRECTORY:
-        ret = QFileDialog::getExistingDirectory(this, "Select directory");
+        ret = QFileDialog::getExistingDirectory(this, "Select directory", mText->text());
         break;
     case GET_SAVE_FILENAME:
-        ret = QFileDialog::getSaveFileName(this, "Select output file");
+        ret = QFileDialog::getSaveFileName(this, "Select output file", mText->text());
         break;
     case GET_OPEN_FILENAME:
-    default:
-        ret = QFileDialog::getOpenFileName(this, "Select input file");
+        ret = QFileDialog::getOpenFileName(this, "Select input file", mText->text());
         break;
+    default:
+        throw std::runtime_error("Internal error");
     }
 
     if(ret.isEmpty() == false)

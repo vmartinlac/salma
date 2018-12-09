@@ -2,8 +2,14 @@
 add_library(
     uivisualization
     STATIC
+    ExportPointCloudDialog.cpp
+    ExportPointCloudDialog.h
+    OpenReconstructionDialog.cpp
+    OpenReconstructionDialog.h
     MainWindow.cpp
     MainWindow.h
+    VisualizationSettingsDialog.cpp
+    VisualizationSettingsDialog.h
     ViewerWidget.cpp
     ViewerWidget.h
 )
@@ -11,6 +17,7 @@ add_library(
 target_link_libraries(
     uivisualization
     PUBLIC
+    slamcore
     buildinfo
     uicommon
     video
