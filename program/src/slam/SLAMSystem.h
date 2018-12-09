@@ -31,6 +31,7 @@ protected:
     void finalize();
     void printWelcomeMessage();
     void handleFrame(FramePtr frame);
+    static void assignMapPointIds(FramePtr last_frame);
     static void freeOldImages(FramePtr frame, int num_to_keep);
 
 protected:

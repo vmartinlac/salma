@@ -42,6 +42,54 @@ std::string SLAMReconstructionDB::getReconstructionName(int id)
     return mAvailableReconstructions.at(id).second;
 }
 
+bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
+{
+    bool ok = true;
+
+    reconstruction.reset();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM frames WHERE reconstruction_id=? ORDER BY rank DESC");
+        q.addBindValue(id);
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            while(ok && q.next())
+            {
+                FramePtr newframe;
+                ok = loadFrame(id, newframe);
+
+                if(ok)
+                {
+                    ok = bool(newframe);
+                }
+
+                if(ok)
+                {
+                    newframe->previous_frame = reconstruction;
+                    reconstruction = newframe;
+                }
+
+                if(ok && bool(newframe->previous_frame))
+                {
+                    ok = (newframe->previous_frame->id+1 == newframe->id);
+                }
+            }
+        }
+    }
+
+    if(ok == false)
+    {
+        reconstruction.reset();
+    }
+
+    return ok;
+}
+
 bool SLAMReconstructionDB::saveReconstruction(FramePtr last_frame, const std::string& reconstruction_name)
 {
     bool ok = true;
@@ -214,7 +262,106 @@ bool SLAMReconstructionDB::saveView(int frame_id, int rank, View& view, int& id)
 
     if(ok)
     {
-        // TODO: save projections.
+        for( int i=0; ok && i<view.projections.size(); i++)
+        {
+            Projection& p = view.projections[i];
+
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO projections(view_id, type, u, v, mappoint_id) VALUES(?,?,?,?,?)");
+            q.addBindValue(id);
+            q.addBindValue(p.point.x);
+            q.addBindValue(p.point.y);
+            ok = q.exec();
+        }
+    }
+
+    return ok;
+}
+
+bool SLAMReconstructionDB::loadFrame(int id, FramePtr& frame)
+{
+    int pose_id = -1;
+    bool ok = true;
+
+    frame.reset(new Frame());
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rank, aligned_wrt_previous, rig_to_world FROM frames WHERE frames.id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+
+        if(ok)
+        {
+            frame->id = q.value(0).toInt();
+            frame->aligned_wrt_previous_frame = q.value(1).toBool();
+            pose_id = q.value(1).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        ok = loadPose(pose_id, frame->frame_to_world);
+    }
+
+    if(ok)
+    {
+        ok = loadView(id, 0, frame->views[0]);
+    }
+
+    if(ok)
+    {
+        ok = loadView(id, 1, frame->views[1]);
+    }
+
+    if(ok == false)
+    {
+        frame.reset();
+    }
+
+    return false;
+}
+
+bool SLAMReconstructionDB::loadView(int frame_id, int rank, View& view)
+{
+    bool ok = true;
+    int view_id;
+
+    view = View();
+
+    if(ok)
+    {
+        // This query is not necessary.
+        // We do it in order to check whether the view exists or not.
+
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM views WHERE frame_id=? AND rank=?");
+        ok = q.exec() && q.next();
+        if(ok)
+        {
+            view_id = q.value(0).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT type, u, v, mappoint_id FROM projections WHERE view_id=?");
+        q.addBindValue(view_id);
+        ok = q.exec();
+
+        if(ok)
+        {
+            while(q.next())
+            {
+                Projection p;
+                // TODO: map point and type.
+                p.point.x = q.value(1).toFloat();
+                p.point.y = q.value(2).toFloat();
+                view.projections.push_back(p);
+            }
+        }
     }
 
     return ok;

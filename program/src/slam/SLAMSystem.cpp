@@ -196,6 +196,8 @@ void SLAMSystem::run()
 
     if( go_on )
     {
+        assignMapPointIds(mCurrentFrame);
+
         video->close();
         video.reset();
 
@@ -322,6 +324,30 @@ void SLAMSystem::freeOldImages(FramePtr frame, int num_to_keep)
             frame->views[0].image = cv::Mat();
             frame->views[1].image = cv::Mat();
         }
+    }
+}
+
+void SLAMSystem::assignMapPointIds(FramePtr last_frame)
+{
+    int count = 0;
+
+    FramePtr f = last_frame;
+
+    while(f)
+    {
+        for(View& v : f->views)
+        {
+            for(Projection& p : v.projections)
+            {
+                if(p.mappoint && p.mappoint->id < 0)
+                {
+                    p.mappoint->id = count;
+                    count++;
+                }
+            }
+        }
+
+        f = f->previous_frame;
     }
 }
 

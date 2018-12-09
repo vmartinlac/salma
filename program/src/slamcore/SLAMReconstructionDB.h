@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <QSqlDatabase>
 #include "SLAMDataStructures.h"
 
@@ -30,11 +31,16 @@ protected:
 
     bool saveFrame(int reconstruction_id, FramePtr frame, int& id);
 
+    bool loadFrame(int id, FramePtr& frame);
+
     bool saveView(int frame_id, int rank, View& view, int& id);
+
+    bool loadView(int frame_id, int rank, View& view);
 
 protected:
 
     QSqlDatabase mDB;
     std::vector< std::pair<int,std::string> > mAvailableReconstructions;
+    std::map<int,int> mMapPoints;
 };
 

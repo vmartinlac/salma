@@ -20,6 +20,12 @@ class MapPoint
 {
 public:
 
+    MapPoint()
+    {
+        id = -1;
+    }
+
+    int id;
     Eigen::Vector3d position;
 };
 
