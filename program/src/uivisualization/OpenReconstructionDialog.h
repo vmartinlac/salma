@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include "PathWidget.h"
 
 class OpenReconstructionDialog : public QDialog
 {
@@ -9,5 +10,19 @@ class OpenReconstructionDialog : public QDialog
 public:
 
     OpenReconstructionDialog(QWidget* p=nullptr);
+
+protected slots:
+
+    void onOK();
+    void onCancel();
+
+protected:
+
+    QWidget* createProjectLayout();
+    QWidget* createReconstructionLayout();
+
+protected:
+
+    PathWidget* mProjectPath;
 };
 
