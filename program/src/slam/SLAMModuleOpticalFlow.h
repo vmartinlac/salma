@@ -15,6 +15,7 @@ class SLAMModuleOpticalFlow : public SLAMModule
 public:
 
     SLAMModuleOpticalFlow(SLAMProjectPtr project);
+    ~SLAMModuleOpticalFlow() override;
 
     void run(FrameList& frames) override;
 

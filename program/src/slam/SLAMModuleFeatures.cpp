@@ -25,6 +25,10 @@ SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(proj
     mFeature2d->setMaxFeatures(max_features);
 }
 
+SLAMModuleFeatures::~SLAMModuleFeatures()
+{
+}
+
 void SLAMModuleFeatures::run(FrameList& frames)
 {
     if( frames.empty() ) throw std::runtime_error("internal error");

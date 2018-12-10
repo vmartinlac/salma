@@ -22,6 +22,10 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMM
     mUseLindstrom = project->getParameterBoolean("triangulation_use_lindstrom", true);
 }
 
+SLAMModuleTriangulation::~SLAMModuleTriangulation()
+{
+}
+
 void SLAMModuleTriangulation::run(FrameList& frames)
 {
     if( frames.empty() ) throw std::runtime_error("internal error");

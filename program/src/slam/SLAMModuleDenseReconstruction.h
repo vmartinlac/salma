@@ -10,6 +10,7 @@ class SLAMModuleDenseReconstruction : public SLAMModule
 public:
 
     SLAMModuleDenseReconstruction(SLAMProjectPtr project);
+    ~SLAMModuleDenseReconstruction();
 
     void run(FrameList& frames) override;
 

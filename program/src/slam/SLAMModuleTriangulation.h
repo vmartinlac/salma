@@ -9,6 +9,7 @@ class SLAMModuleTriangulation : public SLAMModule
 public:
 
     SLAMModuleTriangulation(SLAMProjectPtr project);
+    ~SLAMModuleTriangulation() override;
 
     void run(FrameList& frames) override;
 

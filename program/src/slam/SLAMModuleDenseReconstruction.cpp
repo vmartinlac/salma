@@ -19,6 +19,10 @@ SLAMModuleDenseReconstruction::SLAMModuleDenseReconstruction(SLAMProjectPtr proj
     init();
 }
 
+SLAMModuleDenseReconstruction::~SLAMModuleDenseReconstruction()
+{
+}
+
 void SLAMModuleDenseReconstruction::init()
 {
     const Sophus::SE3d left_to_right = mStereoRig->right_camera_to_rig.inverse() * mStereoRig->left_camera_to_rig;

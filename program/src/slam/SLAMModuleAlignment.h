@@ -11,6 +11,7 @@ class SLAMModuleAlignment : public SLAMModule
 public:
 
     SLAMModuleAlignment(SLAMProjectPtr project);
+    ~SLAMModuleAlignment() override;
 
     void run(FrameList& frames) override;
 

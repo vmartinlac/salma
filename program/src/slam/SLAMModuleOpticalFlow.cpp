@@ -18,6 +18,10 @@ SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMProjectPtr project) : SLAMModul
     mLKT->setMaxLevel(max_level);
 }
 
+SLAMModuleOpticalFlow::~SLAMModuleOpticalFlow()
+{
+}
+
 void SLAMModuleOpticalFlow::run(FrameList& frames)
 {
     if( frames.empty() ) throw std::runtime_error("internal error");

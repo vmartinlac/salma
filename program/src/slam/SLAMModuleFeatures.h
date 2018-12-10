@@ -14,6 +14,7 @@ class SLAMModuleFeatures : public SLAMModule
 public:
 
     SLAMModuleFeatures(SLAMProjectPtr project);
+    ~SLAMModuleFeatures() override;
 
     void run(FrameList& frames) override;
 

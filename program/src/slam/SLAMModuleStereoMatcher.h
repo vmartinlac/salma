@@ -14,6 +14,7 @@ class SLAMModuleStereoMatcher : public SLAMModule
 public:
 
     SLAMModuleStereoMatcher(SLAMProjectPtr project);
+    ~SLAMModuleStereoMatcher() override;
 
     void run(FrameList& frames) override;
 

@@ -31,6 +31,10 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMM
 
 }
 
+SLAMModuleStereoMatcher::~SLAMModuleStereoMatcher()
+{
+}
+
 int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetry)
 {
     const int other_view = (view + 1) % 2;

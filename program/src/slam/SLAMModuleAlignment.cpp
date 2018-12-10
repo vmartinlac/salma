@@ -16,6 +16,10 @@ SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(pr
     mSolver->setInlierThreshold( project->getParameterReal("alignment_ransac_inlier_threshold", 8.0) );
 }
 
+SLAMModuleAlignment::~SLAMModuleAlignment()
+{
+}
+
 void SLAMModuleAlignment::run(FrameList& frames)
 {
     if( frames.empty() ) throw std::runtime_error("internal error");

@@ -7,6 +7,7 @@ class SLAMModule
 public:
 
     SLAMModule(SLAMProjectPtr project);
+    virtual ~SLAMModule();
 
     SLAMProjectPtr getProject();
 
