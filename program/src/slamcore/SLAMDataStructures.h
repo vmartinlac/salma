@@ -6,15 +6,10 @@ Right is index 1.
 */
 
 #include <memory>
+#include <list>
 #include <opencv2/core.hpp>
 #include <sophus/se3.hpp>
 #include <Eigen/Eigen>
-
-class Frame;
-class MapPoint;
-
-typedef std::shared_ptr<Frame> FramePtr;
-typedef std::shared_ptr<MapPoint> MapPointPtr;
 
 class MapPoint
 {
@@ -28,6 +23,8 @@ public:
     int id;
     Eigen::Vector3d position;
 };
+
+typedef std::shared_ptr<MapPoint> MapPointPtr;
 
 enum ProjectionType
 {
@@ -72,7 +69,10 @@ public:
     std::vector< std::pair<int,int> > stereo_matches;
     Sophus::SE3d frame_to_world;
     bool aligned_wrt_previous_frame;
-
-    FramePtr previous_frame;
 };
+
+typedef std::shared_ptr<Frame> FramePtr;
+
+typedef std::list<FramePtr> FrameList;
+
 

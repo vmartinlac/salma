@@ -30,9 +30,9 @@ protected:
     bool initialize();
     void finalize();
     void printWelcomeMessage();
-    void handleFrame(FramePtr frame);
-    static void assignMapPointIds(FramePtr last_frame);
-    static void freeOldImages(FramePtr frame, int num_to_keep);
+    void processLastFrame();
+    static void assignMapPointIds();
+    static void freeOldImages(int num_to_keep);
 
 protected:
 
@@ -51,7 +51,7 @@ protected:
 
     SLAMModuleDenseReconstructionPtr mModuleDenseReconstruction;
 
-    FramePtr mCurrentFrame;
+    FrameList mFrames;
 };
 
 typedef std::shared_ptr<SLAMSystem> SLAMSystemPtr;
