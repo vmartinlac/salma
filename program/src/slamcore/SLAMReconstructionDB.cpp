@@ -16,10 +16,17 @@ bool SLAMReconstructionDB::open(const std::string& path)
 {
     bool ok = true;
 
-    mDB = QSqlDatabase::addDatabase("QSQLITE");
-    mDB.setDatabaseName(path.c_str());
+    if(ok)
+    {
+        mDB = QSqlDatabase::database();
+        ok = mDB.isValid();
+    }
 
-    ok = mDB.open();
+    if(ok)
+    {
+        mDB.setDatabaseName(path.c_str());
+        ok = mDB.open();
+    }
 
     if(ok)
     {
@@ -101,7 +108,7 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT id FROM frames WHERE reconstruction_id=? ORDER BY rank ASC");
+        q.prepare("SELECT id FROM frames WHERE reconstruction_id=? ORDER BY rank DESC");
         q.addBindValue(id);
 
         ok = q.exec();
@@ -111,7 +118,10 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
         while(ok && q.next())
         {
             FramePtr newframe;
-            ok = loadFrame(id, newframe);
+
+            const int frame_id = q.value(0).toInt();
+
+            ok = loadFrame(frame_id, newframe);
 
             if(ok)
             {
@@ -120,12 +130,12 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
 
             if(ok)
             {
-                frames.push_back(newframe);
+                frames.push_front(newframe);
             }
 
             if(ok && bool(prevframe))
             {
-                ok = ( prevframe->id+1 == newframe->id );
+                ok = ( prevframe->id == newframe->id+1 );
             }
 
             prevframe = newframe;
@@ -193,7 +203,10 @@ bool SLAMReconstructionDB::loadPose(int id, Sophus::SE3d& pose)
     QSqlQuery q(mDB);
     q.prepare("SELECT qx, qy, qz, qw, x, y, z FROM poses WHERE id=?");
     q.addBindValue(id);
-    if(q.exec() && q.next())
+
+    const bool ok = ( q.exec() && q.next() );
+
+    if(ok)
     {
         Eigen::Quaterniond r;
         Eigen::Vector3d t;
@@ -340,15 +353,15 @@ bool SLAMReconstructionDB::loadFrame(int id, FramePtr& frame)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT rank, aligned_wrt_previous, rig_to_world FROM frames WHERE frames.id=?");
+        q.prepare("SELECT rank, aligned_wrt_previous, rig_to_world FROM frames WHERE id=?");
         q.addBindValue(id);
-        ok = q.exec();
+        ok = q.exec() && q.next();
 
         if(ok)
         {
             frame->id = q.value(0).toInt();
             frame->aligned_wrt_previous_frame = q.value(1).toBool();
-            pose_id = q.value(1).toInt();
+            pose_id = q.value(2).toInt();
         }
     }
 
@@ -372,7 +385,7 @@ bool SLAMReconstructionDB::loadFrame(int id, FramePtr& frame)
         frame.reset();
     }
 
-    return false;
+    return ok;
 }
 
 bool SLAMReconstructionDB::loadView(int frame_id, int rank, View& view)
@@ -389,7 +402,10 @@ bool SLAMReconstructionDB::loadView(int frame_id, int rank, View& view)
 
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM views WHERE frame_id=? AND rank=?");
+        q.addBindValue(frame_id);
+        q.addBindValue(rank);
         ok = q.exec() && q.next();
+
         if(ok)
         {
             view_id = q.value(0).toInt();

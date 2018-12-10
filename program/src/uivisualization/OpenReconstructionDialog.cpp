@@ -1,5 +1,7 @@
+#include <QLabel>
+#include <QMessageBox>
 #include <QStackedLayout>
-#include <QFormLayout>
+#include <QSettings>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -7,6 +9,16 @@
 
 OpenReconstructionDialog::OpenReconstructionDialog(QWidget* p) : QDialog(p)
 {
+    mProjectPath = new PathWidget(PathWidget::GET_OPEN_FILENAME);
+
+    QPushButton* btn_open_db = new QPushButton("Open database");
+
+    connect(btn_open_db, SIGNAL(clicked()), this, SLOT(openDatabase()));
+
+    mReconstructionList = new QListWidget();
+
+    connect(mReconstructionList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(accept()));
+
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
 
@@ -17,46 +29,110 @@ OpenReconstructionDialog::OpenReconstructionDialog(QWidget* p) : QDialog(p)
     btnlay->addWidget(btnok);
     btnlay->addWidget(btncancel);
 
-    QStackedLayout* sl = new QStackedLayout();
-    sl->addWidget( createProjectLayout() );
-    //sl->addWidget( createReconstructionLayout() );
-
     QVBoxLayout* lay = new QVBoxLayout();
-    lay->addLayout(sl);
+    lay->addWidget(mProjectPath);
+    lay->addWidget(btn_open_db);
+    lay->addWidget(mReconstructionList);
     lay->addLayout(btnlay);
 
     setLayout(lay);
     setWindowTitle("Open Reconstruction");
+
+    QSettings s;
+    s.beginGroup("open_reconstruction_dialog");
+    mProjectPath->setPath(s.value("last_path", "").toString());
+    s.endGroup();
 }
 
-QWidget* OpenReconstructionDialog::createProjectLayout()
+void OpenReconstructionDialog::accept()
 {
-    mProjectPath = new PathWidget(PathWidget::GET_EXISTING_DIRECTORY);
+    QListWidgetItem* item = nullptr;
 
-    QFormLayout* f = new QFormLayout();
-    f->addRow("Project:", mProjectPath);
+    bool ok = true;
+    const char* msg = "";
 
-    QWidget* ret = new QWidget;
-    ret->setLayout(f);
+    if(ok)
+    {
+        ok = bool(mDB);
+        msg = "Please select a database and a reconstruction!";
+    }
 
-    return ret;
+    if(ok)
+    {
+        item = mReconstructionList->currentItem();
+
+        ok = bool(item);
+        msg = "Please select a database and a reconstruction!";
+    }
+
+    if(ok)
+    {
+        const int i = item->data(Qt::UserRole).toInt();
+
+        mFrames.reset(new FrameList());
+        ok = mDB->load(i, *mFrames);
+        msg = "Could not load reconstruction!";
+    }
+
+    if(ok)
+    {
+        QSettings s;
+        s.beginGroup("open_reconstruction_dialog");
+        s.setValue("last_path", mProjectPath->path());
+        s.endGroup();
+        s.sync();
+
+        mDB->close();
+        QDialog::accept();
+    }
+    else
+    {
+        mFrames.reset();
+        QMessageBox::critical(this, "Error", msg);
+    }
 }
 
-QWidget* OpenReconstructionDialog::createReconstructionLayout()
+void OpenReconstructionDialog::openDatabase()
 {
-    QVBoxLayout* lay = new QVBoxLayout();
+    mDB.reset(new SLAMReconstructionDB());
 
-    QWidget* ret = new QWidget;
-    ret->setLayout(lay);
+    bool ok = true;
 
-    return ret;
+    mReconstructionList->clear();
+
+    if(ok)
+    {
+        ok = mDB->open(mProjectPath->path().toStdString());
+        
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not open database!");
+        }
+    }
+
+    if(ok)
+    {
+        ok = ( mDB->getNumberOfReconstructions() > 0 );
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Unexisting or empty database!");
+        }
+    }
+
+    if(ok)
+    {
+        for(int i=0; i<mDB->getNumberOfReconstructions(); i++)
+        {
+            QListWidgetItem* item = new QListWidgetItem( mDB->getReconstructionName(i).c_str() );
+            item->setData(Qt::UserRole, i);
+            mReconstructionList->addItem(item);
+        }
+    }
 }
 
-void OpenReconstructionDialog::onOK()
+std::shared_ptr<FrameList> OpenReconstructionDialog::getReconstruction()
 {
-}
-
-void OpenReconstructionDialog::onCancel()
-{
+    return mFrames;
 }
 

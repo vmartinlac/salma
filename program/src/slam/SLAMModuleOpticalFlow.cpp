@@ -3,8 +3,6 @@
 #include "Debug.h"
 #include "SLAMModuleOpticalFlow.h"
 
-#define DEBUG_SHOW_FEATURES
-
 SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMProjectPtr project) : SLAMModule(project)
 {
     const int size = project->getParameterInteger("optical_flow_window_size", 21);

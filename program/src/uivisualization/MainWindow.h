@@ -16,6 +16,8 @@ public:
 
 protected:
 
+    std::shared_ptr<FrameList> mFrames;
+
 protected slots:
 
     void openReconstruction();

@@ -2,7 +2,6 @@
 #include <QAction>
 #include <QTabWidget>
 #include <QToolBar>
-#include "SLAMReconstructionDB.h"
 #include "OpenReconstructionDialog.h"
 #include "VisualizationSettingsDialog.h"
 #include "ExportPointCloudDialog.h"
@@ -35,14 +34,6 @@ MainWindow::MainWindow(QWidget* parent)
     setCentralWidget(w);
     setWindowTitle("Salma Visualization");
     resize(800, 600);
-
-    SLAMReconstructionDB db;
-    db.open("/home/victor/recordings/2018_12_08/G/reconstructions.sqlite");
-    for(int i=0; i<db.getNumberOfReconstructions(); i++)
-    {
-        std::cout << db.getReconstructionName(i) << std::endl;
-    }
-    db.close();
 }
 
 MainWindow::~MainWindow()
@@ -52,7 +43,13 @@ MainWindow::~MainWindow()
 void MainWindow::openReconstruction()
 {
     OpenReconstructionDialog* dlg = new OpenReconstructionDialog(this);
-    dlg->exec();
+    const int ret = dlg->exec();
+
+    if( ret == QDialog::Accepted )
+    {
+        mFrames = dlg->getReconstruction();
+    }
+
     delete dlg;
 }
 
