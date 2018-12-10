@@ -47,13 +47,13 @@ std::string SLAMReconstructionDB::getReconstructionName(int id)
     return mAvailableReconstructions.at(id).second;
 }
 
-bool SLAMReconstructionDB::save(FramePtr last_frame, const std::string& name)
+bool SLAMReconstructionDB::save(const FrameList& frames, const std::string& name)
 {
     mDB.transaction();
 
     mSavedMapPoints.clear();
 
-    const bool ret = saveReconstruction(last_frame, name);
+    const bool ret = saveReconstruction(frames, name);
 
     mSavedMapPoints.clear();
 
@@ -67,27 +67,27 @@ bool SLAMReconstructionDB::save(FramePtr last_frame, const std::string& name)
     return ret;
 }
 
-bool SLAMReconstructionDB::load(int i, FramePtr& last_frame)
+bool SLAMReconstructionDB::load(int i, FrameList& frames)
 {
     mLoadedMapPoints.clear();
 
-    const bool ret = loadReconstruction(mAvailableReconstructions[i].first, last_frame);
+    const bool ret = loadReconstruction(mAvailableReconstructions[i].first, frames);
 
     mLoadedMapPoints.clear();
 
     if( ret == false )
     {
-        last_frame.reset();
+        frames.clear();
     }
 
     return ret;
 }
 
-bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
+bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
 {
     bool ok = true;
 
-    reconstruction.reset();
+    frames.clear();
 
     if(ok)
     {
@@ -101,10 +101,12 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT id FROM frames WHERE reconstruction_id=? ORDER BY rank DESC");
+        q.prepare("SELECT id FROM frames WHERE reconstruction_id=? ORDER BY rank ASC");
         q.addBindValue(id);
 
         ok = q.exec();
+
+        FramePtr prevframe;
 
         while(ok && q.next())
         {
@@ -118,26 +120,27 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FramePtr& reconstruction)
 
             if(ok)
             {
-                newframe->previous_frame = reconstruction;
-                reconstruction = newframe;
+                frames.push_back(newframe);
             }
 
-            if(ok && bool(newframe->previous_frame))
+            if(ok && bool(prevframe))
             {
-                ok = ( newframe->previous_frame->id+1 == newframe->id );
+                ok = ( prevframe->id+1 == newframe->id );
             }
+
+            prevframe = newframe;
         }
     }
 
     if(ok == false)
     {
-        reconstruction.reset();
+        frames.clear();
     }
 
     return ok;
 }
 
-bool SLAMReconstructionDB::saveReconstruction(FramePtr last_frame, const std::string& reconstruction_name)
+bool SLAMReconstructionDB::saveReconstruction(const FrameList& frames, const std::string& reconstruction_name)
 {
     bool ok = true;
     int reconstruction_id = -1;
@@ -157,14 +160,14 @@ bool SLAMReconstructionDB::saveReconstruction(FramePtr last_frame, const std::st
 
     if(ok)
     {
-        FramePtr f = last_frame;
+        FrameList::const_iterator it = frames.begin();
 
-        while(ok && bool(f))
+        while(it != frames.end())
         {
             int frame_id;
-            ok = saveFrame(reconstruction_id, f, frame_id);
+            ok = saveFrame(reconstruction_id, *it, frame_id);
 
-            f = f->previous_frame;
+            it++;
         }
     }
 

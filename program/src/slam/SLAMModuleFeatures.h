@@ -15,7 +15,7 @@ public:
 
     SLAMModuleFeatures(SLAMProjectPtr project);
 
-    void run(FramePtr frame);
+    void run(FrameList& frames) override;
 
 protected:
 

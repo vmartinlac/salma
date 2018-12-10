@@ -31,8 +31,8 @@ protected:
     void finalize();
     void printWelcomeMessage();
     void processLastFrame();
-    static void assignMapPointIds();
-    static void freeOldImages(int num_to_keep);
+    void assignMapPointIds();
+    void freeOldImages(int num_to_keep);
 
 protected:
 

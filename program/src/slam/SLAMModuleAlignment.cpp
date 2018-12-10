@@ -16,10 +16,18 @@ SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(pr
     mSolver->setInlierThreshold( project->getParameterReal("alignment_ransac_inlier_threshold", 8.0) );
 }
 
-void SLAMModuleAlignment::run(FramePtr frame)
+void SLAMModuleAlignment::run(FrameList& frames)
 {
-    if( frame->previous_frame )
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    if( frames.size() >= 2 )
     {
+        std::array<FramePtr,2> lastframes;
+        std::copy_n(frames.begin(), 2, lastframes.begin());
+
+        FramePtr current_frame = lastframes[0];
+        FramePtr previous_frame = lastframes[1];
+
         std::vector<MVPnP::View> views(2);
 
         views[0].calibration_matrix = mLeftCamera->calibration_matrix;
@@ -32,7 +40,7 @@ void SLAMModuleAlignment::run(FramePtr frame)
 
         for(int i=0; i<2; i++)
         {
-            for( Projection& p : frame->views[i].projections )
+            for( Projection& p : current_frame->views[i].projections )
             {
                 cv::Point3f world;
                 world.x = p.mappoint->position.x();
@@ -46,9 +54,9 @@ void SLAMModuleAlignment::run(FramePtr frame)
 
         std::vector< std::vector<bool> > inliers;
 
-        frame->frame_to_world = frame->previous_frame->frame_to_world;
+        current_frame->frame_to_world = previous_frame->frame_to_world;
 
-        const bool ret = mSolver->run(views, frame->frame_to_world, true, inliers);
+        const bool ret = mSolver->run(views, current_frame->frame_to_world, true, inliers);
 
         if(ret)
         {
@@ -57,7 +65,7 @@ void SLAMModuleAlignment::run(FramePtr frame)
             for(int i=0; i<2; i++)
             {
                 int j = 0;
-                while( j < frame->views[i].projections.size() )
+                while( j < current_frame->views[i].projections.size() )
                 {
                     if( inliers[i][j] )
                     {
@@ -65,26 +73,26 @@ void SLAMModuleAlignment::run(FramePtr frame)
                     }
                     else
                     {
-                        frame->views[i].projections[j] = frame->views[i].projections.back();
-                        frame->views[i].projections.pop_back();
+                        current_frame->views[i].projections[j] = current_frame->views[i].projections.back();
+                        current_frame->views[i].projections.pop_back();
                     }
                 }
             }
 
-            frame->aligned_wrt_previous_frame = true;
+            current_frame->aligned_wrt_previous_frame = true;
         }
         else
         {
-            frame->frame_to_world = Sophus::SE3d();
-            frame->aligned_wrt_previous_frame = false;
-            frame->views[0].projections.clear();
-            frame->views[1].projections.clear();
+            current_frame->frame_to_world = Sophus::SE3d();
+            current_frame->aligned_wrt_previous_frame = false;
+            current_frame->views[0].projections.clear();
+            current_frame->views[1].projections.clear();
         }
     }
     else
     {
-        frame->frame_to_world = Sophus::SE3d();
-        frame->aligned_wrt_previous_frame = false;
+        frames.front()->frame_to_world = Sophus::SE3d();
+        frames.front()->aligned_wrt_previous_frame = false;
     }
 }
 

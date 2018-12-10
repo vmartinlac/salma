@@ -176,7 +176,7 @@ void SLAMSystem::run()
             mFrames.push_front(new_frame);
 
             //std::cout << "===> PROCESSING FRAME " << mCurrentFrame->id << " <===" <<std::endl;
-            std::cout << "PROCESSING FRAME " << mCurrentFrame->id << std::endl;
+            std::cout << "PROCESSING FRAME " << new_frame->id << std::endl;
 
             processLastFrame();
 
@@ -239,7 +239,7 @@ void SLAMSystem::printWelcomeMessage()
     std::cout << std::endl;
 }
 
-void SLAMSystem::processLastFrame();
+void SLAMSystem::processLastFrame()
 {
     FramePtr last_frame = mFrames.front();
 
@@ -286,7 +286,7 @@ void SLAMSystem::processLastFrame();
     {
         std::cout << "   STEREO MATCHING" << std::endl;
 
-        mModuleStereoMatcher->match(mFrames);
+        mModuleStereoMatcher->run(mFrames);
 
         std::cout << "      Number of stereo matches: " << last_frame->stereo_matches.size() << std::endl;
     }
@@ -315,31 +315,33 @@ void SLAMSystem::processLastFrame();
 void SLAMSystem::freeOldImages(int num_to_keep)
 {
     FrameList::iterator it = mFrames.begin();
-
     int k = 0;
-    while( it != mFrames.end() && 
+
+    while( it != mFrames.end() && k <= num_to_keep )
     {
         FramePtr frame = *it;
-        if( num_to_keep > 0 )
-        {
-            freeOldImages(frame->previous_frame, num_to_keep-1);
-        }
-        else
+
+        if( k == num_to_keep )
         {
             frame->views[0].image = cv::Mat();
             frame->views[1].image = cv::Mat();
         }
+
+        it++;
+        k++;
     }
 }
 
-void SLAMSystem::assignMapPointIds(FramePtr last_frame)
+void SLAMSystem::assignMapPointIds()
 {
     int count = 0;
 
-    FramePtr f = last_frame;
+    FrameList::iterator it = mFrames.begin();
 
-    while(f)
+    while(it != mFrames.end())
     {
+        FramePtr f = *it;
+
         for(View& v : f->views)
         {
             for(Projection& p : v.projections)
@@ -352,7 +354,7 @@ void SLAMSystem::assignMapPointIds(FramePtr last_frame)
             }
         }
 
-        f = f->previous_frame;
+        it++;
     }
 }
 

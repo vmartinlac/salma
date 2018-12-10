@@ -17,9 +17,9 @@ public:
     int getNumberOfReconstructions();
     std::string getReconstructionName(int i);
 
-    bool save(FramePtr last_frame, const std::string& name);
+    bool save(const FrameList& frames, const std::string& name);
 
-    bool load(int i, FramePtr& last_frame);
+    bool load(int i, FrameList& last_frame);
 
 protected:
 
@@ -29,9 +29,9 @@ protected:
 
     bool mapProjectionTypeFromDB(int dbtype, ProjectionType& type);
 
-    bool loadReconstruction(int id, FramePtr& reconstruction);
+    bool loadReconstruction(int id, FrameList& frames);
 
-    bool saveReconstruction(FramePtr last_frame, const std::string& reconstruction_name);
+    bool saveReconstruction(const FrameList& frames, const std::string& reconstruction_name);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
 

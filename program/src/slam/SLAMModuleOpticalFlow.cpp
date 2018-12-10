@@ -18,19 +18,24 @@ SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMProjectPtr project) : SLAMModul
     mLKT->setMaxLevel(max_level);
 }
 
-void SLAMModuleOpticalFlow::run(FramePtr frame)
+void SLAMModuleOpticalFlow::run(FrameList& frames)
 {
-    if( frame->previous_frame )
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    if( frames.size() >= 2 )
     {
+        std::array<FramePtr,2> lastframes;
+        std::copy_n(frames.begin(), 2, lastframes.begin());
+
         for(int i=0; i<2; i++)
         {
-            processView( frame->previous_frame->views[i], frame->views[i] );
+            processView( lastframes[1]->views[i], lastframes[0]->views[i] );
         }
     }
     else
     {
-        frame->frame_to_world = Sophus::SE3d();
-        frame->aligned_wrt_previous_frame = false;
+        frames.front()->frame_to_world = Sophus::SE3d();
+        frames.front()->aligned_wrt_previous_frame = false;
     }
 }
 

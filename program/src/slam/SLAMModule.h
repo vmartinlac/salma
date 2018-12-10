@@ -10,6 +10,8 @@ public:
 
     SLAMProjectPtr getProject();
 
+    virtual void run(FrameList& frames) = 0;
+
 private:
 
     SLAMProjectPtr mProject;

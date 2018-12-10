@@ -54,8 +54,12 @@ void SLAMModuleDenseReconstruction::init()
     }
 }
 
-void SLAMModuleDenseReconstruction::run(FramePtr frame)
+void SLAMModuleDenseReconstruction::run(FrameList& frames)
 {
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    FramePtr frame = frames.front();
+
     cv::Mat rectified_left;
     cv::Mat rectified_right;
     cv::remap( frame->views[0].image, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );

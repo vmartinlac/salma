@@ -139,7 +139,7 @@ double SLAMProject::getParameterReal(const char* name, double default_value)
     return mParameters[name].toDouble(default_value);
 }
 
-bool SLAMProject::exportReconstruction(FramePtr last_frame, const std::string& name)
+bool SLAMProject::exportReconstruction(const FrameList& frames, const std::string& name)
 {
     /*
     QString effective_name;
@@ -205,7 +205,7 @@ bool SLAMProject::exportReconstruction(FramePtr last_frame, const std::string& n
 
     if(ok)
     {
-        ok = db.save(last_frame, name);
+        ok = db.save(frames, name);
     }
 
     if(ok)

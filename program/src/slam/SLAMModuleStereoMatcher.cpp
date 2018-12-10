@@ -201,8 +201,12 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
     return ret;
 }
 
-void SLAMModuleStereoMatcher::match(FramePtr f)
+void SLAMModuleStereoMatcher::run(FrameList& frames)
 {
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    FramePtr f = frames.front();
+
     // compute undistorted key points.
 
     for(int k=0; k<2; k++)

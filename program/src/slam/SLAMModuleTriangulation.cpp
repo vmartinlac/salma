@@ -22,8 +22,12 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMM
     mUseLindstrom = project->getParameterBoolean("triangulation_use_lindstrom", true);
 }
 
-void SLAMModuleTriangulation::run(FramePtr frame)
+void SLAMModuleTriangulation::run(FrameList& frames)
 {
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    FramePtr frame = frames.front();
+
     mNumberOfNewMapPoints = 0;
 
     for( std::pair<int,int>& p : frame->stereo_matches )

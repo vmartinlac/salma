@@ -25,8 +25,12 @@ SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(proj
     mFeature2d->setMaxFeatures(max_features);
 }
 
-void SLAMModuleFeatures::run(FramePtr frame)
+void SLAMModuleFeatures::run(FrameList& frames)
 {
+    if( frames.empty() ) throw std::runtime_error("internal error");
+
+    FramePtr frame = frames.front();
+
     for(int i=0; i<2; i++)
     {
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);

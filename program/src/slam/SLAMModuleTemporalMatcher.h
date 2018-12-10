@@ -11,7 +11,7 @@ public:
 
     SLAMModuleTemporalMatcher(SLAMProjectPtr project);
 
-    void match(FramePtr frame);
+    void run(FrameList& frames) override;
 
 protected:
 
