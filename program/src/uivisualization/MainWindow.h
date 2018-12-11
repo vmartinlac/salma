@@ -3,6 +3,8 @@
 #include <QMainWindow>
 #include "SLAMDataStructures.h"
 #include "ViewerWidget.h"
+#include "VisualizationData.h"
+#include "VisualizationSettings.h"
 
 class MainWindow : public QMainWindow
 {
@@ -16,7 +18,8 @@ public:
 
 protected:
 
-    std::shared_ptr<FrameList> mFrames;
+    VisualizationDataPort* mVisualizationData;
+    VisualizationSettingsPort* mVisualizationSettings;
 
 protected slots:
 

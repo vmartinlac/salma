@@ -7,12 +7,13 @@
 #include "ExportPointCloudDialog.h"
 #include "AboutDialog.h"
 #include "MainWindow.h"
-#include "VisualizationData.h"
-#include "VisualizationSettings.h"
 #include "InspectorWidget.h"
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
+    mVisualizationData = new VisualizationDataPort(this);
+    mVisualizationSettings = new VisualizationSettingsPort(this);
+
     QToolBar* tb = addToolBar("ToolBar");
 
     QAction* a_open_reconstruction = tb->addAction("Open Reconstruction");
@@ -32,7 +33,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(a_export_point_cloud, SIGNAL(triggered()), this, SLOT(exportPointCloud()));
     connect(a_about, SIGNAL(triggered()), this, SLOT(about()));
 
-    ViewerWidget* viewer = new ViewerWidget();
+    ViewerWidget* viewer = new ViewerWidget(mVisualizationData, mVisualizationSettings);
 
     InspectorWidget* inspector = new InspectorWidget();
 
@@ -51,20 +52,22 @@ MainWindow::~MainWindow()
 
 void MainWindow::openReconstruction()
 {
-    OpenReconstructionDialog* dlg = new OpenReconstructionDialog(this);
+    OpenReconstructionDialog* dlg = new OpenReconstructionDialog(mVisualizationData, this);
     const int ret = dlg->exec();
 
+    /*
     if( ret == QDialog::Accepted )
     {
         mFrames = dlg->getReconstruction();
     }
+    */
 
     delete dlg;
 }
 
 void MainWindow::visualizationSettings()
 {
-    VisualizationSettingsDialog* dlg = new VisualizationSettingsDialog(this);
+    VisualizationSettingsDialog* dlg = new VisualizationSettingsDialog(mVisualizationSettings, this);
     dlg->exec();
     delete dlg;
 }

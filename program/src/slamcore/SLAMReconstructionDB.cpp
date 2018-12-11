@@ -172,7 +172,7 @@ bool SLAMReconstructionDB::saveReconstruction(const FrameList& frames, const std
     {
         FrameList::const_iterator it = frames.begin();
 
-        while(it != frames.end())
+        while(ok && it != frames.end())
         {
             int frame_id;
             ok = saveFrame(reconstruction_id, *it, frame_id);

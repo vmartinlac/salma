@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QCheckBox>
+#include "VisualizationSettings.h"
 
 class VisualizationSettingsDialog : public QDialog
 {
@@ -9,7 +10,9 @@ class VisualizationSettingsDialog : public QDialog
 
 public:
 
-    VisualizationSettingsDialog(QWidget* parent=nullptr);
+    VisualizationSettingsDialog(
+        VisualizationSettingsPort* visusettings,
+        QWidget* parent=nullptr);
 
 protected:
 
@@ -17,5 +20,6 @@ protected:
     QCheckBox* mShowTrajectory;
     QCheckBox* mShowMapPoints;
     QCheckBox* mShowDensePoints;
+    VisualizationSettingsPort* mVisualizationSettings;
 };
 

@@ -7,8 +7,10 @@
 #include <QHBoxLayout>
 #include "OpenReconstructionDialog.h"
 
-OpenReconstructionDialog::OpenReconstructionDialog(QWidget* p) : QDialog(p)
+OpenReconstructionDialog::OpenReconstructionDialog(VisualizationDataPort* visudata, QWidget* p) : QDialog(p)
 {
+    mVisualizationData = visudata;
+
     mProjectPath = new PathWidget(PathWidget::GET_OPEN_FILENAME);
 
     QPushButton* btn_open_db = new QPushButton("Open database");
@@ -46,6 +48,7 @@ OpenReconstructionDialog::OpenReconstructionDialog(QWidget* p) : QDialog(p)
 
 void OpenReconstructionDialog::accept()
 {
+    FrameList frames;
     QListWidgetItem* item = nullptr;
 
     bool ok = true;
@@ -69,13 +72,17 @@ void OpenReconstructionDialog::accept()
     {
         const int i = item->data(Qt::UserRole).toInt();
 
-        mFrames.reset(new FrameList());
-        ok = mDB->load(i, *mFrames);
+        ok = mDB->load(i, frames);
         msg = "Could not load reconstruction!";
     }
 
     if(ok)
     {
+        mVisualizationData->beginWrite();
+        mVisualizationData->data().frames.swap(frames);
+        mVisualizationData->data().cutListOfFramesIntoSegments();
+        mVisualizationData->endWrite();
+
         QSettings s;
         s.beginGroup("open_reconstruction_dialog");
         s.setValue("last_path", mProjectPath->path());
@@ -87,7 +94,6 @@ void OpenReconstructionDialog::accept()
     }
     else
     {
-        mFrames.reset();
         QMessageBox::critical(this, "Error", msg);
     }
 }
@@ -129,10 +135,5 @@ void OpenReconstructionDialog::openDatabase()
             mReconstructionList->addItem(item);
         }
     }
-}
-
-std::shared_ptr<FrameList> OpenReconstructionDialog::getReconstruction()
-{
-    return mFrames;
 }
 

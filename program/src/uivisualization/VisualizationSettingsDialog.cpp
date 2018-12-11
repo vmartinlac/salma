@@ -3,8 +3,10 @@
 #include <QPushButton>
 #include "VisualizationSettingsDialog.h"
 
-VisualizationSettingsDialog::VisualizationSettingsDialog(QWidget* p) : QDialog(p)
+VisualizationSettingsDialog::VisualizationSettingsDialog( VisualizationSettingsPort* visusettings, QWidget* p ) : QDialog(p)
 {
+    mVisualizationSettings = visusettings;
+
     mShowRig = new QCheckBox("Show rig");
     mShowTrajectory = new QCheckBox("Show trajectory");
     mShowMapPoints = new QCheckBox("Show map points");

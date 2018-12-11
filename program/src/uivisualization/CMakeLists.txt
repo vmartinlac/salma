@@ -10,8 +10,13 @@ add_library(
     MainWindow.h
     InspectorWidget.cpp
     InspectorWidget.h
+    VisualizationData.h
+    VisualizationData.cpp
+    VisualizationSettings.h
     VisualizationSettingsDialog.cpp
     VisualizationSettingsDialog.h
+    ViewerWidgetBase.cpp
+    ViewerWidgetBase.h
     ViewerWidget.cpp
     ViewerWidget.h
 )

@@ -1,271 +1,102 @@
-#include <iostream>
-
-#include <osg/Geometry>
-#include <osg/ShapeDrawable>
-#include <osg/Geode>
-#include <osg/Point>
 #include <osg/PrimitiveSet>
-#include <osg/StateSet>
-#include <osg/Material>
-#include <osg/ShapeDrawable>
-#include <osg/PositionAttitudeTransform>
-#include <osgGA/TrackballManipulator>
-
-#include <QEvent>
-#include <QTimerEvent>
-#include <QMouseEvent>
-
+#include <osg/Point>
 #include "ViewerWidget.h"
 
-ViewerWidget::ViewerWidget(QWidget* parent) :
-    QOpenGLWidget(parent)
+ViewerWidget::ViewerWidget(
+    VisualizationDataPort* visudata,
+    VisualizationSettingsPort* visusettings,
+    QWidget* parent) : ViewerWidgetBase(parent)
 {
-    osg::ref_ptr<osg::Group> data = new osg::Group();
-    data->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    mVisualizationSettings = visusettings;
+    mVisualizationData = visudata;
 
-    // create landmarks osg representation.
+    connect(mVisualizationData, SIGNAL(updated()), this, SLOT(buildScene()));
+    connect(mVisualizationSettings, SIGNAL(updated()), this, SLOT(applyVisualizationSettings()));
 
+    buildScene();
+}
+
+void ViewerWidget::buildScene()
+{
+    mSegmentSwitch = new osg::Switch();
+    mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    mSegmentSwitch->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(3.0f));
+
+    mVisualizationData->beginRead();
+
+    for( std::pair<FrameList::iterator,FrameList::iterator>& pair : mVisualizationData->data().segments )
     {
-        _landmarks = new osg::Vec3Array();
-
-        osg::ref_ptr<osg::Vec3Array> lm_colors = new osg::Vec3Array();
-        lm_colors->push_back( osg::Vec3(0.0, 1.0, 0.0) );
-
-        _draw_landmarks = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, 0 );
-
-        _landmarks_geometry = new osg::Geometry();
-        _landmarks_geometry->setUseDisplayList(false);
-        _landmarks_geometry->addPrimitiveSet(_draw_landmarks);
-        _landmarks_geometry->setVertexArray(_landmarks);
-        _landmarks_geometry->setColorArray(lm_colors, osg::Array::BIND_OVERALL);
-        _landmarks_geometry->getOrCreateStateSet()->setAttribute(new osg::Point(10.0), osg::StateAttribute::ON);
-
-        osg::ref_ptr<osg::Geode> lm_geode = new osg::Geode();
-        lm_geode->addDrawable(_landmarks_geometry);
-
-        data->addChild(lm_geode);
+        buildSegment( pair.first, pair.second );
     }
 
-    // create camera osg representation.
+    mVisualizationData->endRead();
 
+    mSegmentSwitch->setSingleChildOn(0);
+
+    _viewer->setSceneData(mSegmentSwitch);
+}
+
+void ViewerWidget::applyVisualizationSettings()
+{
+}
+
+void ViewerWidget::buildSegment( FrameList::iterator A, FrameList::iterator B )
+{
+    struct IndexedMapPoint
     {
-        const double l = 1.0; // TODO: derive those constants from user data. Do not use arbitrary units not derived from what was given by the user.
-        const double kx = 0.6;
-        const double ky = 0.3;
-
-        osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-        vertices->push_back( osg::Vec3(0.0, 0.0, 0.0) );
-        vertices->push_back( osg::Vec3(-kx*l, -ky*l, l) );
-        vertices->push_back( osg::Vec3(kx*l, -ky*l, l) );
-        vertices->push_back( osg::Vec3(kx*l, ky*l, l) );
-        vertices->push_back( osg::Vec3(-kx*l, ky*l, l) );
-
-        osg::ref_ptr<osg::Vec3Array> colors = new osg::Vec3Array();
-        colors->push_back( osg::Vec3(1.0, 0.0, 0.0) );
-
-        osg::ref_ptr<osg::DrawElementsUInt> draw_elements = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES);
-        draw_elements->addElement(0);
-        draw_elements->addElement(1);
-        draw_elements->addElement(0);
-        draw_elements->addElement(2);
-        draw_elements->addElement(0);
-        draw_elements->addElement(3);
-        draw_elements->addElement(0);
-        draw_elements->addElement(4);
-        draw_elements->addElement(1);
-        draw_elements->addElement(2);
-        draw_elements->addElement(2);
-        draw_elements->addElement(3);
-        draw_elements->addElement(3);
-        draw_elements->addElement(4);
-        draw_elements->addElement(4);
-        draw_elements->addElement(1);
-
-        osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
-        geom->setVertexArray(vertices);
-        geom->setColorArray(colors, osg::Array::BIND_OVERALL);
-        geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 1));
-        geom->addPrimitiveSet(draw_elements);
-        geom->getOrCreateStateSet()->setAttribute(new osg::Point(8.0), osg::StateAttribute::ON);
-        //geom->getOrCreateStateSet()->setAttribute(new osg::LineWidth(2.0), osg::StateAttribute::ON);
-
-        osg::ref_ptr<osg::Geode> geode = new osg::Geode();
-        geode->addDrawable(geom);
-
-        _camera = new osg::PositionAttitudeTransform();
-        _camera->addChild(geode);
-
-        data->addChild(_camera);
-    }
-
-    osgGA::TrackballManipulator* manipulator = new osgGA::TrackballManipulator;
-
-    _viewer = new osgViewer::Viewer;
-    _viewer->setCameraManipulator(manipulator);
-    _viewer->setSceneData(data);
-    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-    _viewer->setRunFrameScheme(osgViewer::Viewer::ON_DEMAND);
-
-    _window = _viewer->setUpViewerAsEmbeddedInWindow(0, 0, width(), height());
-
-    //setMouseTracking(true);
-    setFocusPolicy(Qt::StrongFocus);
-    setMinimumSize(100, 100);
-    _updateTimer = startTimer(30);
-
-    //connect(slam, SIGNAL(updated()), this, SLOT(refresh()));
-
-    _viewer->home();
-}
-
-void ViewerWidget::timerEvent(QTimerEvent* ev)
-{
-    if(ev->timerId() == _updateTimer)
-    {
-        update();
-    }
-}
-
-void ViewerWidget::paintGL()
-{
-    _viewer->frame();
-}
-
-void ViewerWidget::mouseMoveEvent(QMouseEvent* event)
-{
-    _window->getEventQueue()->mouseMotion(event->x(), event->y());
-}
-
-void ViewerWidget::initializeGL()
-{
-   ;
-}
-
-void ViewerWidget::mousePressEvent(QMouseEvent* event)
-{
-    unsigned int button = 0;
-    switch (event->button()){
-    case Qt::LeftButton:
-        button = 1;
-        break;
-    case Qt::MiddleButton:
-        button = 2;
-        break;
-    case Qt::RightButton:
-        button = 3;
-        break;
-    default:
-        break;
-    }
-    _window->getEventQueue()->mouseButtonPress(event->x(), event->y(), button);
-}
-
-void ViewerWidget::mouseReleaseEvent(QMouseEvent* event)
-{
-    unsigned int button = 0;
-
-    switch (event->button())
-    {
-    case Qt::LeftButton:
-        button = 1;
-        break;
-    case Qt::MiddleButton:
-        button = 2;
-        break;
-    case Qt::RightButton:
-        button = 3;
-        break;
-    default:
-        break;
-    }
-
-    _window->getEventQueue()->mouseButtonRelease(event->x(), event->y(), button);
-}
-
-void ViewerWidget::wheelEvent(QWheelEvent* event)
-{
-    const int delta = event->delta();
-    osgGA::GUIEventAdapter::ScrollingMotion motion = delta > 0 ?  osgGA::GUIEventAdapter::SCROLL_UP : osgGA::GUIEventAdapter::SCROLL_DOWN;
-    _window->getEventQueue()->mouseScroll(motion);
-}
-
-bool ViewerWidget::event(QEvent* event)
-{
-    bool handled = QOpenGLWidget::event(event);
-
-    switch( event->type() )
-    {
-    case QEvent::KeyPress:
-    case QEvent::KeyRelease:
-    case QEvent::MouseButtonDblClick:
-    case QEvent::MouseButtonPress:
-    case QEvent::MouseButtonRelease:
-    case QEvent::MouseMove:
-        update();
-        break;
-    /*
-    case QEvent::Timer:
-        update();
-        break;
-    */
-    default:
-        break;
+        int index_in_vertex_array;
+        MapPointPtr mappoint;
     };
 
-    return handled;
-}
+    std::map<int,IndexedMapPoint> indexed_mappoints;
 
-void ViewerWidget::resizeGL(int width, int height)
-{
-    //_window->getEventQueue()->windowResize( this->x(), this->y(), width, height );
-    _window->resized( this->x(), this->y(), width, height );
+    int num_mappoints = 0;
 
-   /*
-   std::vector<osg::Camera*> cameras;
-   _viewer->getCameras( cameras );
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
 
-   assert( cameras.size() == 1 );
+    // mappoints.
 
-   cameras.front()->setViewport( 0, 0, this->width(), this->height() );
-   */
-}
-
-void ViewerWidget::refresh()
-{
-    /*
-    m_slam->beginRead();
-
-    _camera->setPosition( osg::Vec3(
-        m_slam->position.x(),
-        m_slam->position.y(),
-        m_slam->position.z() ));
-
-    _camera->setAttitude( osg::Quat(
-        m_slam->attitude.x(),
-        m_slam->attitude.y(),
-        m_slam->attitude.z(),
-        m_slam->attitude.w() ));
-
-    _landmarks->clear();
-    _landmarks->reserve( m_slam->landmarks.size() );
-    for( SLAMOutputLandmark& lm : m_slam->landmarks )
+    for(FrameList::iterator it=A; it!=B; it++)
     {
-        _landmarks->push_back( osg::Vec3(
-            lm.position.x(),
-            lm.position.y(),
-            lm.position.z() ));
+        FramePtr f = *it;
+
+        for(View& v : f->views)
+        {
+            for(Projection& p : v.projections)
+            {
+                if(p.mappoint)
+                {
+                    if( indexed_mappoints.count(p.mappoint->id) == 0 )
+                    {
+                        IndexedMapPoint& imp = indexed_mappoints[p.mappoint->id];
+                        imp.mappoint = p.mappoint;
+                        imp.index_in_vertex_array = num_mappoints;
+                        num_mappoints++;
+
+                        vertices->push_back( osg::Vec3( p.mappoint->position.x(), p.mappoint->position.y(), p.mappoint->position.z() ) );
+                    }
+                }
+            }
+        }
     }
 
-    _landmarks_geometry->dirtyBound();
+    osg::ref_ptr<osg::Vec3Array> mappoint_colors = new osg::Vec3Array();
+    mappoint_colors->push_back( osg::Vec3( 0.0, 1.0, 0.0 ) );
 
-    _draw_landmarks->set(osg::PrimitiveSet::POINTS, 0, _landmarks->size());
+    osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();
+    geometry->setVertexArray(vertices);
+    geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, num_mappoints));
+    geometry->setColorArray(mappoint_colors);
+    geometry->setColorBinding(osg::Geometry::BIND_OVERALL);
 
-    m_slam->endRead();
-    */
-}
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+    geode->addDrawable(geometry);
 
-void ViewerWidget::home()
-{
-    _viewer->home();
+    osg::ref_ptr<osg::Switch> s = new osg::Switch();
+    s->addChild(geode, true);
+
+    mSegmentSwitch->addChild(s, true);
+
+    //mSegments.push_back(s);
 }
 
