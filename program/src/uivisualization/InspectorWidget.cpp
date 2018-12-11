@@ -1,0 +1,2 @@
+#include "InspectorWidget.h"
+

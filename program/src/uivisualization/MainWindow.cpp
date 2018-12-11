@@ -7,6 +7,9 @@
 #include "ExportPointCloudDialog.h"
 #include "AboutDialog.h"
 #include "MainWindow.h"
+#include "VisualizationData.h"
+#include "VisualizationSettings.h"
+#include "InspectorWidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
 {
@@ -31,7 +34,13 @@ MainWindow::MainWindow(QWidget* parent)
 
     ViewerWidget* w = new ViewerWidget();
 
-    setCentralWidget(w);
+    InspectorWidget* inspector = new InspectorWidget();
+
+    QTabWidget* tab_widget = new QTabWidget();
+    tab_widget->addTab(viewer, "Viewer");
+    tab_widget->addTab(inspector, "Inspector");
+
+    setCentralWidget(tab_widget);
     setWindowTitle("Salma Visualization");
     resize(800, 600);
 }

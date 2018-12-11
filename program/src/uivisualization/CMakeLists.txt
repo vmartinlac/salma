@@ -8,6 +8,8 @@ add_library(
     OpenReconstructionDialog.h
     MainWindow.cpp
     MainWindow.h
+    InspectorWidget.cpp
+    InspectorWidget.h
     VisualizationSettingsDialog.cpp
     VisualizationSettingsDialog.h
     ViewerWidget.cpp
