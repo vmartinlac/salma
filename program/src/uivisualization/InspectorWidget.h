@@ -1,8 +1,8 @@
 #pragma once
 
-#include <QWidget>
+#include <QSplitter>
 
-class InspectorWidget : public QWidget
+class InspectorWidget : public QSplitter
 {
     Q_OBJECT
 

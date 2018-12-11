@@ -32,7 +32,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(a_export_point_cloud, SIGNAL(triggered()), this, SLOT(exportPointCloud()));
     connect(a_about, SIGNAL(triggered()), this, SLOT(about()));
 
-    ViewerWidget* w = new ViewerWidget();
+    ViewerWidget* viewer = new ViewerWidget();
 
     InspectorWidget* inspector = new InspectorWidget();
 
