@@ -8,6 +8,9 @@
 #include "ExportPointCloudDialog.h"
 #include "AboutDialog.h"
 #include "MainWindow.h"
+#include "VisualizationData.h"
+#include "VisualizationSettings.h"
+#include "InspectorWidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
 {
@@ -32,17 +35,15 @@ MainWindow::MainWindow(QWidget* parent)
 
     ViewerWidget* w = new ViewerWidget();
 
-    setCentralWidget(w);
+    InspectorWidget* inspector = new InspectorWidget();
+
+    QTabWidget* tab_widget = new QTabWidget();
+    tab_widget->addTab(viewer, "Viewer");
+    tab_widget->addTab(inspector, "Inspector");
+
+    setCentralWidget(tab_widget);
     setWindowTitle("Salma Visualization");
     resize(800, 600);
-
-    SLAMReconstructionDB db;
-    db.open("/home/victor/recordings/2018_12_08/G/reconstructions.sqlite");
-    for(int i=0; i<db.getNumberOfReconstructions(); i++)
-    {
-        std::cout << db.getReconstructionName(i) << std::endl;
-    }
-    db.close();
 }
 
 MainWindow::~MainWindow()
