@@ -25,14 +25,24 @@ protected:
 
     struct SegmentWrapper
     {
-        osg::ref_ptr<osg::Switch> visualization_items_switch;
+        osg::ref_ptr<osg::Switch> items_switch;
+        osg::ref_ptr<osg::Node> mappoints;
+        osg::ref_ptr<osg::Node> densepoints;
+        osg::ref_ptr<osg::Node> trajectory;
+        osg::ref_ptr<osg::Node> rig;
     };
 
 protected:
 
     void buildSegment(
         FrameList::iterator A,
-        FrameList::iterator B);
+        FrameList::iterator B );
+
+    static osg::ref_ptr<osg::Node> createRigNode(
+        const Sophus::SE3d& leftcamera2world,
+        const Sophus::SE3d& rightcamera2world);
+
+    static osg::ref_ptr<osg::Node> createCameraNode();
 
 protected:
 
