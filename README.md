@@ -5,6 +5,7 @@ Dependencies
 * Eigen3
 * nanoflann
 * OpenCV
+* openscenegraph
 * Qt5
 * Sophus
 
