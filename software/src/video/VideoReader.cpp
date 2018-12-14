@@ -4,7 +4,7 @@
 #include <QStringList>
 #include "VideoReader.h"
 
-VideoReader::VideoReader(int num_views=1)
+VideoReader::VideoReader(int num_views)
 {
     mNumViews = num_views;
     mTriggered = false;

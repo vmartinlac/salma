@@ -104,7 +104,7 @@ bool MonoRecordingOperation::step()
             if(mMaxFrameRate > 0 && mNumFrames > 1)
             {
                 const int diff = 1000/mMaxFrameRate - mFrameRateClock.elapsed();
-                if( diff > 0 );
+                if( diff > 0 )
                 {
                     std::this_thread::sleep_for(std::chrono::milliseconds(diff));
                 }

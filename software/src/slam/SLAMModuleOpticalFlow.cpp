@@ -48,7 +48,7 @@ void SLAMModuleOpticalFlow::processView(const View& prev_view, View& curr_view)
 
     proj_curr.clear();
 
-    if( proj_prev.empty() == false );
+    if( proj_prev.empty() == false )
     {
         const int N = proj_prev.size();
 
