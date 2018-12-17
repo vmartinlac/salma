@@ -48,7 +48,7 @@ OpenReconstructionDialog::OpenReconstructionDialog(VisualizationDataPort* visuda
 
 void OpenReconstructionDialog::accept()
 {
-    FrameList frames;
+    ReconstructionPtr rec(new Reconstruction());
     QListWidgetItem* item = nullptr;
 
     bool ok = true;
@@ -72,14 +72,14 @@ void OpenReconstructionDialog::accept()
     {
         const int i = item->data(Qt::UserRole).toInt();
 
-        ok = mDB->load(i, frames);
+        ok = mDB->load(i, rec) && bool(rec);
         msg = "Could not load reconstruction!";
     }
 
     if(ok)
     {
         mVisualizationData->beginWrite();
-        mVisualizationData->data().frames.swap(frames);
+        mVisualizationData->data().reconstruction = rec;
         mVisualizationData->data().cutListOfFramesIntoSegments();
         mVisualizationData->endWrite();
 

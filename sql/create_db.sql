@@ -9,10 +9,17 @@ CREATE TABLE poses(
   z FLOAT
 );
 
+CREATE TABLE rigs(
+    id INTEGER PRIMARY KEY,
+    left_camera_to_rig INTEGER,
+    right_camera_to_rig INTEGER
+);
+
 CREATE TABLE reconstructions(
   id INTEGER PRIMARY KEY,
   name TEXT,
-  reconstruction_date DATE
+  reconstruction_date DATE,
+  rig_id INTEGER
 );
 
 CREATE TABLE frames(

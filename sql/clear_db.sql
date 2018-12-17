@@ -1,4 +1,5 @@
 DELETE FROM poses;
+DELETE FROM rigs;
 DELETE FROM reconstructions;
 DELETE FROM frames;
 DELETE FROM views;

@@ -2,6 +2,7 @@ Dependencies
 ============
 
 * Aravis
+* Cuda
 * Eigen3
 * nanoflann
 * OpenCV

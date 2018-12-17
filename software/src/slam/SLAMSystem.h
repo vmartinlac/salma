@@ -51,7 +51,7 @@ protected:
 
     SLAMModuleDenseReconstructionPtr mModuleDenseReconstruction;
 
-    FrameList mFrames;
+    ReconstructionPtr mReconstruction;
 };
 
 typedef std::shared_ptr<SLAMSystem> SLAMSystemPtr;

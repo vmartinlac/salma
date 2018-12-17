@@ -27,7 +27,7 @@ public:
     int getParameterInteger(const char* name, int default_value);
     double getParameterReal(const char* name, double default_value);
 
-    bool exportReconstruction(const FrameList& frames, const std::string& name);
+    bool exportReconstruction(ReconstructionPtr reconstruction, const std::string& name);
 
 protected:
 

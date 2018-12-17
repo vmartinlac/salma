@@ -4,14 +4,14 @@ void VisualizationData::cutListOfFramesIntoSegments()
 {
     segments.clear();
 
-    if( frames.empty() == false )
+    if( bool(reconstruction) == false && reconstruction->frames.empty() == false )
     {
-        FrameList::iterator first = frames.begin();
-        FrameList::iterator it = frames.begin();
+        FrameList::iterator first = reconstruction->frames.begin();
+        FrameList::iterator it = reconstruction->frames.begin();
 
         it++;
 
-        while(it != frames.end())
+        while(it != reconstruction->frames.end())
         {
             FramePtr f = *it;
 
@@ -24,7 +24,7 @@ void VisualizationData::cutListOfFramesIntoSegments()
             it++;
         }
 
-        segments.push_back( std::pair<FrameList::iterator,FrameList::iterator>(first,frames.end()) );
+        segments.push_back( std::pair<FrameList::iterator,FrameList::iterator>(first,reconstruction->frames.end()) );
     }
 }
 

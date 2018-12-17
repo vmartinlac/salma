@@ -54,13 +54,13 @@ std::string SLAMReconstructionDB::getReconstructionName(int id)
     return mAvailableReconstructions.at(id).second;
 }
 
-bool SLAMReconstructionDB::save(const FrameList& frames, const std::string& name)
+bool SLAMReconstructionDB::save(ReconstructionPtr rec, const std::string& name)
 {
     mDB.transaction();
 
     mSavedMapPoints.clear();
 
-    const bool ret = saveReconstruction(frames, name);
+    const bool ret = saveReconstruction(rec, name);
 
     mSavedMapPoints.clear();
 
@@ -74,35 +74,52 @@ bool SLAMReconstructionDB::save(const FrameList& frames, const std::string& name
     return ret;
 }
 
-bool SLAMReconstructionDB::load(int i, FrameList& frames)
+bool SLAMReconstructionDB::load(int i, ReconstructionPtr& rec)
 {
     mLoadedMapPoints.clear();
 
-    const bool ret = loadReconstruction(mAvailableReconstructions[i].first, frames);
+    const bool ret = loadReconstruction(mAvailableReconstructions.at(i).first, rec);
 
     mLoadedMapPoints.clear();
 
     if( ret == false )
     {
-        frames.clear();
+        rec.reset();
     }
 
     return ret;
 }
 
-bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
+bool SLAMReconstructionDB::loadReconstruction(int id, ReconstructionPtr& rec)
 {
+    int left_camera_to_rig = -1;
+    int right_camera_to_rig = -1;
     bool ok = true;
 
-    frames.clear();
+    rec.reset(new Reconstruction());
 
     if(ok)
     {
-        // just check that the reconstruction exists.
         QSqlQuery q(mDB);
-        q.prepare("SELECT id FROM reconstructions WHERE id=?");
+        q.prepare("SELECT left_camera_to_rig, right_camera_to_rig FROM rigs, reconstructions WHERE reconstructions.rig_id = rigs.id AND reconstructions.id=?");
         q.addBindValue(id);
         ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            left_camera_to_rig = q.value(0).toInt();
+            right_camera_to_rig = q.value(1).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        ok = loadPose(left_camera_to_rig, rec->left_camera_to_rig);
+    }
+
+    if(ok)
+    {
+        ok = loadPose(right_camera_to_rig, rec->right_camera_to_rig);
     }
 
     if(ok)
@@ -130,7 +147,7 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
 
             if(ok)
             {
-                frames.push_front(newframe);
+                rec->frames.push_front(newframe);
             }
 
             if(ok && bool(prevframe))
@@ -144,22 +161,50 @@ bool SLAMReconstructionDB::loadReconstruction(int id, FrameList& frames)
 
     if(ok == false)
     {
-        frames.clear();
+        rec.reset();
     }
 
     return ok;
 }
 
-bool SLAMReconstructionDB::saveReconstruction(const FrameList& frames, const std::string& reconstruction_name)
+bool SLAMReconstructionDB::saveReconstruction(ReconstructionPtr rec, const std::string& reconstruction_name)
 {
     bool ok = true;
     int reconstruction_id = -1;
+    int left_pose_id = -1;
+    int right_pose_id = -1;
+    int rig_id = -1;
+
+    if(ok)
+    {
+        ok = savePose(rec->left_camera_to_rig, left_pose_id);
+    }
+
+    if(ok)
+    {
+        ok = savePose(rec->right_camera_to_rig, right_pose_id);
+    }
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO reconstructions(name, reconstruction_date) VALUES(?,DATETIME('NOW'))");
+        q.prepare("INSERT INTO rigs(left_camera_to_rig, right_camera_to_rig) VALUES(?,?)");
+        q.addBindValue(left_pose_id);
+        q.addBindValue(right_pose_id);
+        ok = q.exec();
+
+        if(ok)
+        {
+            rig_id = q.lastInsertId().toInt();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO reconstructions(name, reconstruction_date, rig_id) VALUES(?,DATETIME('NOW'),?)");
         q.addBindValue(reconstruction_name.c_str());
+        q.addBindValue(rig_id);
         ok = q.exec();
 
         if(ok)
@@ -170,9 +215,9 @@ bool SLAMReconstructionDB::saveReconstruction(const FrameList& frames, const std
 
     if(ok)
     {
-        FrameList::const_iterator it = frames.begin();
+        FrameList::const_iterator it = rec->frames.begin();
 
-        while(ok && it != frames.end())
+        while(ok && it != rec->frames.end())
         {
             int frame_id;
             ok = saveFrame(reconstruction_id, *it, frame_id);

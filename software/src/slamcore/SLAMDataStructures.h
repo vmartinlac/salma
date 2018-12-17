@@ -75,4 +75,14 @@ typedef std::shared_ptr<Frame> FramePtr;
 
 typedef std::list<FramePtr> FrameList;
 
+class Reconstruction
+{
+public:
+
+    FrameList frames;
+    Sophus::SE3d left_camera_to_rig;
+    Sophus::SE3d right_camera_to_rig;
+};
+
+typedef std::shared_ptr<Reconstruction> ReconstructionPtr;
 

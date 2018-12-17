@@ -5,7 +5,7 @@
 
 struct VisualizationData
 {
-    FrameList frames;
+    ReconstructionPtr reconstruction;
 
     std::vector< std::pair<FrameList::iterator,FrameList::iterator> > segments;
 

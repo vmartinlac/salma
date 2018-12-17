@@ -139,62 +139,8 @@ double SLAMProject::getParameterReal(const char* name, double default_value)
     return mParameters[name].toDouble(default_value);
 }
 
-bool SLAMProject::exportReconstruction(const FrameList& frames, const std::string& name)
+bool SLAMProject::exportReconstruction(ReconstructionPtr reconstruction, const std::string& name)
 {
-    /*
-    QString effective_name;
-    QDir my_dir = mDir;
-    bool ok = true;
-
-    if(ok)
-    {
-        ok = (name.empty() == false);
-    }
-
-    if(ok)
-    {
-        my_dir.mkdir("reconstructions"); // if this directory already exists, nothing is done.
-        ok = my_dir.cd("reconstructions");
-    }
-
-    if(ok)
-    {
-        QString base_name = name.c_str();
-        int k = 2;
-
-        effective_name = base_name;
-
-        while(my_dir.exists(effective_name))
-        {
-            effective_name = base_name + QString::number(k);
-            k++;
-        }
-
-        ok = my_dir.mkdir(effective_name);
-    }
-
-    if(ok)
-    {
-        ok = my_dir.cd(effective_name);
-    }
-
-    if(ok)
-    {
-        QString path = my_dir.absoluteFilePath("hello.txt");
-
-        std::ofstream f(path.toLocal8Bit().constData());
-        f << "hello" << std::endl;
-        f.close();
-    }
-
-    if(ok == false)
-    {
-        std::cout << "Error during export of reconstruction." << std::endl;
-    }
-    return ok;
-
-    */
-
     SLAMReconstructionDB db;
     bool ok = true;
 
@@ -205,7 +151,7 @@ bool SLAMProject::exportReconstruction(const FrameList& frames, const std::strin
 
     if(ok)
     {
-        ok = db.save(frames, name);
+        ok = db.save(reconstruction, name);
     }
 
     if(ok)

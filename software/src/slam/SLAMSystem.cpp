@@ -115,6 +115,13 @@ bool SLAMSystem::initialize()
 
     if(go_on)
     {
+        mReconstruction.reset(new Reconstruction());
+        mReconstruction->left_camera_to_rig = mProject->getStereoRigCalibration()->left_camera_to_rig;
+        mReconstruction->right_camera_to_rig = mProject->getStereoRigCalibration()->right_camera_to_rig;
+    }
+
+    if(go_on)
+    {
         mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mProject));
         mModuleAlignment.reset(new SLAMModuleAlignment(mProject));
 
@@ -173,7 +180,7 @@ void SLAMSystem::run()
             new_frame->views[0].image = im.getFrame(0);
             new_frame->views[1].image = im.getFrame(1);
 
-            mFrames.push_front(new_frame);
+            mReconstruction->frames.push_front(new_frame);
 
             //std::cout << "===> PROCESSING FRAME " << mCurrentFrame->id << " <===" <<std::endl;
             std::cout << "PROCESSING FRAME " << new_frame->id << std::endl;
@@ -200,9 +207,9 @@ void SLAMSystem::run()
         video->close();
         video.reset();
 
-        if(mFrames.empty() == false)
+        if(mReconstruction->frames.empty() == false)
         {
-            mProject->exportReconstruction(mFrames, mOptionName);
+            mProject->exportReconstruction(mReconstruction, mOptionName);
         }
 
         finalize();
@@ -221,8 +228,7 @@ void SLAMSystem::finalize()
     mModuleDenseReconstruction.reset();
 
     mProject.reset();
-
-    mFrames.clear();
+    mReconstruction.reset();
 }
 
 void SLAMSystem::printWelcomeMessage()
@@ -241,7 +247,7 @@ void SLAMSystem::printWelcomeMessage()
 
 void SLAMSystem::processLastFrame()
 {
-    FramePtr last_frame = mFrames.front();
+    FramePtr last_frame = mReconstruction->frames.front();
 
     /////////////// TRACKING
 
@@ -250,7 +256,7 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   OPTICAL FLOW" << std::endl;
 
-        mModuleOpticalFlow->run(mFrames);
+        mModuleOpticalFlow->run(mReconstruction->frames);
 
         std::cout << "      Number of projections on left view: " << last_frame->views[0].projections.size() << std::endl;
         std::cout << "      Number of projections on right view: " << last_frame->views[1].projections.size() << std::endl;
@@ -261,7 +267,7 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   ALIGNMENT" << std::endl;
 
-        mModuleAlignment->run(mFrames);
+        mModuleAlignment->run(mReconstruction->frames);
 
         std::cout << "      Alignment status: " << ( (last_frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
         std::cout << "      Position: " << last_frame->frame_to_world.translation().transpose() << std::endl;
@@ -275,7 +281,7 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   FEATURES DETECTION" << std::endl;
 
-        mModuleFeatures->run(mFrames);
+        mModuleFeatures->run(mReconstruction->frames);
 
         std::cout << "      Num keypoints on left view: " << last_frame->views[0].keypoints.size() << std::endl;
         std::cout << "      Num keypoints on right view: " << last_frame->views[1].keypoints.size() << std::endl;
@@ -286,7 +292,7 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   STEREO MATCHING" << std::endl;
 
-        mModuleStereoMatcher->run(mFrames);
+        mModuleStereoMatcher->run(mReconstruction->frames);
 
         std::cout << "      Number of stereo matches: " << last_frame->stereo_matches.size() << std::endl;
     }
@@ -296,7 +302,7 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   TRIANGULATION" << std::endl;
 
-        mModuleTriangulation->run(mFrames);
+        mModuleTriangulation->run(mReconstruction->frames);
 
         std::cout << "      Number of new mappoints: " << mModuleTriangulation->getNumberOfNewMapPoints() << std::endl;
     }
@@ -308,16 +314,16 @@ void SLAMSystem::processLastFrame()
     {
         std::cout << "   DENSE RECONSTRUCTION" << std::endl;
 
-        mModuleDenseReconstruction->run(mFrames);
+        mModuleDenseReconstruction->run(mReconstruction->frames);
     }
 }
 
 void SLAMSystem::freeOldImages(int num_to_keep)
 {
-    FrameList::iterator it = mFrames.begin();
+    FrameList::iterator it = mReconstruction->frames.begin();
     int k = 0;
 
-    while( it != mFrames.end() && k <= num_to_keep )
+    while( it != mReconstruction->frames.end() && k <= num_to_keep )
     {
         FramePtr frame = *it;
 
@@ -336,9 +342,9 @@ void SLAMSystem::assignMapPointIds()
 {
     int count = 0;
 
-    FrameList::iterator it = mFrames.begin();
+    FrameList::iterator it = mReconstruction->frames.begin();
 
-    while(it != mFrames.end())
+    while(it != mReconstruction->frames.end())
     {
         FramePtr f = *it;
 
