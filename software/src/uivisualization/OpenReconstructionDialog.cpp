@@ -79,7 +79,7 @@ void OpenReconstructionDialog::accept()
     if(ok)
     {
         mVisualizationData->beginWrite();
-        mVisualizationData->data().reconstruction = rec;
+        mVisualizationData->data().reconstruction.swap(rec);
         mVisualizationData->data().cutListOfFramesIntoSegments();
         mVisualizationData->endWrite();
 

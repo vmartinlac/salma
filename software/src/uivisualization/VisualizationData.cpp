@@ -4,7 +4,7 @@ void VisualizationData::cutListOfFramesIntoSegments()
 {
     segments.clear();
 
-    if( bool(reconstruction) == false && reconstruction->frames.empty() == false )
+    if( bool(reconstruction) && reconstruction->frames.empty() == false )
     {
         FrameList::iterator first = reconstruction->frames.begin();
         FrameList::iterator it = reconstruction->frames.begin();

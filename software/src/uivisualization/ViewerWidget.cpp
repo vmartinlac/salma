@@ -1,3 +1,5 @@
+#include <osg/ShapeDrawable>
+#include <osg/Geode>
 #include <osg/PrimitiveSet>
 #include <osg/Point>
 #include "ViewerWidget.h"
@@ -18,30 +20,133 @@ ViewerWidget::ViewerWidget(
 
 void ViewerWidget::buildScene()
 {
-    mSegmentSwitch = new osg::Switch();
-    mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    mSegmentSwitch->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(3.0f));
-
     mVisualizationData->beginRead();
 
-    for( std::pair<FrameList::iterator,FrameList::iterator>& pair : mVisualizationData->data().segments )
+    VisualizationData& vd = mVisualizationData->data();
+
+    bool go_on = true;
+
+    // clear previous scene.
+
+    mSegmentSwitch = nullptr;
+    mSegments.clear();
+    mRigNode = nullptr;
+
+    // check that we have a reconstruction.
+
+    if(go_on)
     {
-        buildSegment( pair.first, pair.second );
+        go_on = bool(vd.reconstruction);
+    }
+
+    // create rig node.
+
+    if(go_on)
+    {
+        mRigNode = createRigNode( vd.reconstruction->left_camera_to_rig, vd.reconstruction->right_camera_to_rig );
+        go_on = (mRigNode != nullptr);
+    }
+
+    // create segment switch.
+
+    if(go_on)
+    {
+        mSegmentSwitch = new osg::Switch();
+        //mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        mSegmentSwitch->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(3.0f));
+    }
+
+    // create each segment.
+
+    if(go_on)
+    {
+        ReconstructionPtr rec = vd.reconstruction;
+
+        int count = 0;
+        for( std::pair<FrameList::iterator,FrameList::iterator>& pair : vd.segments )
+        {
+            addSegment( rec, pair.first, pair.second );
+            count++;
+
+            if( mSegments.size() != count || mSegmentSwitch->getNumChildren() != count ) throw std::runtime_error("internal error");
+        }
+    }
+
+    if(go_on)
+    {
+        mSegmentSwitch->setSingleChildOn(0);
+        _viewer->setSceneData(mSegmentSwitch);
+    }
+    else
+    {
+        _viewer->setSceneData(nullptr);
+        mSegmentSwitch = nullptr;
+        mSegments.clear();
+        mRigNode = nullptr;
     }
 
     mVisualizationData->endRead();
-
-    mSegmentSwitch->setSingleChildOn(0);
-
-    _viewer->setSceneData(mSegmentSwitch);
 }
 
 void ViewerWidget::applyVisualizationSettings()
 {
 }
 
-void ViewerWidget::buildSegment( FrameList::iterator A, FrameList::iterator B )
+osg::ref_ptr<osg::Node> ViewerWidget::createDensePointsNode( FrameList::iterator A, FrameList::iterator B )
 {
+    return new osg::Group();
+}
+
+osg::ref_ptr<osg::Node> ViewerWidget::createRigNode( FrameList::iterator A, FrameList::iterator B )
+{
+    osg::ref_ptr<osg::Group> grp = new osg::Group();
+
+    for( FrameList::iterator it = A; it!=B; it++)
+    {
+        FramePtr frame = *it;
+
+        osg::ref_ptr<osg::PositionAttitudeTransform> PAT = new osg::PositionAttitudeTransform();
+        PAT->addChild(mRigNode);
+        setPositionAttitude(PAT, frame->frame_to_world);
+
+        grp->addChild(PAT);
+    }
+
+    return grp;
+}
+
+osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode( FrameList::iterator A, FrameList::iterator B )
+{
+    return new osg::Group();
+    /*
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+    osg::ref_ptr<osg::Vec3Array> colors = new osg::Vec3Array();
+    osg::ref_ptr<osg::DrawElementsUInt> primitive = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES);
+
+    int count = 0;
+    for(FrameList::iterator it=A; it!=B; it++)
+    {
+        ;
+
+        count++;
+    }
+
+    geom->setVertexArray(vertices);
+    geom->setColorArray(colors);
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+    geom->addPrimitiveSet(primitive);
+
+    geode->addDrawable(geom);
+
+    return geode;
+    */
+}
+
+osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( FrameList::iterator A, FrameList::iterator B )
+{
+/*
     struct IndexedMapPoint
     {
         int index_in_vertex_array;
@@ -98,100 +203,82 @@ void ViewerWidget::buildSegment( FrameList::iterator A, FrameList::iterator B )
     mSegmentSwitch->addChild(s, true);
 
     //mSegments.push_back(s);
+*/
+    //return mRigNode;
+    return new osg::Group();
 }
 
+void ViewerWidget::addSegment( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+{
+    osg::ref_ptr<osg::Node> node_mappoints = createMapPointsNode(A, B);
+    osg::ref_ptr<osg::Node> node_densepoints = createDensePointsNode(A, B);
+    osg::ref_ptr<osg::Node> node_trajectory = createTrajectoryNode(A, B);
+    osg::ref_ptr<osg::Node> node_rig = createRigNode(A, B);
 
-//////////:
+    osg::ref_ptr<osg::Switch> sw = new osg::Switch();
+    sw->addChild(node_mappoints);
+    sw->addChild(node_trajectory);
+    sw->addChild(node_densepoints);
+    sw->addChild(node_rig);
+    sw->setAllChildrenOn();
 
-/*
+    SegmentData s;
+    s.map[ITEM_MAPPOINTS] = 0;
+    s.map[ITEM_TRAJECTORY] = 1;
+    s.map[ITEM_DENSEPOINTS] = 2;
+    s.map[ITEM_RIG] = 3;
+    s.items = sw;
+
+    mSegments.push_back(s);
+
+    mSegmentSwitch->addChild(sw);
+}
+
 osg::ref_ptr<osg::Node> ViewerWidget::createCameraNode()
 {
-    static double camera_points[3*8] =
-    {
-        -1.0, -1.0, 0.0,
-        1.0, -1.0, 0.0,
-        1.0, 1.0, 0.0,
-        -1.0, 1.0, 0.0,
-        -2.0, -2.0, 0.5,
-        2.0, -2.0, 0.5,
-        2.0, 2.0, 0.5,
-        -2.0, 2.0, 0.5,
-    };
+    osg::ref_ptr<osg::Cone> cone = new osg::Cone();
 
-    static unsigned int triangles[] =
-    {
-        0, 1, 2,
-        2, 3, 0
-    };
-
-    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-    osg::ref_ptr<osg::Vec3Array> colors = new osg::Vec3Array();
-    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
     osg::ref_ptr<osg::Geode> geode = new osg::Geode();
-    osg::ref_ptr<osg::DrawElementsUInt> primitive = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES);
-
-    for(int i=0; i<8; i++)
-    {
-        vertices->push_back( osg::Vec3(
-            camera_points[3*i+0],
-            camera_points[3*i+1],
-            camera_points[3*i+2] ));
-    }
-
-    for(int i=0; i<3*2; i++)
-    {
-        primitive->addElement(triangles[i]);
-    }
-
-    colors->push_back( osg::Vec3(1.0, 0.0, 0.0) );
-
-    geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
-    geom->setVertexArray(vertices);
-    geom->addPrimitiveSet(primitive);
-
-    geode->addDrawable(geom);
+    geode->addDrawable(new osg::ShapeDrawable(cone));
 
     return geode;
 }
 
-osg::ref_ptr<osg::Node> ViewerWidget::createRigNode(const Sophus::SE3d& leftcamera2world, const Sophus::SE3d& rightcamera2world)
+void ViewerWidget::setPositionAttitude(osg::ref_ptr<osg::PositionAttitudeTransform> PAT, const Sophus::SE3d& pose)
 {
+    PAT->setPosition( osg::Vec3(
+        pose.translation().x(),
+        pose.translation().y(),
+        pose.translation().z() ));
+
+    PAT->setAttitude( osg::Quat(
+        pose.unit_quaternion().x(),
+        pose.unit_quaternion().y(),
+        pose.unit_quaternion().z(),
+        pose.unit_quaternion().w() ));
+}
+
+osg::ref_ptr<osg::Node> ViewerWidget::createRigNode(const Sophus::SE3d& leftcamera2rig, const Sophus::SE3d& rightcamera2rig)
+{
+    const double baseline = ( rightcamera2rig.translation() - leftcamera2rig.translation() ).norm();
+    const double scale = std::max(1.0e-4, 0.2 * baseline);
+
     osg::ref_ptr<osg::Group> grp = new osg::Group();
-
-    const double baseline = ( rightcamera2world.translation() - leftcamera2world.translation() ).norm();
-    const double scale = 1.0 * baseline;
-
     osg::ref_ptr<osg::Node> camera = createCameraNode();
     osg::ref_ptr<osg::PositionAttitudeTransform> PAT_left = new osg::PositionAttitudeTransform();
     osg::ref_ptr<osg::PositionAttitudeTransform> PAT_right = new osg::PositionAttitudeTransform();
 
     PAT_left->addChild(camera);
     PAT_left->setScale( osg::Vec3(scale, scale, scale) );
-    PAT_left->setPosition( osg::Vec3(
-        leftcamera2world.translation().x(),
-        leftcamera2world.translation().y(),
-        leftcamera2world.translation().z() ));
-    PAT_left->setAttitude( osg::Quat(
-        leftcamera2world.unit_quaternion().x(),
-        leftcamera2world.unit_quaternion().y(),
-        leftcamera2world.unit_quaternion().z(),
-        leftcamera2world.unit_quaternion().w() ));
+    setPositionAttitude( PAT_left, leftcamera2rig );
 
     PAT_right->addChild(camera);
     PAT_right->setScale( osg::Vec3(scale, scale, scale) );
-    PAT_right->setPosition( osg::Vec3(
-        rightcamera2world.translation().x(),
-        rightcamera2world.translation().y(),
-        rightcamera2world.translation().z() ));
-    PAT_right->setAttitude( osg::Quat(
-        rightcamera2world.unit_quaternion().x(),
-        rightcamera2world.unit_quaternion().y(),
-        rightcamera2world.unit_quaternion().z(),
-        rightcamera2world.unit_quaternion().w() ));
+    setPositionAttitude( PAT_right, rightcamera2rig );
+
+    grp->addChild(PAT_left);
+    grp->addChild(PAT_right);
 
     return grp;
 }
-
-*/
 
