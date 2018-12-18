@@ -6,6 +6,7 @@
 #include <fstream>
 #include "MonoRecordingOperation.h"
 #include "Image.h"
+#include "SyncIO.h"
 
 MonoRecordingOperation::MonoRecordingOperation()
 {
@@ -69,13 +70,25 @@ bool MonoRecordingOperation::step()
                 const QString basename = QString("%1.bmp").arg(QString::number(mNumFrames), 6, '0');
                 const QString filename = mOutputDirectory.absoluteFilePath(basename);
 
-                cv::imwrite(filename.toLocal8Bit().data(), image.getFrame());
-                mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+                ret = syncimwrite( filename.toStdString(), "bmp", image.getFrame() );
+
+                if(ret)
+                {
+                    mOutputCSV << mNumFrames << " " << basename.toLocal8Bit().data() << " " << image.getTimestamp() << std::endl;
+                }
             }
 
             mNumFrames++;
 
-            // write to ports.
+            // write to video port.
+            {
+                mVideoPort->beginWrite();
+                mVideoPort->data().image = image.getFrame();
+                mVideoPort->endWrite();
+            }
+
+            // write to text.
+            if(ret)
             {
                 const int total_seconds = static_cast<int>( mClock.elapsed()*1.0e-3 );
                 const int seconds = total_seconds % 60;
@@ -95,10 +108,12 @@ bool MonoRecordingOperation::step()
                 mStatsPort->beginWrite();
                 mStatsPort->data().text = s.str().c_str();
                 mStatsPort->endWrite();
-
-                mVideoPort->beginWrite();
-                mVideoPort->data().image = image.getFrame();
-                mVideoPort->endWrite();
+            }
+            else
+            {
+                mStatsPort->beginWrite();
+                mStatsPort->data().text = "Error while writing the image!";
+                mStatsPort->endWrite();
             }
 
             if(mMaxFrameRate > 0 && mNumFrames > 1)

@@ -6,6 +6,7 @@
 #include <fstream>
 #include "StereoRecordingOperation.h"
 #include "Image.h"
+#include "SyncIO.h"
 
 StereoRecordingOperation::StereoRecordingOperation()
 {
@@ -73,13 +74,16 @@ bool StereoRecordingOperation::step()
                 const QString left_filename = mOutputDirectory.absoluteFilePath(left_basename);
                 const QString right_filename = mOutputDirectory.absoluteFilePath(right_basename);
 
-                cv::imwrite(left_filename.toLocal8Bit().data(), image.getFrame(0));
-                cv::imwrite(right_filename.toLocal8Bit().data(), image.getFrame(1));
+                ret = ret && syncimwrite(left_filename.toLocal8Bit().data(), "bmp", image.getFrame(0));
+                ret = ret && syncimwrite(right_filename.toLocal8Bit().data(), "bmp", image.getFrame(1));
 
-                mOutputCSV << mNumFrames << " ";
-                mOutputCSV << image.getTimestamp() << " ";
-                mOutputCSV << left_basename.toLocal8Bit().data() << " ";
-                mOutputCSV << right_basename.toLocal8Bit().data() << std::endl;
+                if(ret)
+                {
+                    mOutputCSV << mNumFrames << " ";
+                    mOutputCSV << image.getTimestamp() << " ";
+                    mOutputCSV << left_basename.toLocal8Bit().data() << " ";
+                    mOutputCSV << right_basename.toLocal8Bit().data() << std::endl;
+                }
             }
 
             mNumFrames++;
@@ -97,6 +101,7 @@ bool StereoRecordingOperation::step()
             }
 
             // write output text.
+            if(ret)
             {
                 const int total_seconds = static_cast<int>( mClock.elapsed()*1.0e-3 );
                 const int seconds = total_seconds % 60;
@@ -116,6 +121,12 @@ bool StereoRecordingOperation::step()
 
                 mStatsPort->beginWrite();
                 mStatsPort->data().text = s.str().c_str();
+                mStatsPort->endWrite();
+            }
+            else
+            {
+                mStatsPort->beginWrite();
+                mStatsPort->data().text = "Error while saving the image!";
                 mStatsPort->endWrite();
             }
 

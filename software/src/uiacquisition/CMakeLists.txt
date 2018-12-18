@@ -44,6 +44,8 @@ add_library(
     TriggerWidget.cpp
     TriggerDialog.h
     TriggerDialog.cpp
+    SyncIO.h
+    SyncIO.cpp
 )
 
 target_link_libraries(
