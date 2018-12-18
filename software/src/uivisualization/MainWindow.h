@@ -31,5 +31,12 @@ protected slots:
     void showTrajectory(bool);
     void showMapPoints(bool);
     void showDensePoints(bool);
+
+    void firstSegment();
+    void previousSegment();
+    void nextSegment();
+    void lastSegment();
+
+    void updateStatusBar();
 };
 

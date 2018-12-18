@@ -1,3 +1,4 @@
+#include <QStatusBar>
 #include <QIcon>
 #include <QApplication>
 #include <QMessageBox>
@@ -15,6 +16,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
     mVisualizationData = new VisualizationDataPort(this);
     mVisualizationSettings = new VisualizationSettingsPort(this);
+
+    connect(mVisualizationSettings, SIGNAL(updated()), this, SLOT(updateStatusBar()));
+
+    statusBar();
+
+    QToolBar* tb = addToolBar("Tools");
+    QAction* a_first_segment = tb->addAction("First segment");
+    QAction* a_previous_segment = tb->addAction("Previous segment");
+    QAction* a_next_segment = tb->addAction("Next segment");
+    QAction* a_last_segment = tb->addAction("Last segment");
+
+    connect(a_first_segment, SIGNAL(triggered()), this, SLOT(firstSegment()));
+    connect(a_previous_segment, SIGNAL(triggered()), this, SLOT(previousSegment()));
+    connect(a_next_segment, SIGNAL(triggered()), this, SLOT(nextSegment()));
+    connect(a_last_segment, SIGNAL(triggered()), this, SLOT(lastSegment()));
 
     ViewerWidget* viewer = new ViewerWidget(mVisualizationData, mVisualizationSettings);
     //InspectorWidget* inspector = new InspectorWidget();
@@ -68,7 +84,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::openReconstruction()
 {
-    OpenReconstructionDialog* dlg = new OpenReconstructionDialog(mVisualizationData, this);
+    OpenReconstructionDialog* dlg = new OpenReconstructionDialog(mVisualizationData, mVisualizationSettings, this);
     const int ret = dlg->exec();
 
     /*
@@ -124,5 +140,62 @@ void MainWindow::showDensePoints(bool value)
     mVisualizationSettings->beginWrite();
     mVisualizationSettings->data().show_densepoints = value;
     mVisualizationSettings->endWrite();
+}
+
+void MainWindow::firstSegment()
+{
+    mVisualizationData->beginRead();
+    const int count = mVisualizationData->data().segments.size();
+    mVisualizationData->endRead();
+
+    mVisualizationSettings->beginWrite();
+    mVisualizationSettings->data().segment = 0;
+    mVisualizationSettings->endWrite();
+}
+
+void MainWindow::previousSegment()
+{
+    mVisualizationData->beginRead();
+    const int count = mVisualizationData->data().segments.size();
+    mVisualizationData->endRead();
+
+    mVisualizationSettings->beginWrite();
+    mVisualizationSettings->data().segment = std::max(0, mVisualizationSettings->data().segment-1);
+    mVisualizationSettings->endWrite();
+}
+
+void MainWindow::nextSegment()
+{
+    mVisualizationData->beginRead();
+    const int count = mVisualizationData->data().segments.size();
+    mVisualizationData->endRead();
+
+    mVisualizationSettings->beginWrite();
+    mVisualizationSettings->data().segment = std::min(count-1, mVisualizationSettings->data().segment+1);
+    mVisualizationSettings->endWrite();
+}
+
+void MainWindow::lastSegment()
+{
+    mVisualizationData->beginRead();
+    const int count = mVisualizationData->data().segments.size();
+    mVisualizationData->endRead();
+
+    mVisualizationSettings->beginWrite();
+    mVisualizationSettings->data().segment = count-1;
+    mVisualizationSettings->endWrite();
+}
+
+void MainWindow::updateStatusBar()
+{
+    mVisualizationSettings->beginRead();
+    const int current = mVisualizationSettings->data().segment;
+    mVisualizationSettings->endRead();
+
+    mVisualizationData->beginRead();
+    const int count = mVisualizationData->data().segments.size();
+    mVisualizationData->endRead();
+
+    statusBar()->showMessage("Segment " + QString::number(current+1) + " / " + QString::number(count));
 }
 

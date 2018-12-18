@@ -6,6 +6,7 @@
 #include "SLAMReconstructionDB.h"
 #include "PathWidget.h"
 #include "VisualizationData.h"
+#include "VisualizationSettings.h"
 
 class OpenReconstructionDialog : public QDialog
 {
@@ -13,7 +14,7 @@ class OpenReconstructionDialog : public QDialog
 
 public:
 
-    OpenReconstructionDialog(VisualizationDataPort* visu_data, QWidget* p=nullptr);
+    OpenReconstructionDialog(VisualizationDataPort* visu_data, VisualizationSettingsPort* settings, QWidget* p=nullptr);
 
 protected slots:
 
@@ -26,5 +27,6 @@ protected:
     PathWidget* mProjectPath;
     QListWidget* mReconstructionList;
     VisualizationDataPort* mVisualizationData;
+    VisualizationSettingsPort* mVisualizationSettings;
 };
 

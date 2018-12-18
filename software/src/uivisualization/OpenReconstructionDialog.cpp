@@ -7,9 +7,13 @@
 #include <QHBoxLayout>
 #include "OpenReconstructionDialog.h"
 
-OpenReconstructionDialog::OpenReconstructionDialog(VisualizationDataPort* visudata, QWidget* p) : QDialog(p)
+OpenReconstructionDialog::OpenReconstructionDialog(
+    VisualizationDataPort* visudata,
+    VisualizationSettingsPort* settings,
+    QWidget* p) : QDialog(p)
 {
     mVisualizationData = visudata;
+    mVisualizationSettings = settings;
 
     mProjectPath = new PathWidget(PathWidget::GET_OPEN_FILENAME);
 
@@ -82,6 +86,10 @@ void OpenReconstructionDialog::accept()
         mVisualizationData->data().reconstruction.swap(rec);
         mVisualizationData->data().cutListOfFramesIntoSegments();
         mVisualizationData->endWrite();
+
+        mVisualizationSettings->beginWrite();
+        mVisualizationSettings->data().segment = 0;
+        mVisualizationSettings->endWrite();
 
         QSettings s;
         s.beginGroup("open_reconstruction_dialog");
