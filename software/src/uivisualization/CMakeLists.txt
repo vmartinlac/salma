@@ -13,8 +13,6 @@ add_library(
     VisualizationData.h
     VisualizationData.cpp
     VisualizationSettings.h
-    VisualizationSettingsDialog.cpp
-    VisualizationSettingsDialog.h
     ViewerWidgetBase.cpp
     ViewerWidgetBase.h
     ViewerWidget.cpp

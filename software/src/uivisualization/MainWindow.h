@@ -24,8 +24,12 @@ protected:
 protected slots:
 
     void openReconstruction();
-    void visualizationSettings();
     void exportPointCloud();
     void about();
+
+    void showRig(bool);
+    void showTrajectory(bool);
+    void showMapPoints(bool);
+    void showDensePoints(bool);
 };
 

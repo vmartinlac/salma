@@ -10,7 +10,6 @@ struct VisualizationSettings
         show_densepoints = true;
         show_rig = true;
         show_trajectory = true;
-        show_projections = true;
         segment = 0;
     }
 
@@ -18,7 +17,6 @@ struct VisualizationSettings
     bool show_densepoints;
     bool show_rig;
     bool show_trajectory;
-    bool show_projections;
     int segment;
 };
 

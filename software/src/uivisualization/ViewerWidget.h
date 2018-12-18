@@ -23,18 +23,14 @@ protected slots:
 
 protected:
 
-    enum VisualizationItem
-    {
-        ITEM_RIG=0,
-        ITEM_DENSEPOINTS=1,
-        ITEM_MAPPOINTS=2,
-        ITEM_TRAJECTORY=3
-    };
-
     struct SegmentData
     {
         osg::ref_ptr<osg::Switch> items;
-        std::map<int, int> map;
+
+        int index_rig;
+        int index_densepoints;
+        int index_mappoints;
+        int index_trajectory;
     };
 
 protected:
@@ -44,13 +40,25 @@ protected:
         FrameList::iterator A,
         FrameList::iterator B );
 
-    osg::ref_ptr<osg::Node> createMapPointsNode( FrameList::iterator A, FrameList::iterator B );
+    osg::ref_ptr<osg::Node> createMapPointsNode(
+        ReconstructionPtr rec,
+        FrameList::iterator A,
+        FrameList::iterator B );
 
-    osg::ref_ptr<osg::Node> createDensePointsNode( FrameList::iterator A, FrameList::iterator B );
+    osg::ref_ptr<osg::Node> createDensePointsNode(
+        ReconstructionPtr rec,
+        FrameList::iterator A,
+        FrameList::iterator B );
 
-    osg::ref_ptr<osg::Node> createTrajectoryNode( FrameList::iterator A, FrameList::iterator B );
+    osg::ref_ptr<osg::Node> createTrajectoryNode(
+        ReconstructionPtr rec,
+        FrameList::iterator A,
+        FrameList::iterator B );
 
-    osg::ref_ptr<osg::Node> createRigNode( FrameList::iterator A, FrameList::iterator B );
+    osg::ref_ptr<osg::Node> createRigNode(
+        ReconstructionPtr rec,
+        FrameList::iterator A,
+        FrameList::iterator B );
 
     static osg::ref_ptr<osg::Node> createRigNode(
         const Sophus::SE3d& leftcamera2rig,
@@ -68,5 +76,10 @@ protected:
     osg::ref_ptr<osg::Node> mRigNode;
     osg::ref_ptr<osg::Switch> mSegmentSwitch;
     std::vector<SegmentData> mSegments;
+
+    bool mShowRig;
+    bool mShowTrajectory;
+    bool mShowMapPoints;
+    bool mShowDensePoints;
 };
 
