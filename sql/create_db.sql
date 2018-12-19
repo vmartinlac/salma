@@ -1,66 +1,129 @@
-CREATE TABLE poses(
-  id INTEGER PRIMARY KEY,
-  qx FLOAT,
-  qy FLOAT,
-  qz FLOAT,
-  qw FLOAT,
-  x FLOAT,
-  y FLOAT,
-  z FLOAT
+CREATE TABLE 'poses'
+(
+	'id' INTEGER PRIMARY KEY,
+	'qx' FLOAT,
+	'qy' FLOAT,
+	'qz' FLOAT,
+	'qw' FLOAT,
+	'x' FLOAT,
+	'y' FLOAT,
+	'z' FLOAT
 );
 
-CREATE TABLE rigs(
-    id INTEGER PRIMARY KEY,
-    left_camera_to_rig INTEGER,
-    right_camera_to_rig INTEGER
+CREATE TABLE 'camera_parameters'
+(
+	'id' INTEGER PRIMARY KEY,
+	'name' TEXT,
+	'date' TEXT,
+	'fx' FLOAT,
+	'fy' FLOAT,
+	'cx' FLOAT,
+	'cy' FLOAT,
+	'distortion_model' INTEGER
 );
 
-CREATE TABLE reconstructions(
-  id INTEGER PRIMARY KEY,
-  name TEXT,
-  reconstruction_date DATE,
-  rig_id INTEGER
+CREATE TABLE 'distortion_coefficients'
+(
+	'id' INTEGER PRIMARY KEY,
+	'camera_id' INTEGER,
+	'rank' INTEGER,
+	'value' FLOAT
 );
 
-CREATE TABLE frames(
-  id INTEGER PRIMARY KEY,
-  reconstruction_id INTEGER,
-  rank INTEGER,
-  rig_to_world INTEGER,
-  aligned_wrt_previous BOOLEAN
+CREATE TABLE 'rig_parameters'
+(
+	'id' INTEGER PRIMARY KEY,
+	'name' TEXT,
+	'date' TEXT,
+	'number_of_cameras' INTEGER
 );
 
-CREATE TABLE views(
-  id INTEGER PRIMARY KEY,
-  frame_id INTEGER,
-  rank INTEGER
+CREATE TABLE 'rig_cameras'
+(
+	'id' INTEGER PRIMARY KEY,
+	'rank' INTEGER,
+	'camera_to_rig' INTEGER,
+	'camera_id' INTEGER
 );
 
-CREATE TABLE mappoints(
-  id INTEGER PRIMARY KEY,
-  rank INTEGER,
-  world_x FLOAT,
-  world_y FLOAT,
-  world_z FLOAT
+CREATE TABLE 'recordings'
+(
+	'id' INTEGER PRIMARY KEY,
+	'name' TEXT,
+	'date' TEXT,
+	'number_of_views' INTEGER
 );
 
-CREATE TABLE projections(
-  id INTEGER PRIMARY KEY,
-  view_id INTEGER,
-  type INTEGER,
-  u FLOAT,
-  v FLOAT,
-  mappoint_id INTEGER
+CREATE TABLE 'recording_frames'
+(
+    'id' INTEGER PRIMARY KEY,
+    'recording_id' INTEGER,
+    'rank' INTEGER,
+    'time' REAL
 );
 
-CREATE TABLE densepoints(
-  id INTEGER PRIMARY KEY,
-  frame_id INTEGER,
-  rig_x FLOAT,
-  rig_y FLOAT,
-  rig_z FLOAT,
-  color_red FLOAT,
-  color_green FLOAT,
-  color_blue FLOAT
+CREATE TABLE 'recording_images'
+(
+    'id' INTEGER PRIMARY KEY,
+    'frame_id' INTEGER,
+    'view' INTEGER,
+    'path' TEXT
+);
+
+CREATE TABLE 'reconstructions'
+(
+    'id' INTEGER PRIMARY KEY,
+    'name' TEXT,
+    'date' DATE,
+    'rig_id' INTEGER,
+    'recording_id' INTEGER
+);
+
+CREATE TABLE 'frames'
+(
+	'id' INTEGER PRIMARY KEY,
+	'reconstruction_id' INTEGER,
+	'rank' INTEGER,
+	'rig_to_world' INTEGER,
+	'aligned_wrt_previous' BOOLEAN
+);
+
+CREATE TABLE 'views'
+(
+	'id' INTEGER PRIMARY KEY,
+	'frame_id' INTEGER,
+	'rank' INTEGER
+);
+
+CREATE TABLE 'mappoints'
+(
+	'id' INTEGER PRIMARY KEY,
+	'rank' INTEGER,
+	'world_x' FLOAT,
+	'world_y' FLOAT,
+	'world_z' FLOAT,
+    'track_count' FLOAT
+);
+
+CREATE TABLE 'projections'
+(
+	'id' INTEGER PRIMARY KEY,
+	'view_id' INTEGER,
+	'type' INTEGER,
+	'u' FLOAT,
+	'v' FLOAT,
+	'mappoint_id' INTEGER
+);
+
+CREATE TABLE 'densepoints'
+(
+	'id' INTEGER PRIMARY KEY,
+	'frame_id' INTEGER,
+	'rig_x' FLOAT,
+	'rig_y' FLOAT,
+	'rig_z' FLOAT,
+	'color_red' FLOAT,
+	'color_green' FLOAT,
+	'color_blue' FLOAT
 );
 
