@@ -1,6 +1,6 @@
-add_subdirectory(calibrateandrecordui)
+#add_subdirectory(calibrateandrecordui)
 add_subdirectory(detecttarget)
-add_subdirectory(newui)
-add_subdirectory(reconstruction)
-add_subdirectory(visualization)
+add_subdirectory(salma)
+#add_subdirectory(reconstruction)
+#add_subdirectory(visualization)
 

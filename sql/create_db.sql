@@ -79,6 +79,14 @@ CREATE TABLE 'reconstructions'
     'recording_id' INTEGER
 );
 
+CREATE TABLE 'settings'
+(
+    'id' INTEGER PRIMARY KEY,
+    'reconstruction_id' INTEGER,
+    'name' TEXT,
+    'value' TEXT
+);
+
 CREATE TABLE 'frames'
 (
 	'id' INTEGER PRIMARY KEY,
