@@ -14,6 +14,7 @@ add_library(
     CameraCalibrationModel.cpp
     CameraCalibrationPanel.h
     CameraCalibrationPanel.cpp
+    CameraCalibrationList.h
     ImportCameraCalibrationDialog.h
     ImportCameraCalibrationDialog.cpp
     RigCalibrationModel.h

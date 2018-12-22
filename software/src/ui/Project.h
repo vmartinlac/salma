@@ -41,6 +41,8 @@ public:
     bool saveStereoRig(const StereoRigCalibrationData& rig, int& id);
     bool loadStereoRig(int id, StereoRigCalibrationData& rig);
 
+    bool listCameras(CameraCalibrationList& list);
+
 signals:
     
     void changed();
