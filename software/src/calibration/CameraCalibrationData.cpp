@@ -23,6 +23,7 @@ bool CameraCalibrationData::saveToFile(const std::string& path)
         obj["calibration_matrix"] = Serialization::serializeCalibrationMatrix(calibration_matrix);
         obj["distortion_coefficients"] = Serialization::serializeDistortionCoefficients(distortion_coefficients);
         obj["image_size"] = Serialization::serializeSize(image_size);
+        obj["name"] = name.c_str();
 
         doc.setObject(obj);
     }
@@ -82,6 +83,7 @@ bool CameraCalibrationData::loadFromFile(const std::string& path)
             calibration_matrix = Serialization::deserializeCalibrationMatrix(root["calibration_matrix"]);
             distortion_coefficients = Serialization::deserializeDistortionCoefficients(root["distortion_coefficients"]);
             image_size = Serialization::deserializeSize(root["image_size"]);
+            name = root["name"].toString().toStdString();
         }
         catch(SerializationError& err)
         {

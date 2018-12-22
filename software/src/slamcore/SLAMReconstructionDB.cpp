@@ -276,32 +276,6 @@ bool SLAMReconstructionDB::loadPose(int id, Sophus::SE3d& pose)
     }
 }
 
-bool SLAMReconstructionDB::savePose(const Sophus::SE3d& pose, int& id)
-{
-    Eigen::Quaterniond r = pose.unit_quaternion();
-    Eigen::Vector3d t = pose.translation();
-
-    QSqlQuery q(mDB);
-    q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
-    q.addBindValue(r.x());
-    q.addBindValue(r.y());
-    q.addBindValue(r.z());
-    q.addBindValue(r.w());
-    q.addBindValue(t.x());
-    q.addBindValue(t.y());
-    q.addBindValue(t.z());
-
-    if( q.exec() )
-    {
-        id = q.lastInsertId().toInt();
-        return true;
-    }
-    else
-    {
-        id = -1;
-        return false;
-    }
-}
 
 bool SLAMReconstructionDB::saveFrame(int reconstruction_id, FramePtr frame, int& id)
 {

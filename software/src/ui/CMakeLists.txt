@@ -14,6 +14,8 @@ add_library(
     CameraCalibrationModel.cpp
     CameraCalibrationPanel.h
     CameraCalibrationPanel.cpp
+    ImportCameraCalibrationDialog.h
+    ImportCameraCalibrationDialog.cpp
     RigCalibrationModel.h
     RigCalibrationModel.cpp
     RigCalibrationPanel.h
@@ -32,6 +34,7 @@ target_link_libraries(
     ui
     PUBLIC
     buildinfo
+    calibration
     uicommon
     Qt5::Widgets
     Qt5::Sql

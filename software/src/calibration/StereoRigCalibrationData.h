@@ -14,6 +14,8 @@ public:
     Sophus::SE3d left_camera_to_rig;
     Sophus::SE3d right_camera_to_rig;
 
+    std::string name;
+
     //Eigen::Matrix3d fundamental_matrix;
     //Eigen::Matrix3d essential_matrix;
 

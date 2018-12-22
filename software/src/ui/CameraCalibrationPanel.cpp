@@ -2,6 +2,7 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "CameraCalibrationPanel.h"
+#include "ImportCameraCalibrationDialog.h"
 #include "Project.h"
 
 CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent)
@@ -42,6 +43,9 @@ void CameraCalibrationPanel::onNew()
 
 void CameraCalibrationPanel::onImport()
 {
+    ImportCameraCalibrationDialog* dlg = new ImportCameraCalibrationDialog(mProject, this);
+    dlg->exec();
+    delete dlg;
 }
 
 void CameraCalibrationPanel::onExport()

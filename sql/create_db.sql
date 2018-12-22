@@ -51,6 +51,7 @@ CREATE TABLE 'recordings'
 	'id' INTEGER PRIMARY KEY,
 	'name' TEXT,
 	'date' TEXT,
+    'directory' TEXT,
 	'number_of_views' INTEGER
 );
 

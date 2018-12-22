@@ -1,5 +1,5 @@
 add_subdirectory(buildinfo)
-#add_subdirectory(calibration)
+add_subdirectory(calibration)
 #add_subdirectory(mvpnp)
 #add_subdirectory(slamcore)
 #add_subdirectory(slam)
