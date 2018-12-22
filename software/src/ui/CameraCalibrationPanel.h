@@ -5,13 +5,15 @@
 #include <QWidget>
 #include "CameraCalibrationModel.h"
 
+class Project;
+
 class CameraCalibrationPanel : public QWidget
 {
     Q_OBJECT
 
 public:
 
-    CameraCalibrationPanel(QWidget* parent=nullptr);
+    CameraCalibrationPanel(Project* project, QWidget* parent=nullptr);
 
 protected slots:
 
@@ -24,7 +26,7 @@ protected slots:
 protected:
 
     QTreeView* mView;
-    CameraCalibrationModel* mModel;
     QTextEdit* mText;
+    Project* mProject;
 };
 

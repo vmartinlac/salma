@@ -4,9 +4,16 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "ReconstructionPanel.h"
+#include "Project.h"
 
-ReconstructionPanel::ReconstructionPanel(QWidget* parent)
+ReconstructionPanel::ReconstructionPanel(Project* project, QWidget* parent)
 {
+    mProject = project;
+    mText = new QTextEdit();
+    mView = new QTreeView();
+
+    mView->setModel(mProject->reconstructionModel());
+    
     QToolBar* tb = new QToolBar();
     tb->addAction("New");
     tb->addAction("New from");
@@ -15,8 +22,8 @@ ReconstructionPanel::ReconstructionPanel(QWidget* parent)
     tb->addAction("Delete");
 
     QSplitter* splitter = new QSplitter();
-    splitter->addWidget(new QListWidget());
-    splitter->addWidget(new QTextEdit());
+    splitter->addWidget(mView);
+    splitter->addWidget(mText);
 
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb);

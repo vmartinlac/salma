@@ -62,3 +62,23 @@ void Project::close()
     changed();
 }
 
+CameraCalibrationModel* Project::cameraCalibrationModel()
+{
+    return mCameraCalibrationModel;
+}
+
+RigCalibrationModel* Project::rigCalibrationModel()
+{
+    return mRigCalibrationModel;
+}
+
+RecordingModel* Project::recordingModel()
+{
+    return mRecordingModel;
+}
+
+ReconstructionModel* Project::reconstructionModel()
+{
+    return mReconstructionModel;
+}
+

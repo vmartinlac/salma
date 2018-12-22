@@ -4,9 +4,16 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "RecordingPanel.h"
+#include "Project.h"
 
-RecordingPanel::RecordingPanel(QWidget* parent)
+RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 {
+    mProject = project;
+    mText = new QTextEdit();
+    mView = new QTreeView();
+
+    mView->setModel(mProject->recordingModel());
+
     QToolBar* tb = new QToolBar();
     tb->addAction("New");
     tb->addAction("Play");
@@ -14,8 +21,8 @@ RecordingPanel::RecordingPanel(QWidget* parent)
     tb->addAction("Delete");
 
     QSplitter* splitter = new QSplitter();
-    splitter->addWidget(new QListWidget());
-    splitter->addWidget(new QTextEdit());
+    splitter->addWidget(mView);
+    splitter->addWidget(mText);
 
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb);

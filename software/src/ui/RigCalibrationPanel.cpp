@@ -5,8 +5,14 @@
 #include <QVBoxLayout>
 #include "RigCalibrationPanel.h"
 
-RigCalibrationPanel::RigCalibrationPanel(QWidget* parent)
+RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
 {
+    mProject = project;
+    mView = new QTreeView();
+    mText = new QTextEdit();
+
+    mView->setModel(mProject->rigCalibrationModel());
+
     QToolBar* tb = new QToolBar();
     tb->addAction("New");
     tb->addAction("Import");
@@ -15,8 +21,8 @@ RigCalibrationPanel::RigCalibrationPanel(QWidget* parent)
     tb->addAction("Delete");
 
     QSplitter* splitter = new QSplitter();
-    splitter->addWidget(new QListWidget());
-    splitter->addWidget(new QTextEdit());
+    splitter->addWidget(mView);
+    splitter->addWidget(mText);
 
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb);

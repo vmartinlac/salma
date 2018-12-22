@@ -1,5 +1,6 @@
 #include <QMenu>
 #include <QMessageBox>
+#include <QFileDialog>
 #include <QApplication>
 #include <QStatusBar>
 #include <QListWidget>
@@ -43,10 +44,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(aAbout, SIGNAL(triggered()), this, SLOT(about()));
 
     QTabWidget* tab = new QTabWidget();
-    tab->addTab(new CameraCalibrationPanel(), "Camera Calibration");
-    tab->addTab(new RigCalibrationPanel(), "Rig Calibration");
-    tab->addTab(new RecordingPanel(), "Recording");
-    tab->addTab(new ReconstructionPanel(), "Reconstruction");
+    tab->addTab(new CameraCalibrationPanel(mProject), "Camera Calibration");
+    tab->addTab(new RigCalibrationPanel(mProject), "Rig Calibration");
+    tab->addTab(new RecordingPanel(mProject), "Recording");
+    tab->addTab(new ReconstructionPanel(mProject), "Reconstruction");
 
     statusBar()->showMessage("SALMA v1.0");
 
@@ -79,9 +80,22 @@ void MainWindow::clearProject()
 
 void MainWindow::openProject()
 {
+    /*
     ProjectDialog* dlg = new ProjectDialog(mProject, this);
     dlg->exec();
     delete dlg;
+    */
+    QString ret = QFileDialog::getExistingDirectory(this, "Open project");
+
+    if( ret.isEmpty() == false )
+    {
+        const bool ok = mProject->open(ret);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not load project!");
+        }
+    }
 }
 
 void MainWindow::closeProject()

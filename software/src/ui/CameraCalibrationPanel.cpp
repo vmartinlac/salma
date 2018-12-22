@@ -2,14 +2,15 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "CameraCalibrationPanel.h"
+#include "Project.h"
 
-CameraCalibrationPanel::CameraCalibrationPanel(QWidget* parent)
+CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent)
 {
-    //mModel = new CameraCalibrationModel(this);
+    mProject = project;
     mView = new QTreeView();
     mText = new QTextEdit();
 
-    //mView->setModel(mModel);
+    mView->setModel(mProject->cameraCalibrationModel());
 
     QToolBar* tb = new QToolBar();
     QAction* aNew = tb->addAction("New");
