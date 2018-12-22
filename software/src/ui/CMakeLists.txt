@@ -2,6 +2,14 @@
 add_library(
     ui
     STATIC
+    VideoWidget.cpp
+    VideoWidget.h
+    StatsWidget.cpp
+    StatsWidget.h
+    Operation.cpp
+    Operation.h
+    OperationWidget.cpp
+    OperationWidget.h
     Project.h
     Project.cpp
     CameraList.h
@@ -19,8 +27,10 @@ add_library(
     CameraCalibrationList.h
     ImportCameraCalibrationDialog.h
     ImportCameraCalibrationDialog.cpp
-    NewCameraCalibrationDialog.h
-    NewCameraCalibrationDialog.cpp
+    OperationThread.cpp
+    OperationThread.h
+    NewOperationDialog.h
+    NewOperationDialog.cpp
     RigCalibrationModel.h
     RigCalibrationModel.cpp
     RigCalibrationPanel.h

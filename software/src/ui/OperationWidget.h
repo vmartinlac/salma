@@ -3,11 +3,11 @@
 #include <QWidget>
 #include "Operation.h"
 
-class OperationParametersWidget : public QWidget
+class OperationWidget : public QWidget
 {
 public:
 
-    OperationParametersWidget(QWidget* parent=nullptr);
+    OperationWidget(QWidget* parent=nullptr);
 
     virtual OperationPtr getOperation() = 0;
 

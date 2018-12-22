@@ -2,9 +2,9 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include "NewCameraCalibrationDialog.h"
+#include "NewOperationDialog.h"
 
-NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* project, QWidget* parent) : QDialog(parent)
+NewOperationDialog::NewOperationDialog(Project* project, QWidget* parent) : QDialog(parent)
 {
     mTargetScale = new QLineEdit();
     mCamera = new CameraList();
@@ -12,7 +12,5 @@ NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* project, QWidget
     mProject = project;
 
     QFormLayout* lay = new QFormLayout();
-
-    setLayout(vlay);
 }
 

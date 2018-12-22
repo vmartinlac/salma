@@ -4,7 +4,6 @@
 #include <QVBoxLayout>
 #include "CameraCalibrationPanel.h"
 #include "ImportCameraCalibrationDialog.h"
-#include "NewCameraCalibrationDialog.h"
 #include "Project.h"
 #include "VideoSystem.h"
 
@@ -45,9 +44,9 @@ void CameraCalibrationPanel::onNew()
     //if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
     if(true)
     {
-        NewCameraCalibrationDialog* dlg = new NewCameraCalibrationDialog(mProject, this);
-        dlg->exec();
-        delete dlg;
+        //NewCameraCalibrationDialog* dlg = new NewCameraCalibrationDialog(mProject, this);
+        //dlg->exec();
+        //delete dlg;
     }
     else
     {
