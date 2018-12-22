@@ -2,13 +2,13 @@
 
 #include "Model.h"
 
-class CameraCalibrationModel : public Model
+class RigCalibrationModel : public Model
 {
     Q_OBJECT
 
 public:
 
-    CameraCalibrationModel(Project* parent);
+    RigCalibrationModel(Project* parent);
 
     int rowCount(const QModelIndex& parent=QModelIndex()) const override;
 
@@ -24,7 +24,7 @@ protected:
 
     struct Item
     {
-        int camera_id;
+        int rig_id;
         QString name;
         QString date;
     };

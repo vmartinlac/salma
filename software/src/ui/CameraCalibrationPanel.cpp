@@ -5,11 +5,11 @@
 
 CameraCalibrationPanel::CameraCalibrationPanel(QWidget* parent)
 {
-    mModel = new CameraCalibrationModel(this);
+    //mModel = new CameraCalibrationModel(this);
     mView = new QTreeView();
     mText = new QTextEdit();
 
-    mView->setModel(mModel);
+    //mView->setModel(mModel);
 
     QToolBar* tb = new QToolBar();
     QAction* aNew = tb->addAction("New");

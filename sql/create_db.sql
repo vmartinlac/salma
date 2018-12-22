@@ -1,11 +1,11 @@
 CREATE TABLE 'poses'
 (
-	'id' INTEGER PRIMARY KEY,
-	'qx' FLOAT,
-	'qy' FLOAT,
-	'qz' FLOAT,
-	'qw' FLOAT,
-	'x' FLOAT,
+    'id' INTEGER PRIMARY KEY,
+    'qx' FLOAT,
+    'qy' FLOAT,
+    'qz' FLOAT,
+    'qw' FLOAT,
+    'x' FLOAT,
 	'y' FLOAT,
 	'z' FLOAT
 );
@@ -42,7 +42,7 @@ CREATE TABLE 'rig_cameras'
 (
 	'id' INTEGER PRIMARY KEY,
 	'rank' INTEGER,
-	'camera_to_rig' INTEGER,
+	'camera_to_rig' INTEGER, --id of corresponding pose.
 	'camera_id' INTEGER
 );
 
@@ -62,7 +62,7 @@ CREATE TABLE 'recording_frames'
     'time' REAL
 );
 
-CREATE TABLE 'recording_images'
+CREATE TABLE 'recording_views'
 (
     'id' INTEGER PRIMARY KEY,
     'frame_id' INTEGER,
@@ -92,7 +92,7 @@ CREATE TABLE 'frames'
 	'id' INTEGER PRIMARY KEY,
 	'reconstruction_id' INTEGER,
 	'rank' INTEGER,
-	'rig_to_world' INTEGER,
+	'rig_to_world' INTEGER, -- id of corresponding pose.
 	'aligned_wrt_previous' BOOLEAN
 );
 
@@ -113,13 +113,28 @@ CREATE TABLE 'mappoints'
     'track_count' FLOAT
 );
 
+CREATE TABLE 'keypoints'
+(
+    'id' INTEGER PRIMARY KEY,
+    'frame_id' INTEGER,
+    'view' INTEGER,
+    'u' FLOAT,
+    'v' FLOAT
+);
+
+CREATE TABLE 'descriptors'
+(
+    'id' INTEGER PRIMARY KEY,
+    'keypoint_id' INTEGER,
+    'rank' INTEGER,
+    'value' FLOAT
+);
+
 CREATE TABLE 'projections'
 (
 	'id' INTEGER PRIMARY KEY,
-	'view_id' INTEGER,
+	'keypoint_id' INTEGER,
 	'type' INTEGER,
-	'u' FLOAT,
-	'v' FLOAT,
 	'mappoint_id' INTEGER
 );
 

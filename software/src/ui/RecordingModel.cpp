@@ -1,18 +1,18 @@
+#include "RecordingModel.h"
 #include "Project.h"
-#include "CameraCalibrationModel.h"
 
-CameraCalibrationModel::CameraCalibrationModel(Project* parent) : Model(parent)
+RecordingModel::RecordingModel(Project* parent) : Model(parent)
 {
 }
 
-int CameraCalibrationModel::rowCount(const QModelIndex& parent) const
+int RecordingModel::rowCount(const QModelIndex& parent) const
 {
     if( parent.isValid() == false )
     return 2;
     else return 0;
 }
 
-QVariant CameraCalibrationModel::data(const QModelIndex& index, int role) const
+QVariant RecordingModel::data(const QModelIndex& index, int role) const
 {
     QVariant ret;
 
@@ -31,11 +31,11 @@ QVariant CameraCalibrationModel::data(const QModelIndex& index, int role) const
     return ret;
 }
 
-void CameraCalibrationModel::refresh()
+void RecordingModel::refresh()
 {
 }
 
-int CameraCalibrationModel::indexToId(const QModelIndex& index)
+int RecordingModel::indexToId(const QModelIndex& index)
 {
 }
 

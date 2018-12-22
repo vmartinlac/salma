@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include "Project.h"
 
 class MainWindow : public QMainWindow
 {
@@ -12,8 +13,14 @@ public:
 
 protected slots:
 
+    void openProject();
+    void closeProject();
     void showProjectInformation();
     void showAvailableCameras();
     void clearProject();
     void about();
+
+protected:
+
+    Project* mProject;
 };

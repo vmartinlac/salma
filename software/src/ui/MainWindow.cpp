@@ -17,18 +17,25 @@
 #include "RecordingPanel.h"
 #include "ReconstructionPanel.h"
 #include "AboutDialog.h"
+#include "ProjectDialog.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
+    mProject = new Project(this);
+
     QMenu* menuProject = menuBar()->addMenu("Project");
+    QAction* aOpen = menuProject->addAction("Open");
     QAction* aInformation = menuProject->addAction("Information");
     QAction* aCameras = menuProject->addAction("Available cameras");
     QAction* aClear = menuProject->addAction("Clear");
+    QAction* aClose = menuProject->addAction("Close");
     QAction* aQuit = menuProject->addAction("Quit");
 
     QMenu* menuHelp = menuBar()->addMenu("Help");
     QAction* aAbout = menuHelp->addAction("About");
 
+    connect(aOpen, SIGNAL(triggered()), this, SLOT(openProject()));
+    connect(aClose, SIGNAL(triggered()), this, SLOT(closeProject()));
     connect(aQuit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
     connect(aClear, SIGNAL(triggered()), this, SLOT(clearProject()));
     connect(aCameras, SIGNAL(triggered()), this, SLOT(showAvailableCameras()));
@@ -68,5 +75,17 @@ void MainWindow::showProjectInformation()
 void MainWindow::clearProject()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
+}
+
+void MainWindow::openProject()
+{
+    ProjectDialog* dlg = new ProjectDialog(mProject, this);
+    dlg->exec();
+    delete dlg;
+}
+
+void MainWindow::closeProject()
+{
+    mProject->close();
 }
 

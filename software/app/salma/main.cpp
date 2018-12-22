@@ -1,16 +1,23 @@
 #include <QApplication>
+#include <QSqlDatabase>
+#include "BuildInfo.h"
 #include "MainWindow.h"
 
 int main(int num_args, char** args)
 {
     QApplication app(num_args, args);
+    app.setOrganizationName("vmartinlac");
+    app.setApplicationVersion(BuildInfo::getVersionString().c_str());
+
+    QSqlDatabase::addDatabase("QSQLITE");
 
     MainWindow* w = new MainWindow();
-
     w->show();
 
-    app.exec();
+    const int ret = app.exec();
 
-    return 0;
+    delete w;
+
+    return ret;
 }
 
