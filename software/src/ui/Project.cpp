@@ -113,7 +113,7 @@ ReconstructionModel* Project::reconstructionModel()
 
 bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
 {
-    bool ok = true;
+    bool ok = mDB.isOpen();;
 
     if(ok)
     {
@@ -154,7 +154,7 @@ bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
 
 bool Project::loadCamera(int id, CameraCalibrationData& camera)
 {
-    bool ok = true;
+    bool ok = mDB.isOpen();;
 
     if(ok)
     {
@@ -211,62 +211,70 @@ bool Project::loadCamera(int id, CameraCalibrationData& camera)
 
 bool Project::savePose(const Sophus::SE3d& pose, int& id)
 {
-    Eigen::Quaterniond r = pose.unit_quaternion();
-    Eigen::Vector3d t = pose.translation();
+    bool ok = mDB.isOpen();;
 
-    QSqlQuery q(mDB);
-    q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
-    q.addBindValue(r.x());
-    q.addBindValue(r.y());
-    q.addBindValue(r.z());
-    q.addBindValue(r.w());
-    q.addBindValue(t.x());
-    q.addBindValue(t.y());
-    q.addBindValue(t.z());
+    if(ok)
+    {
+        Eigen::Quaterniond r = pose.unit_quaternion();
+        Eigen::Vector3d t = pose.translation();
 
-    if( q.exec() )
-    {
-        id = q.lastInsertId().toInt();
-        return true;
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
+        q.addBindValue(r.x());
+        q.addBindValue(r.y());
+        q.addBindValue(r.z());
+        q.addBindValue(r.w());
+        q.addBindValue(t.x());
+        q.addBindValue(t.y());
+        q.addBindValue(t.z());
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+        }
     }
-    else
-    {
-        id = -1;
-        return false;
-    }
+
+    return ok;
 }
 
 bool Project::loadPose(int id, Sophus::SE3d& pose)
 {
-    QSqlQuery q(mDB);
-    q.prepare("SELECT qx, qy, qz, qw, x, y, z FROM poses WHERE id=?");
-    q.addBindValue(id);
-
-    const bool ok = ( q.exec() && q.next() );
+    bool ok = mDB.isOpen();;
 
     if(ok)
     {
-        Eigen::Quaterniond r;
-        Eigen::Vector3d t;
+        QSqlQuery q(mDB);
+        q.prepare("SELECT qx, qy, qz, qw, x, y, z FROM poses WHERE id=?");
+        q.addBindValue(id);
 
-        r.x() = q.value(0).toFloat();
-        r.y() = q.value(1).toFloat();
-        r.z() = q.value(2).toFloat();
-        r.w() = q.value(3).toFloat();
-        t.x() = q.value(4).toFloat();
-        t.y() = q.value(5).toFloat();
-        t.z() = q.value(6).toFloat();
+        ok = ( q.exec() && q.next() );
 
-        pose.setQuaternion(r);
-        pose.translation() = t;
+        if(ok)
+        {
+            Eigen::Quaterniond r;
+            Eigen::Vector3d t;
 
-        return true;
+            r.x() = q.value(0).toFloat();
+            r.y() = q.value(1).toFloat();
+            r.z() = q.value(2).toFloat();
+            r.w() = q.value(3).toFloat();
+            t.x() = q.value(4).toFloat();
+            t.y() = q.value(5).toFloat();
+            t.z() = q.value(6).toFloat();
+
+            pose.setQuaternion(r);
+            pose.translation() = t;
+        }
     }
-    else
+
+    if(ok == false)
     {
         pose = Sophus::SE3d();
-        return false;
     }
+
+    return ok;
 }
 
 bool Project::saveStereoRig(const StereoRigCalibrationData& rig, int& id)
@@ -281,7 +289,7 @@ bool Project::loadStereoRig(int id, StereoRigCalibrationData& rig)
 
 bool Project::listCameras(CameraCalibrationList& list)
 {
-    bool ok = true;
+    bool ok = mDB.isOpen();
 
     list.clear();
 
@@ -313,7 +321,7 @@ bool Project::listCameras(CameraCalibrationList& list)
 
 bool Project::listStereoRigs(RigCalibrationList& list)
 {
-    bool ok = true;
+    bool ok = mDB.isOpen();
 
     list.clear();
 
@@ -342,3 +350,4 @@ bool Project::listStereoRigs(RigCalibrationList& list)
 
     return ok;
 }
+
