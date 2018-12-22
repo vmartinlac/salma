@@ -1,14 +1,17 @@
 #include <QToolBar>
+#include <QMessageBox>
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "CameraCalibrationPanel.h"
 #include "ImportCameraCalibrationDialog.h"
+#include "NewCameraCalibrationDialog.h"
 #include "Project.h"
+#include "VideoSystem.h"
 
 CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent)
 {
     mProject = project;
-    mView = new QTreeView();
+    mView = new QListView();
     mText = new QTextEdit();
 
     mView->setModel(mProject->cameraCalibrationModel());
@@ -39,6 +42,17 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
 
 void CameraCalibrationPanel::onNew()
 {
+    //if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
+    if(true)
+    {
+        NewCameraCalibrationDialog* dlg = new NewCameraCalibrationDialog(mProject, this);
+        dlg->exec();
+        delete dlg;
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "Not camera was detected!");
+    }
 }
 
 void CameraCalibrationPanel::onImport()

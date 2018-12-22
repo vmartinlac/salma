@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Model.h"
+#include "RigCalibrationList.h"
 
 class RigCalibrationModel : public Model
 {
@@ -16,21 +17,16 @@ public:
 
     int indexToId(const QModelIndex& index) override;
 
-protected slots:
+public slots:
 
     void refresh() override;
 
 protected:
 
-    struct Item
-    {
-        int rig_id;
-        QString name;
-        QString date;
-    };
+    int convertIndex(const QModelIndex& ind) const;
 
 protected:
 
-    std::vector<Item> mItems;
+    RigCalibrationList mRigs;
 };
 

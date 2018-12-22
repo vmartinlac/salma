@@ -10,7 +10,7 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 {
     mProject = project;
     mText = new QTextEdit();
-    mView = new QTreeView();
+    mView = new QListView();
 
     mView->setModel(mProject->recordingModel());
 

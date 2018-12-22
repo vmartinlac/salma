@@ -7,24 +7,32 @@ RigCalibrationModel::RigCalibrationModel(Project* parent) : Model(parent)
 
 int RigCalibrationModel::rowCount(const QModelIndex& parent) const
 {
-    if( parent.isValid() == false )
-    return 2;
-    else return 0;
+    int ret = 0;
+
+    if(parent.isValid() == false)
+    {
+        ret = mRigs.size();
+    }
+
+    return ret;
 }
 
 QVariant RigCalibrationModel::data(const QModelIndex& index, int role) const
 {
     QVariant ret;
 
-    if( index.isValid() && index.column() == 0 && role == Qt::DisplayRole )
+    int i = convertIndex(index);
+
+    if( i >= 0 && role == Qt::DisplayRole )
     {
-        if( index.row() == 0)
+        switch( index.column() )
         {
-            ret = "hello";
-        }
-        else if( index.row() == 1 )
-        {
-            ret = "world";
+        case 0:
+            ret = mRigs[i].name;
+            break;
+        case 1:
+            ret = mRigs[i].date;
+            break;
         }
     }
 
@@ -33,9 +41,35 @@ QVariant RigCalibrationModel::data(const QModelIndex& index, int role) const
 
 void RigCalibrationModel::refresh()
 {
+    beginResetModel();
+    mRigs.clear();
+    project()->listStereoRigs(mRigs);
+    endResetModel();
 }
 
 int RigCalibrationModel::indexToId(const QModelIndex& index)
 {
+    const int ind2 = convertIndex(index);
+
+    if(ind2 >= 0)
+    {
+        return mRigs[ind2].id;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+int RigCalibrationModel::convertIndex(const QModelIndex& ind) const
+{
+    if( ind.isValid() && 0 <= ind.row() && ind.row() < mRigs.size() && ind.parent().isValid() == false )
+    {
+        return ind.row();
+    }
+    else
+    {
+        return -1;
+    }
 }
 

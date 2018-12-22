@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include <QTreeView>
+#include <QListView>
 #include "Project.h"
 
 class Project;
@@ -15,7 +15,7 @@ public:
 
 protected:
 
-    QTreeView* mView;
+    QListView* mView;
     QTextEdit* mText;
     Project* mProject;
 };

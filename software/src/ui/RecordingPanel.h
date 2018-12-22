@@ -2,7 +2,7 @@
 
 #include <QWidget>
 #include <QTextEdit>
-#include <QTreeView>
+#include <QListView>
 
 class Project;
 
@@ -16,7 +16,7 @@ public:
 protected:
 
     Project* mProject;
-    QTreeView* mView;
+    QListView* mView;
     QTextEdit* mText;
 };
 

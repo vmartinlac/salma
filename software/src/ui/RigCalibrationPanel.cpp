@@ -8,7 +8,7 @@
 RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
 {
     mProject = project;
-    mView = new QTreeView();
+    mView = new QListView();
     mText = new QTextEdit();
 
     mView->setModel(mProject->rigCalibrationModel());

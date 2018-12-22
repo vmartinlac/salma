@@ -34,14 +34,14 @@ public:
 
     bool saveCamera(const CameraCalibrationData& camera, int& id);
     bool loadCamera(int id, CameraCalibrationData& data);
+    bool listCameras(CameraCalibrationList& list);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);
 
     bool saveStereoRig(const StereoRigCalibrationData& rig, int& id);
     bool loadStereoRig(int id, StereoRigCalibrationData& rig);
-
-    bool listCameras(CameraCalibrationList& list);
+    bool listStereoRigs(RigCalibrationList& list);
 
 signals:
     

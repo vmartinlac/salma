@@ -4,6 +4,7 @@
 #include "CameraCalibrationData.h"
 #include "StereoRigCalibrationData.h"
 #include "CameraCalibrationList.h"
+#include "RigCalibrationList.h"
 
 Project::Project(QObject* parent) : QObject(parent)
 {
@@ -310,3 +311,34 @@ bool Project::listCameras(CameraCalibrationList& list)
     return ok;
 }
 
+bool Project::listStereoRigs(RigCalibrationList& list)
+{
+    bool ok = true;
+
+    list.clear();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        ok = q.exec("SELECT id, name, date FROM rig_parameters");
+
+        if(ok)
+        {
+            while(q.next())
+            {
+                RigCalibrationListItem item;
+                item.id = q.value(0).toInt();
+                item.name = q.value(1).toString();
+                item.date = q.value(2).toString();
+                list.push_back(item);
+            }
+        }
+    }
+
+    if(ok == false)
+    {
+        list.clear();
+    }
+
+    return ok;
+}

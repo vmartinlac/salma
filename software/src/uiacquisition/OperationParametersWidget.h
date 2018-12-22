@@ -13,3 +13,4 @@ public:
 
     virtual QString name() = 0;
 };
+

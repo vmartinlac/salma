@@ -4,6 +4,8 @@ add_library(
     STATIC
     Project.h
     Project.cpp
+    CameraList.h
+    CameraList.cpp
     Model.h
     Model.cpp
     ProjectDialog.h
@@ -17,10 +19,13 @@ add_library(
     CameraCalibrationList.h
     ImportCameraCalibrationDialog.h
     ImportCameraCalibrationDialog.cpp
+    NewCameraCalibrationDialog.h
+    NewCameraCalibrationDialog.cpp
     RigCalibrationModel.h
     RigCalibrationModel.cpp
     RigCalibrationPanel.h
     RigCalibrationPanel.cpp
+    RigCalibrationList.h
     RecordingModel.h
     RecordingModel.cpp
     RecordingPanel.h
@@ -37,6 +42,7 @@ target_link_libraries(
     buildinfo
     calibration
     uicommon
+    video
     Qt5::Widgets
     Qt5::Sql
 )

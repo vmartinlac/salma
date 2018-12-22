@@ -1,7 +1,8 @@
 #pragma once
 
 #include <QTextEdit>
-#include <QTreeView>
+//#include <QTreeView>
+#include <QListView>
 #include <QWidget>
 #include "CameraCalibrationModel.h"
 
@@ -25,7 +26,8 @@ protected slots:
 
 protected:
 
-    QTreeView* mView;
+    //QTreeView* mView;
+    QListView* mView;
     QTextEdit* mText;
     Project* mProject;
 };

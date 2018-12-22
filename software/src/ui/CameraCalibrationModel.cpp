@@ -7,34 +7,35 @@ CameraCalibrationModel::CameraCalibrationModel(Project* parent) : Model(parent)
 
 int CameraCalibrationModel::rowCount(const QModelIndex& parent) const
 {
+    int ret = 0;
+
     if(parent.isValid() == false)
     {
-        return mCameras.size();
+        ret = mCameras.size();
     }
-    else
-    {
-        return 0;
-    }
+
+    return ret;
 }
 
 QVariant CameraCalibrationModel::data(const QModelIndex& index, int role) const
 {
     QVariant ret;
 
-    std::cout << role << " " << Qt::DisplayRole << std::endl;
     int i = convertIndex(index);
 
-    if( i >= 0 && index.column() == 0 )
+    if( i >= 0 && role == Qt::DisplayRole )
     {
-        ret = mCameras[i].name;
-        std::cout << mCameras[i].name.toStdString() << std::endl;
-    }
-    else if( i >= 0 && index.column() == 1 )
-    {
-        ret = mCameras[i].date;
+        switch( index.column() )
+        {
+        case 0:
+            ret = mCameras[i].name;
+            break;
+        case 1:
+            ret = mCameras[i].date;
+            break;
+        }
     }
 
-    return "hello";
     return ret;
 }
 
