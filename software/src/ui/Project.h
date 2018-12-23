@@ -35,13 +35,15 @@ public:
     bool saveCamera(const CameraCalibrationData& camera, int& id);
     bool loadCamera(int id, CameraCalibrationData& data);
     bool listCameras(CameraCalibrationList& list);
+    bool isCameraMutable(int id, bool& mut);
+
+    bool saveRig(const StereoRigCalibrationData& rig, int& id);
+    bool loadRig(int id, StereoRigCalibrationData& rig);
+    bool listRigs(RigCalibrationList& list);
+    bool isRigMutable(int id, bool& mut);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);
-
-    bool saveStereoRig(const StereoRigCalibrationData& rig, int& id);
-    bool loadStereoRig(int id, StereoRigCalibrationData& rig);
-    bool listStereoRigs(RigCalibrationList& list);
 
 signals:
     

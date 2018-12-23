@@ -2,48 +2,59 @@
 add_library(
     ui
     STATIC
-    VideoWidget.cpp
+
+    MainWindow.h
+    MainWindow.cpp
     VideoWidget.h
-    StatsWidget.cpp
+    VideoWidget.cpp
     StatsWidget.h
-    Operation.cpp
-    Operation.h
-    OperationWidget.cpp
-    OperationWidget.h
-    Project.h
-    Project.cpp
+    StatsWidget.cpp
     CameraList.h
     CameraList.cpp
     Model.h
     Model.cpp
+
+    Project.h
+    Project.cpp
     ProjectDialog.h
     ProjectDialog.cpp
-    MainWindow.h
-    MainWindow.cpp
+
+    Operation.cpp
+    Operation.h
+    OperationThread.cpp
+    OperationThread.h
+    NewOperationDialog.h
+    NewOperationDialog.cpp
+    OperationDialog.h
+    OperationDialog.cpp
+
     CameraCalibrationModel.h
     CameraCalibrationModel.cpp
     CameraCalibrationPanel.h
     CameraCalibrationPanel.cpp
     CameraCalibrationList.h
-    ImportCameraCalibrationDialog.h
-    ImportCameraCalibrationDialog.cpp
-    OperationThread.cpp
-    OperationThread.h
-    NewOperationDialog.h
-    NewOperationDialog.cpp
+    NewCameraCalibrationDialog.h
+    NewCameraCalibrationDialog.cpp
+
     RigCalibrationModel.h
     RigCalibrationModel.cpp
     RigCalibrationPanel.h
     RigCalibrationPanel.cpp
     RigCalibrationList.h
+    NewRigCalibrationDialog.h
+    NewRigCalibrationDialog.cpp
+
     RecordingModel.h
     RecordingModel.cpp
     RecordingPanel.h
     RecordingPanel.cpp
+    RecordingList.h
+
     ReconstructionModel.h
     ReconstructionModel.cpp
     ReconstructionPanel.h
     ReconstructionPanel.cpp
+    ReconstructionList.h
 )
 
 target_link_libraries(

@@ -2,8 +2,11 @@
 #include <QTextEdit>
 #include <QToolBar>
 #include <QSplitter>
+#include <QMessageBox>
 #include <QVBoxLayout>
 #include "RigCalibrationPanel.h"
+#include "VideoSystem.h"
+#include "NewRigCalibrationDialog.h"
 
 RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
 {
@@ -14,11 +17,11 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     mView->setModel(mProject->rigCalibrationModel());
 
     QToolBar* tb = new QToolBar();
-    tb->addAction("New");
-    tb->addAction("Import");
-    tb->addAction("Export");
-    tb->addAction("Rename");
-    tb->addAction("Delete");
+    QAction* aNew = tb->addAction("New");
+    QAction* aRename = tb->addAction("Rename");
+
+    connect(aNew, SIGNAL(triggered()), this, SLOT(onNew()));
+    connect(aRename, SIGNAL(triggered()), this, SLOT(onRename()));
 
     QSplitter* splitter = new QSplitter();
     splitter->addWidget(mView);
@@ -29,5 +32,32 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     lay->addWidget(splitter);
 
     setLayout(lay);
+}
+
+void RigCalibrationPanel::onNew()
+{
+    //if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
+    if(true)
+    {
+        OperationPtr op;
+
+        NewRigCalibrationDialog* dlg = new NewRigCalibrationDialog(mProject, this);
+        dlg->exec();
+        op = dlg->getOperation();
+        delete dlg;
+
+        if(op)
+        {
+        }
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "Not camera was detected!");
+    }
+}
+
+void RigCalibrationPanel::onRename()
+{
+    QMessageBox::critical(this, "Error", "Not implemented!");
 }
 

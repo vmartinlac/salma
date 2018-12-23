@@ -277,12 +277,12 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
     return ok;
 }
 
-bool Project::saveStereoRig(const StereoRigCalibrationData& rig, int& id)
+bool Project::saveRig(const StereoRigCalibrationData& rig, int& id)
 {
     ;
 }
 
-bool Project::loadStereoRig(int id, StereoRigCalibrationData& rig)
+bool Project::loadRig(int id, StereoRigCalibrationData& rig)
 {
     ;
 }
@@ -319,7 +319,7 @@ bool Project::listCameras(CameraCalibrationList& list)
     return ok;
 }
 
-bool Project::listStereoRigs(RigCalibrationList& list)
+bool Project::listRigs(RigCalibrationList& list)
 {
     bool ok = mDB.isOpen();
 

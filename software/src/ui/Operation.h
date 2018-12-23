@@ -3,6 +3,7 @@
 #include <memory>
 #include "VideoWidget.h"
 #include "StatsWidget.h"
+#include "Project.h"
 
 class Operation
 {

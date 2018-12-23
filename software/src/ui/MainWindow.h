@@ -13,6 +13,7 @@ public:
 
 protected slots:
 
+    void newProject();
     void openProject();
     void closeProject();
     void showProjectInformation();

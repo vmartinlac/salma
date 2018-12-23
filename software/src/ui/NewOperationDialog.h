@@ -1,9 +1,7 @@
 #pragma once
 
 #include <QDialog>
-#include <QLineEdit>
-#include "PathWidget.h"
-#include "CameraList.h"
+#include "Operation.h"
 #include "Project.h"
 
 class NewOperationDialog : public QDialog
@@ -14,11 +12,17 @@ public:
 
     NewOperationDialog(Project* project, QWidget* parent=nullptr);
 
+    OperationPtr getOperation();
+
+    Project* project();
+
 protected:
 
+    void setOperation(OperationPtr op);
+
+private:
+
     Project* mProject;
-    QLineEdit* mName;
-    CameraList* mCamera;
-    QLineEdit* mTargetScale;
+    OperationPtr mOperation;
 };
 

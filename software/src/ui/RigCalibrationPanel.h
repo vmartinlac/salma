@@ -8,10 +8,15 @@ class Project;
 
 class RigCalibrationPanel : public QWidget
 {
-
+    Q_OBJECT
 public:
 
     RigCalibrationPanel(Project* project, QWidget* parent=nullptr);
+
+protected slots:
+
+    void onNew();
+    void onRename();
 
 protected:
 

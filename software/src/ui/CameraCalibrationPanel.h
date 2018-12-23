@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QTextEdit>
-//#include <QTreeView>
 #include <QListView>
 #include <QWidget>
 #include "CameraCalibrationModel.h"
@@ -20,13 +19,9 @@ protected slots:
 
     void onNew();
     void onRename();
-    void onImport();
-    void onExport();
-    void onDelete();
 
 protected:
 
-    //QTreeView* mView;
     QListView* mView;
     QTextEdit* mText;
     Project* mProject;

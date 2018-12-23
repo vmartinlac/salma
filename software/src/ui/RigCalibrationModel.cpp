@@ -43,7 +43,7 @@ void RigCalibrationModel::refresh()
 {
     beginResetModel();
     mRigs.clear();
-    project()->listStereoRigs(mRigs);
+    project()->listRigs(mRigs);
     endResetModel();
 }
 
