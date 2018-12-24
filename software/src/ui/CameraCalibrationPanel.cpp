@@ -6,6 +6,7 @@
 #include "Project.h"
 #include "VideoSystem.h"
 #include "NewCameraCalibrationDialog.h"
+#include "OperationDialog.h"
 
 CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent)
 {
@@ -35,8 +36,7 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
 
 void CameraCalibrationPanel::onNew()
 {
-    //if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
-    if(true)
+    if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
     {
         OperationPtr op;
 
@@ -47,11 +47,14 @@ void CameraCalibrationPanel::onNew()
 
         if(op)
         {
+            OperationDialog* opdlg = new OperationDialog(op, this);
+            opdlg->exec();
+            delete opdlg;
         }
     }
     else
     {
-        QMessageBox::critical(this, "Error", "Not camera was detected!");
+        QMessageBox::critical(this, "Error", "No camera was detected!");
     }
 }
 

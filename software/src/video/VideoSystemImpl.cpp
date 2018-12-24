@@ -7,6 +7,8 @@
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
 
+#define MOCK_GENICAM_CAMERAS
+
 VideoSystemImpl::VideoSystemImpl()
 {
 }
@@ -40,16 +42,40 @@ void VideoSystemImpl::finalize()
 
 int VideoSystemImpl::getNumberOfGenICamCameras()
 {
+#ifdef MOCK_GENICAM_CAMERAS
+    return 2;
+#else
     return mGenICamCameras.size();
+#endif
 }
 
 std::string VideoSystemImpl::getNameOfGenICamCamera(int idx)
 {
+#ifdef MOCK_GENICAM_CAMERAS
+    const char* ret = nullptr;
+    switch(idx)
+    {
+    case 0:
+        ret = "Mock GenICam camera #0";
+        break;
+    case 1:
+        ret = "Mock GenICam camera #1";
+        break;
+    default:
+        throw std::runtime_error("internal error");
+    }
+    return ret;
+#else
     return mGenICamCameras.at(idx);
+#endif
 }
 
 VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, ExternalTriggerPtr trigger)
 {
+#ifdef MOCK_GENICAM_CAMERAS
+    VideoSourcePtr ret(new MockCamera(1, 640, 480));
+    return ret;
+#else
     GenICamRigPtr ret;
 
     const bool ok = (0 <= camera_idx && camera_idx < mGenICamCameras.size());
@@ -66,10 +92,15 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, Ext
     }
 
     return ret;
+#endif
 }
 
 VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_idx, ExternalTriggerPtr trigger)
 {
+#ifdef MOCK_GENICAM_CAMERAS
+    VideoSourcePtr ret(new MockCamera(2, 640, 480));
+    return ret;
+#else
     GenICamRigPtr ret;
     bool ok = true;
 
@@ -100,6 +131,7 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
     */
 
     return ret;
+#endif
 }
 
 VideoSourcePtr VideoSystemImpl::createVideoSourceFromFileMono(const std::string& path)

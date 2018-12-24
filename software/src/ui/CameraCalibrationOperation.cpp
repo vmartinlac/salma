@@ -141,9 +141,9 @@ bool CameraCalibrationOperation::step()
                 }
             }
 
-            mVideoPort->beginWrite();
-            mVideoPort->data().image = output_image;
-            mVideoPort->endWrite();
+            videoPort()->beginWrite();
+            videoPort()->data().image = output_image;
+            videoPort()->endWrite();
         }
 
         writeOutputText();
@@ -158,9 +158,9 @@ bool CameraCalibrationOperation::step()
         std::vector<cv::Mat> rotations;
         std::vector<cv::Mat> translations;
 
-        mStatsPort->beginWrite();
-        mStatsPort->data().text = "Computing calibration data ...";
-        mStatsPort->endWrite();
+        statsPort()->beginWrite();
+        statsPort()->data().text = "Computing calibration data ...";
+        statsPort()->endWrite();
 
         const int flags = 0 |
             /*
@@ -229,15 +229,15 @@ bool CameraCalibrationOperation::step()
             write_mat( calibration.distortion_coefficients, false );
             s << std::endl;
 
-            mStatsPort->beginWrite();
-            mStatsPort->data().text = s.str().c_str();
-            mStatsPort->endWrite();
+            statsPort()->beginWrite();
+            statsPort()->data().text = s.str().c_str();
+            statsPort()->endWrite();
         }
         else
         {
-            mStatsPort->beginWrite();
-            mStatsPort->data().text = "Could not save calibration data to file!";
-            mStatsPort->endWrite();
+            statsPort()->beginWrite();
+            statsPort()->data().text = "Could not save calibration data to file!";
+            statsPort()->endWrite();
         }
 
         ret = false;
@@ -268,8 +268,13 @@ void CameraCalibrationOperation::writeOutputText()
     s << "Target cell length: " << mTargetCellLength << std::endl;
     s << "Output file: " << mOutputPath << std::endl;
 
-    mStatsPort->beginWrite();
-    mStatsPort->data().text = s.str().c_str();
-    mStatsPort->endWrite();
+    statsPort()->beginWrite();
+    statsPort()->data().text = s.str().c_str();
+    statsPort()->endWrite();
+}
+
+const char* CameraCalibrationOperation::getName()
+{
+    return "Camera calibration";
 }
 

@@ -29,7 +29,7 @@ NewRigCalibrationDialog::NewRigCalibrationDialog(Project* proj, QWidget* parent)
     vlay->addLayout(hlay);
 
     setLayout(vlay);
-    setWindowTitle("New camera calibration");
+    setWindowTitle("New rig calibration");
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));

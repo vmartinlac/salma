@@ -8,12 +8,15 @@ Operation::~Operation()
 {
 }
 
-void Operation::setPorts(
-    VideoInputPort* video,
-    StatsInputPort* stats)
+void Operation::setPorts( VideoInputPort* video, StatsInputPort* stats )
 {
     mVideoPort = video;
     mStatsPort = stats;
+}
+
+void Operation::setProject(Project* proj)
+{
+    mProject = proj;
 }
 
 bool Operation::before()
@@ -23,5 +26,20 @@ bool Operation::before()
 
 void Operation::after()
 {
+}
+
+Project* Operation::project()
+{
+    return mProject;
+}
+
+VideoInputPort* Operation::videoPort()
+{
+    return mVideoPort;
+}
+
+StatsInputPort* Operation::statsPort()
+{
+    return mStatsPort;
 }
 

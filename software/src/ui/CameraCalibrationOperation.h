@@ -20,6 +20,7 @@ public:
     bool before() override;
     bool step() override;
     void after() override;
+    const char* getName() override;
 
 public:
 

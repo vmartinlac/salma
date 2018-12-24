@@ -35,6 +35,8 @@ add_library(
     CameraCalibrationList.h
     NewCameraCalibrationDialog.h
     NewCameraCalibrationDialog.cpp
+    CameraCalibrationOperation.h
+    CameraCalibrationOperation.cpp
 
     RigCalibrationModel.h
     RigCalibrationModel.cpp
@@ -66,6 +68,7 @@ target_link_libraries(
     video
     Qt5::Widgets
     Qt5::Sql
+    opencv_calib3d
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

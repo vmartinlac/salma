@@ -1,14 +1,24 @@
 #include <QVBoxLayout>
+#include <QSettings>
+#include <QMessageBox>
+#include <QDoubleValidator>
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QPushButton>
 #include "NewCameraCalibrationDialog.h"
+#include "VideoSystem.h"
+#include "CameraCalibrationOperation.h"
 
 NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
 {
     mName = new QLineEdit();
     mCamera = new CameraList();
     mTargetScale = new QLineEdit();
+
+    QDoubleValidator* val = new QDoubleValidator();
+    val->setBottom(1.0e-6);
+    mTargetScale->setValidator(val);
+    mTargetScale->setText("1");
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
@@ -35,15 +45,51 @@ NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* proj, QWidget* p
 
 void NewCameraCalibrationDialog::accept()
 {
+    QString name;
     OperationPtr op;
-    bool ok = true;
+    int camera_id = -1;
+    VideoSourcePtr camera;
 
-    // TODO
+    bool ok = true;
+    const char* err = "";
+
+    if(ok)
+    {
+        name = mName->text();
+        ok = (name.isEmpty() == false);
+        err = "Incorrect name!";
+    }
+
+    if(ok)
+    {
+        camera_id = mCamera->getCameraId();
+        ok = (camera_id >= 0);
+        err = "Incorrect camera!";
+    }
+
+    if(ok)
+    {
+        camera = VideoSystem::instance()->createVideoSourceGenICamMono(camera_id);
+        ok = bool(camera);
+        err = "Incorrect camera!";
+    }
+
+    if(ok)
+    {
+        CameraCalibrationOperation* myop = new CameraCalibrationOperation();
+        // TODO: set myop.
+        myop->setProject(project());
+        op.reset(myop);
+    }
 
     if(ok)
     {
         setOperation(op);
         QDialog::accept();
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", err);
     }
 }
 
