@@ -35,6 +35,8 @@ add_library(
     Operation.h
     OperationThread.cpp
     OperationThread.h
+    OperationProgressDialog.h
+    OperationProgressDialog.cpp
     NewOperationDialog.h
     NewOperationDialog.cpp
     OperationDialog.h
