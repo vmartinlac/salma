@@ -22,9 +22,11 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
     QToolBar* tb = new QToolBar();
     QAction* aNew = tb->addAction("New");
     QAction* aRename = tb->addAction("Rename");
+    QAction* aDelete = tb->addAction("Delete");
 
     connect(aNew, SIGNAL(triggered()), this, SLOT(onNew()));
     connect(aRename, SIGNAL(triggered()), this, SLOT(onRename()));
+    connect(aDelete, SIGNAL(triggered()), this, SLOT(onDelete()));
 
     QSplitter* splitter = new QSplitter();
     splitter->addWidget(mView);
@@ -64,6 +66,11 @@ void CameraCalibrationPanel::onNew()
 }
 
 void CameraCalibrationPanel::onRename()
+{
+    QMessageBox::critical(this, "Error", "Not implemented");
+}
+
+void CameraCalibrationPanel::onDelete()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
 }

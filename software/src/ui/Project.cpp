@@ -390,6 +390,38 @@ bool Project::listRecordings(RecordingList& list)
     return ok;
 }
 
+bool Project::listReconstructions(ReconstructionList& list)
+{
+    bool ok = mDB.isOpen();
+
+    list.clear();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        ok = q.exec("SELECT id, name, date FROM reconstructions");
+
+        if(ok)
+        {
+            while(q.next())
+            {
+                ReconstructionListItem item;
+                item.id = q.value(0).toInt();
+                item.name = q.value(1).toString();
+                item.date = q.value(2).toString();
+                list.push_back(item);
+            }
+        }
+    }
+
+    if(ok == false)
+    {
+        list.clear();
+    }
+
+    return ok;
+}
+
 void Project::clear()
 {
     // TODO

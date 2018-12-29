@@ -29,8 +29,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     QMenu* menuProject = menuBar()->addMenu("Project");
     QAction* aNew = menuProject->addAction("New");
     QAction* aOpen = menuProject->addAction("Open");
-    QAction* aInformation = menuProject->addAction("Information");
-    QAction* aCameras = menuProject->addAction("Available cameras");
     QAction* aClear = menuProject->addAction("Clear");
     QAction* aClose = menuProject->addAction("Close");
     QAction* aQuit = menuProject->addAction("Quit");
@@ -44,7 +42,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     */
 
     QMenu* menuHelp = menuBar()->addMenu("Help");
-    QAction* aAbout = menuHelp->addAction("About");
+    QAction* aCameras = menuHelp->addAction("Available cameras");
+    QAction* aAbout = menuHelp->addAction("About Salma");
 
     connect(aNew, SIGNAL(triggered()), this, SLOT(newProject()));
     connect(aOpen, SIGNAL(triggered()), this, SLOT(openProject()));
@@ -52,7 +51,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(aQuit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
     connect(aClear, SIGNAL(triggered()), this, SLOT(clearProject()));
     connect(aCameras, SIGNAL(triggered()), this, SLOT(showAvailableCameras()));
-    connect(aInformation, SIGNAL(triggered()), this, SLOT(showProjectInformation()));
     connect(aAbout, SIGNAL(triggered()), this, SLOT(about()));
 
     //
@@ -93,12 +91,6 @@ void MainWindow::showAvailableCameras()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
 }
-
-void MainWindow::showProjectInformation()
-{
-    QMessageBox::critical(this, "Error", "Not implemented");
-}
-
 
 void MainWindow::clearProject()
 {

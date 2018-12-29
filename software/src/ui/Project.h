@@ -48,6 +48,8 @@ public:
 
     bool listRecordings(RecordingList& list);
 
+    bool listReconstructions(ReconstructionList& list);
+
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);
 

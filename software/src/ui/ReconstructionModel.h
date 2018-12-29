@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Model.h"
+#include "ReconstructionList.h"
 
 class ReconstructionModel : public Model
 {
@@ -16,21 +17,16 @@ public:
 
     int indexToId(const QModelIndex& index) override;
 
-protected slots:
+public slots:
 
     void refresh() override;
 
 protected:
 
-    struct Item
-    {
-        int reconstruction_id;
-        QString name;
-        QString date;
-    };
+    int convertIndex(const QModelIndex& ind) const;
 
 protected:
 
-    std::vector<Item> mItems;
+    ReconstructionList mReconstructions;
 };
 

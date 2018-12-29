@@ -17,6 +17,7 @@ protected slots:
 
     void onNew();
     void onRename();
+    void onDelete();
 
 protected:
 

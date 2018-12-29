@@ -65,6 +65,8 @@ add_library(
     RecordingPanel.h
     RecordingPanel.cpp
     RecordingList.h
+    NewMonoRecordingDialog.h
+    NewMonoRecordingDialog.cpp
     NewStereoRecordingDialog.h
     NewStereoRecordingDialog.cpp
     RecordingOperation.h
@@ -75,6 +77,10 @@ add_library(
     ReconstructionPanel.h
     ReconstructionPanel.cpp
     ReconstructionList.h
+    NewReconstructionDialog.h
+    NewReconstructionDialog.cpp
+    ReconstructionOperation.h
+    ReconstructionOperation.cpp
 )
 
 target_link_libraries(

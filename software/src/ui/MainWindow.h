@@ -16,7 +16,6 @@ protected slots:
     void newProject();
     void openProject();
     void closeProject();
-    void showProjectInformation();
     void showAvailableCameras();
     void clearProject();
     void about();

@@ -7,6 +7,7 @@
 #include "RecordingPanel.h"
 #include "Project.h"
 #include "VideoSystem.h"
+#include "NewMonoRecordingDialog.h"
 #include "NewStereoRecordingDialog.h"
 #include "OperationDialog.h"
 
@@ -21,8 +22,8 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
     mText->setReadOnly(true);
 
     QToolBar* tb = new QToolBar();
-    QAction* aNewMono = tb->addAction("New mono recording");
-    QAction* aNewStereo = tb->addAction("New stereo recording");
+    QAction* aNewMono = tb->addAction("New mono");
+    QAction* aNewStereo = tb->addAction("New stereo");
     QAction* aPlay = tb->addAction("Play");
     QAction* aRename = tb->addAction("Rename");
     QAction* aDelete = tb->addAction("Delete");
@@ -46,7 +47,28 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
 void RecordingPanel::onNewMonoRecording()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= 1 )
+    {
+        OperationPtr op;
+
+        NewMonoRecordingDialog* dlg = new NewMonoRecordingDialog(mProject, this);
+        dlg->exec();
+        op = dlg->getOperation();
+        delete dlg;
+
+        if(op)
+        {
+            OperationDialog* opdlg = new OperationDialog(mProject, op, this);
+            opdlg->exec();
+            delete opdlg;
+
+            mProject->recordingModel()->refresh();
+        }
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "You need at least one camera!");
+    }
 }
 
 void RecordingPanel::onNewStereoRecording()
