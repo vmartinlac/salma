@@ -19,8 +19,13 @@ add_library(
     SLAMModuleTriangulation.h
     SLAMModuleDenseReconstruction.cpp
     SLAMModuleDenseReconstruction.h
-    SLAMSystem.cpp
-    SLAMSystem.h
+    SLAMProject.cpp
+    SLAMProject.h
+    SLAMDataStructures.h
+    #SLAMSystem.cpp
+    #SLAMSystem.h
+    #SLAMReconstructionDB.h
+    #SLAMReconstructionDB.cpp
 )
 
 target_link_libraries(
@@ -34,8 +39,9 @@ target_link_libraries(
     opencv_features2d
     opencv_calib3d
     opencv_video
-    slamcore
+    video
     mvpnp
+    calibration
     buildinfo
 )
 

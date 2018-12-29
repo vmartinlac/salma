@@ -3,7 +3,7 @@
 #include <QFile>
 #include <QByteArray>
 #include "SLAMProject.h"
-#include "SLAMReconstructionDB.h"
+//#include "SLAMReconstructionDB.h"
 #include "VideoSystem.h"
 
 SLAMProject::SLAMProject()
@@ -141,6 +141,7 @@ double SLAMProject::getParameterReal(const char* name, double default_value)
 
 bool SLAMProject::exportReconstruction(ReconstructionPtr reconstruction, const std::string& name)
 {
+/*
     SLAMReconstructionDB db;
     bool ok = true;
 
@@ -165,5 +166,7 @@ bool SLAMProject::exportReconstruction(ReconstructionPtr reconstruction, const s
     }
 
     return ok;
+*/
+    return false;
 }
 
