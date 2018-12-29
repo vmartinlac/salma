@@ -18,8 +18,6 @@ NewRigCalibrationDialog::NewRigCalibrationDialog(Project* proj, QWidget* parent)
     mRightCalibration = new CameraCalibrationListWidget(proj);
     mTargetScale = new TargetScaleWidget();
 
-    mProject = proj;
-
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Left camera:", mLeftCamera);
@@ -85,13 +83,13 @@ void NewRigCalibrationDialog::accept()
 
     if(ok)
     {
-        ok = mProject->loadCamera(left_calibration_id, left_calibration);
+        ok = project()->loadCamera(left_calibration_id, left_calibration);
         err = "Could not load calibration data!";
     }
 
     if(ok)
     {
-        ok = mProject->loadCamera(right_calibration_id, right_calibration);
+        ok = project()->loadCamera(right_calibration_id, right_calibration);
         err = "Could not load calibration data!";
     }
 

@@ -17,6 +17,8 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
 
     mView->setModel(mProject->cameraCalibrationModel());
 
+    mText->setReadOnly(true);
+
     QToolBar* tb = new QToolBar();
     QAction* aNew = tb->addAction("New");
     QAction* aRename = tb->addAction("Rename");
@@ -57,11 +59,12 @@ void CameraCalibrationPanel::onNew()
     }
     else
     {
-        QMessageBox::critical(this, "Error", "No camera was detected!");
+        QMessageBox::critical(this, "Error", "You need at least one camera!");
     }
 }
 
 void CameraCalibrationPanel::onRename()
 {
+    QMessageBox::critical(this, "Error", "Not implemented");
 }
 

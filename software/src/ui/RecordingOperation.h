@@ -8,24 +8,34 @@
 #include "VideoSource.h"
 #include "Operation.h"
 
-class StereoRecordingOperation : public Operation
+class Project;
+
+class RecordingOperation : public Operation
 {
 public:
 
-    StereoRecordingOperation();
+    RecordingOperation();
 
-    ~StereoRecordingOperation() override;
+    ~RecordingOperation() override;
+
+    const char* getName() override;
 
     bool before() override;
     bool step() override;
     void after() override;
 
+    bool success() override;
+    bool saveResult(Project* p) override;
+    void discardResult() override;
+
 public:
 
+    std::string mRecordingName;
     VideoSourcePtr mCamera;
-    QDir mOutputDirectory;
     bool mVisualizationOnly;
     double mMaxFrameRate;
+    QString mDirectory;
+    QDir mOutputDirectory;
 
 protected:
 

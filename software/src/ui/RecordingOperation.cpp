@@ -4,21 +4,21 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-#include "StereoRecordingOperation.h"
+#include "RecordingOperation.h"
 #include "Image.h"
 #include "SyncIO.h"
 
-StereoRecordingOperation::StereoRecordingOperation()
+RecordingOperation::RecordingOperation()
 {
     mVisualizationOnly = false;
     mMaxFrameRate = 1000;
 }
 
-StereoRecordingOperation::~StereoRecordingOperation()
+RecordingOperation::~RecordingOperation()
 {
 }
 
-bool StereoRecordingOperation::before()
+bool RecordingOperation::before()
 {
     bool ok = true;
 
@@ -53,7 +53,7 @@ bool StereoRecordingOperation::before()
     return ok;
 }
 
-bool StereoRecordingOperation::step()
+bool RecordingOperation::step()
 {
     bool ret = true;
 
@@ -95,9 +95,9 @@ bool StereoRecordingOperation::step()
 
                 if( concat.isValid() == false ) throw std::runtime_error("some unexpected error");
 
-                mVideoPort->beginWrite();
-                mVideoPort->data().image = concat.getFrame();
-                mVideoPort->endWrite();
+                videoPort()->beginWrite();
+                videoPort()->data().image = concat.getFrame();
+                videoPort()->endWrite();
             }
 
             // write output text.
@@ -119,15 +119,15 @@ bool StereoRecordingOperation::step()
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false") << std::endl;
                 s << "Max frame rate: " << mMaxFrameRate << std::endl;
 
-                mStatsPort->beginWrite();
-                mStatsPort->data().text = s.str().c_str();
-                mStatsPort->endWrite();
+                statsPort()->beginWrite();
+                statsPort()->data().text = s.str().c_str();
+                statsPort()->endWrite();
             }
             else
             {
-                mStatsPort->beginWrite();
-                mStatsPort->data().text = "Error while saving the image!";
-                mStatsPort->endWrite();
+                statsPort()->beginWrite();
+                statsPort()->data().text = "Error while saving the image!";
+                statsPort()->endWrite();
             }
 
             if(mMaxFrameRate > 0 && mNumFrames > 1)
@@ -150,7 +150,7 @@ bool StereoRecordingOperation::step()
     return ret;
 }
 
-void StereoRecordingOperation::after()
+void RecordingOperation::after()
 {
     if( mVisualizationOnly == false )
     {
@@ -163,3 +163,21 @@ void StereoRecordingOperation::after()
     }
 }
 
+const char* RecordingOperation::getName()
+{
+    return "Recording";
+}
+
+bool RecordingOperation::success()
+{
+    return true;
+}
+
+bool RecordingOperation::saveResult(Project* p)
+{
+    return true;
+}
+
+void RecordingOperation::discardResult()
+{
+}

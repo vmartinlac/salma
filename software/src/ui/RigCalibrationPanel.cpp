@@ -17,7 +17,7 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     mView->setModel(mProject->rigCalibrationModel());
 
     QToolBar* tb = new QToolBar();
-    QAction* aNew = tb->addAction("New");
+    QAction* aNew = tb->addAction("New stereo calibration");
     QAction* aRename = tb->addAction("Rename");
 
     connect(aNew, SIGNAL(triggered()), this, SLOT(onNew()));
@@ -36,8 +36,7 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
 
 void RigCalibrationPanel::onNew()
 {
-    //if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
-    if(true)
+    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= 2 )
     {
         OperationPtr op;
 
@@ -53,7 +52,7 @@ void RigCalibrationPanel::onNew()
     }
     else
     {
-        QMessageBox::critical(this, "Error", "Not camera was detected!");
+        QMessageBox::critical(this, "Error", "You need at least two cameras!");
     }
 }
 

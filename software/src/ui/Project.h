@@ -10,6 +10,9 @@
 #include "ReconstructionModel.h"
 #include "CameraCalibrationData.h"
 #include "StereoRigCalibrationData.h"
+#include "CameraCalibrationList.h"
+#include "RigCalibrationList.h"
+#include "RecordingList.h"
 
 class Project : public QObject
 {
@@ -27,6 +30,8 @@ public:
     RecordingModel* recordingModel();
     ReconstructionModel* reconstructionModel();
 
+    void clear(); // Reset the project! Use with caution!
+
     void beginTransaction();
     void endTransaction();
     void abortTransaction();
@@ -40,6 +45,8 @@ public:
     bool loadRig(int id, StereoRigCalibrationDataPtr& rig);
     bool listRigs(RigCalibrationList& list);
     bool isRigMutable(int id, bool& mut);
+
+    bool listRecordings(RecordingList& list);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);

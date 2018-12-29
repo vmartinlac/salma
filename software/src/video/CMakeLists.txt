@@ -23,6 +23,7 @@ add_library(
     GenICamRig.h
     GenICamCamera.cpp
     GenICamCamera.h
+    RecordingHeader.h
 )
 
 target_link_libraries(video PUBLIC Aravis opencv_core opencv_videoio opencv_imgproc Qt5::Core)

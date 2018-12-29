@@ -12,6 +12,9 @@ add_library(
     Model.h
     Model.cpp
 
+    SyncIO.h
+    SyncIO.cpp
+
     CameraList.h
     CameraList.cpp
     TargetScaleWidget.h
@@ -20,6 +23,8 @@ add_library(
     CameraCalibrationListWidget.cpp
     RigCalibrationListWidget.h
     RigCalibrationListWidget.cpp
+    FrameRateWidget.h
+    FrameRateWidget.cpp
 
     Project.h
     Project.cpp
@@ -60,6 +65,10 @@ add_library(
     RecordingPanel.h
     RecordingPanel.cpp
     RecordingList.h
+    NewStereoRecordingDialog.h
+    NewStereoRecordingDialog.cpp
+    RecordingOperation.h
+    RecordingOperation.cpp
 
     ReconstructionModel.h
     ReconstructionModel.cpp

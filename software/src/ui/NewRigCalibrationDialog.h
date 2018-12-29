@@ -21,7 +21,6 @@ protected slots:
 
 protected:
 
-    Project* mProject;
     QLineEdit* mName;
     CameraList* mLeftCamera;
     CameraList* mRightCamera;
