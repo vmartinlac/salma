@@ -8,9 +8,8 @@
 #include "RigCalibrationModel.h"
 #include "RecordingModel.h"
 #include "ReconstructionModel.h"
-
-class CameraCalibrationData;
-class StereoRigCalibrationData;
+#include "CameraCalibrationData.h"
+#include "StereoRigCalibrationData.h"
 
 class Project : public QObject
 {
@@ -32,13 +31,13 @@ public:
     void endTransaction();
     void abortTransaction();
 
-    bool saveCamera(const CameraCalibrationData& camera, int& id);
-    bool loadCamera(int id, CameraCalibrationData& data);
+    bool saveCamera(CameraCalibrationDataPtr camera, int& id);
+    bool loadCamera(int id, CameraCalibrationDataPtr& data);
     bool listCameras(CameraCalibrationList& list);
     bool isCameraMutable(int id, bool& mut);
 
-    bool saveRig(const StereoRigCalibrationData& rig, int& id);
-    bool loadRig(int id, StereoRigCalibrationData& rig);
+    bool saveRig(StereoRigCalibrationDataPtr rig, int& id);
+    bool loadRig(int id, StereoRigCalibrationDataPtr& rig);
     bool listRigs(RigCalibrationList& list);
     bool isRigMutable(int id, bool& mut);
 

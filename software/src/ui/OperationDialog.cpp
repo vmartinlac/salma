@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QMessageBox>
 #include <QVBoxLayout>
 #include <QScrollArea>
 #include <QMessageBox>
@@ -7,8 +8,9 @@
 #include <QSplitter>
 #include "OperationDialog.h"
 
-OperationDialog::OperationDialog(OperationPtr op, QWidget* parent) : QDialog(parent)
+OperationDialog::OperationDialog(Project* proj, OperationPtr op, QWidget* parent) : QDialog(parent)
 {
+    mProject = proj;
     mOperation = op;
 
     // set up the toolbar.
@@ -24,27 +26,16 @@ OperationDialog::OperationDialog(OperationPtr op, QWidget* parent) : QDialog(par
         mActionStart = tb->addAction("Start");
         mActionStop = tb->addAction("Stop");
 
-        mActionQuit->setIcon(QIcon::fromTheme("application-exit"));
-        mActionConfigure->setIcon(QIcon::fromTheme("document-properties"));
         mActionStart->setIcon(QIcon::fromTheme("media-playback-start"));
         mActionStop->setIcon(QIcon::fromTheme("media-playback-stop"));
-        mActionAbout->setIcon(QIcon::fromTheme("help-about"));
 
-        /*
-        QObject::connect(mActionQuit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
-        QObject::connect(mActionConfigure, SIGNAL(triggered()), this, SLOT(configure()));
         QObject::connect(mActionStart, SIGNAL(triggered()), this, SLOT(startOperation()));
         QObject::connect(mActionStop, SIGNAL(triggered()), this, SLOT(stopOperation()));
-        QObject::connect(mActionAbout, SIGNAL(triggered()), this, SLOT(about()));
-        */
 
         mActionStop->setEnabled(false);
 
-        mActionQuit->setShortcut(QKeySequence("Esc"));
-        mActionConfigure->setShortcut(QKeySequence("Alt+C"));
         mActionStart->setShortcut(QKeySequence("F5"));
         mActionStop->setShortcut(QKeySequence("Maj+F5"));
-        mActionAbout->setShortcut(QKeySequence("F1"));
     }
 
     // set up central widgets.
@@ -69,6 +60,7 @@ OperationDialog::OperationDialog(OperationPtr op, QWidget* parent) : QDialog(par
 
     {
         mThread = new OperationThread( mVideoWidget->getPort(), mStatsWidget->getPort(), this );
+        mThread->setOperation(mOperation);
 
         QObject::connect(mThread, SIGNAL(started()), this, SLOT(operationStarted()));
         QObject::connect(mThread, SIGNAL(finished()), this, SLOT(operationStopped()));
@@ -88,31 +80,17 @@ OperationDialog::~OperationDialog()
     {
         mThread->requestInterruption();
         mThread->wait();
-    }
-}
-
-/*
-void OperationDialog::configure()
-{
-    if( mThread->isRunning() == false )
-    {
-        OperationDialog* dlg = new OperationDialog(this);
-
-        const int ret = dlg->exec();
-
-        if(ret == QDialog::Accepted)
+        
+        if(mOperation->success())
         {
-            mThread->setOperation( dlg->getOperation() );
+            mOperation->discardResult();
         }
-
-        delete dlg;
     }
 }
 
 void OperationDialog::startOperation()
 {
     mThread->start();
-    mActionConfigure->setEnabled(false);
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
 }
@@ -120,30 +98,40 @@ void OperationDialog::startOperation()
 void OperationDialog::stopOperation()
 {
     mThread->requestInterruption();
-    mActionConfigure->setEnabled(false);
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
-}
-
-void OperationDialog::about()
-{
-    AboutDialog* dlg = new AboutDialog(this);
-    dlg->exec();
-    delete dlg;
 }
 
 void OperationDialog::operationStarted()
 {
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(true);
-    mActionConfigure->setEnabled(false);
 }
 
 void OperationDialog::operationStopped()
 {
-    mActionConfigure->setEnabled(true);
-    mActionStart->setEnabled(true);
+    mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
+
+    if( mOperation->success() )
+    {
+        QMessageBox::StandardButton ret = QMessageBox::question(this, "Result", "Save result?", QMessageBox::Yes|QMessageBox::No, QMessageBox::Yes);
+
+        switch(ret)
+        {
+        case QMessageBox::Yes:
+            mOperation->saveResult(mProject);
+            break;
+        case QMessageBox::No:
+            mOperation->discardResult();
+            break;
+        default:
+            throw std::runtime_error("internal error");
+        }
+    }
+    else
+    {
+        QMessageBox::information(this, "Result", "Operation was not successful");
+    }
 }
 
-*/

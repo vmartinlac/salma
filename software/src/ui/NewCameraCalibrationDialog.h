@@ -2,6 +2,7 @@
 
 #include "NewOperationDialog.h"
 #include "CameraList.h"
+#include "TargetScaleWidget.h"
 #include <QLineEdit>
 
 class NewCameraCalibrationDialog : public NewOperationDialog
@@ -20,6 +21,6 @@ protected:
 
     QLineEdit* mName;
     CameraList* mCamera;
-    QLineEdit* mTargetScale;
+    TargetScaleWidget* mTargetScale;
 };
 

@@ -7,22 +7,29 @@
 #include "VideoWidget.h"
 #include "StatsWidget.h"
 
+class Project;
+
 class OperationDialog : public QDialog
 {
     Q_OBJECT
 
 public:
 
-    OperationDialog(OperationPtr op, QWidget* parent=nullptr);
+    OperationDialog(Project* project, OperationPtr op, QWidget* parent=nullptr);
     ~OperationDialog();
+
+protected slots:
+
+    void startOperation();
+    void stopOperation();
+    void operationStarted();
+    void operationStopped();
 
 protected:
 
-    QAction* mActionConfigure;
-    QAction* mActionQuit;
     QAction* mActionStart;
     QAction* mActionStop;
-    QAction* mActionAbout;
+    Project* mProject;
     OperationPtr mOperation;
     VideoWidget* mVideoWidget;
     StatsWidget* mStatsWidget;

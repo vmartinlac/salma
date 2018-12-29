@@ -3,7 +3,6 @@
 #include <QTextEdit>
 #include <QListView>
 #include <QWidget>
-#include "CameraCalibrationModel.h"
 
 class Project;
 

@@ -8,6 +8,7 @@
 #include "Tracker.h"
 #include "VideoSource.h"
 #include "Operation.h"
+#include "CameraCalibrationData.h"
 
 class CameraCalibrationOperation : public Operation
 {
@@ -17,14 +18,17 @@ public:
 
     ~CameraCalibrationOperation() override;
 
+    const char* getName() override;
     bool before() override;
     bool step() override;
     void after() override;
-    const char* getName() override;
+    bool success() override;
+    bool saveResult(Project* project) override;
+    void discardResult() override;
 
 public:
 
-    std::string mOutputPath;
+    std::string mCalibrationName;
     double mTargetCellLength;
     VideoSourcePtr mCamera;
     int mRequestedSuccessfulFrameCount;
@@ -44,5 +48,6 @@ protected:
     std::vector< std::vector<cv::Point2f> > mImagePoints;
     cv::Size mImageSize;
     QTime mClock;
+    CameraCalibrationDataPtr mResult;
 };
 

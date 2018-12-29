@@ -9,10 +9,17 @@ add_library(
     VideoWidget.cpp
     StatsWidget.h
     StatsWidget.cpp
-    CameraList.h
-    CameraList.cpp
     Model.h
     Model.cpp
+
+    CameraList.h
+    CameraList.cpp
+    TargetScaleWidget.h
+    TargetScaleWidget.cpp
+    CameraCalibrationListWidget.h
+    CameraCalibrationListWidget.cpp
+    RigCalibrationListWidget.h
+    RigCalibrationListWidget.cpp
 
     Project.h
     Project.cpp
@@ -45,6 +52,8 @@ add_library(
     RigCalibrationList.h
     NewRigCalibrationDialog.h
     NewRigCalibrationDialog.cpp
+    RigCalibrationOperation.h
+    RigCalibrationOperation.cpp
 
     RecordingModel.h
     RecordingModel.cpp

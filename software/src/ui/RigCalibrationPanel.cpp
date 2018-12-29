@@ -48,6 +48,7 @@ void RigCalibrationPanel::onNew()
 
         if(op)
         {
+            mProject->rigCalibrationModel()->refresh();
         }
     }
     else

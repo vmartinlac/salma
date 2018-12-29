@@ -10,6 +10,7 @@
 #include "Tracker.h"
 #include "CameraCalibrationOperation.h"
 #include "CameraCalibrationData.h"
+#include "Project.h"
 
 //#define DEBUG_SAVE_TRACKED_IMAGES
 
@@ -26,6 +27,7 @@ CameraCalibrationOperation::~CameraCalibrationOperation()
 
 bool CameraCalibrationOperation::before()
 {
+    mResult.reset();
     mFrameCount = 0;
     mSuccessfulFrameCount = 0;
     mAttemptedFrameCount = 0;
@@ -40,20 +42,9 @@ bool CameraCalibrationOperation::before()
 
     if(ok)
     {
-        // check that output file can be open.
-
-        std::ofstream outputfile(mOutputPath.c_str(), std::ofstream::out);
-        if(outputfile.is_open())
-        {
-            outputfile.close();
-        }
-        else
-        {
-            ok = false;
-            std::cout << "Could not open output file!" << std::endl; // TODO: put this message on the UI.
-        }
+        ok = ( mCalibrationName.empty() == false );
     }
-    
+
     if(ok)
     {
         ok = bool(mCamera);
@@ -151,43 +142,54 @@ bool CameraCalibrationOperation::step()
 
     if( can_calibrate )
     {
-        CameraCalibrationData calibration;
-
-        calibration.image_size = mImageSize;
-
-        std::vector<cv::Mat> rotations;
-        std::vector<cv::Mat> translations;
+        CameraCalibrationDataPtr calibration(new CameraCalibrationData());
+        bool ok = true;
+        double err = 0.0;
 
         statsPort()->beginWrite();
         statsPort()->data().text = "Computing calibration data ...";
         statsPort()->endWrite();
 
-        const int flags = 0 |
-            /*
-            cv::CALIB_ZERO_TANGENT_DIST |
-            cv::CALIB_FIX_K1 |
-            cv::CALIB_FIX_K2 |
-            cv::CALIB_FIX_K3 |
-            cv::CALIB_FIX_K4 |
-            cv::CALIB_FIX_K5 |
-            cv::CALIB_FIX_K6 |
-            cv::CALIB_RATIONAL_MODEL |
-            */
-            0;
+        if(ok)
+        {
+            calibration->name = mCalibrationName;
+            calibration->image_size = mImageSize;
 
-        const double err = cv::calibrateCamera(
-            mObjectPoints,
-            mImagePoints,
-            mImageSize,
-            calibration.calibration_matrix,
-            calibration.distortion_coefficients,
-            rotations,
-            translations,
-            flags);
-        
-        const bool save_ret = calibration.saveToFile(mOutputPath);
+            std::vector<cv::Mat> rotations;
+            std::vector<cv::Mat> translations;
 
-        if(save_ret)
+            const int flags = 0 |
+                /*
+                cv::CALIB_ZERO_TANGENT_DIST |
+                cv::CALIB_FIX_K1 |
+                cv::CALIB_FIX_K2 |
+                cv::CALIB_FIX_K3 |
+                cv::CALIB_FIX_K4 |
+                cv::CALIB_FIX_K5 |
+                cv::CALIB_FIX_K6 |
+                cv::CALIB_RATIONAL_MODEL |
+                */
+                0;
+
+            err = cv::calibrateCamera(
+                mObjectPoints,
+                mImagePoints,
+                mImageSize,
+                calibration->calibration_matrix,
+                calibration->distortion_coefficients,
+                rotations,
+                translations,
+                flags);
+        } 
+
+        /*
+        if(ok)
+        {
+            ok = calibration.saveToFile(mOutputPath);
+        }
+        */
+
+        if(ok)
         {
             std::stringstream s;
 
@@ -222,21 +224,23 @@ bool CameraCalibrationOperation::step()
             s << std::endl;
 
             s << "Camera matrix:" << std::endl;
-            write_mat( calibration.calibration_matrix, true );
+            write_mat( calibration->calibration_matrix, true );
             s << std::endl;
 
             s << "Distortion coefficients:" << std::endl;
-            write_mat( calibration.distortion_coefficients, false );
+            write_mat( calibration->distortion_coefficients, false );
             s << std::endl;
 
             statsPort()->beginWrite();
             statsPort()->data().text = s.str().c_str();
             statsPort()->endWrite();
+
+            mResult.swap(calibration);
         }
         else
         {
             statsPort()->beginWrite();
-            statsPort()->data().text = "Could not save calibration data to file!";
+            statsPort()->data().text = "Calibration failed!";
             statsPort()->endWrite();
         }
 
@@ -266,7 +270,7 @@ void CameraCalibrationOperation::writeOutputText()
     s << std::endl;
     s << "Camera name: " << mCamera->getHumanName() << std::endl;
     s << "Target cell length: " << mTargetCellLength << std::endl;
-    s << "Output file: " << mOutputPath << std::endl;
+    s << "Camera calibration name: " << mCalibrationName << std::endl;
 
     statsPort()->beginWrite();
     statsPort()->data().text = s.str().c_str();
@@ -276,5 +280,21 @@ void CameraCalibrationOperation::writeOutputText()
 const char* CameraCalibrationOperation::getName()
 {
     return "Camera calibration";
+}
+
+bool CameraCalibrationOperation::saveResult(Project* project)
+{
+    int camera_id;
+	return project->saveCamera(mResult, camera_id);
+}
+
+void CameraCalibrationOperation::discardResult()
+{
+    mResult.reset();
+}
+
+bool CameraCalibrationOperation::success()
+{
+    return bool(mResult);
 }
 

@@ -14,21 +14,22 @@
 #include <opencv2/core/eigen.hpp>
 #include "Image.h"
 #include "Tracker.h"
-#include "StereoRigCalibrationOperation.h"
+#include "RigCalibrationOperation.h"
 #include "StereoRigCalibrationData.h"
+#include "Project.h"
 
-StereoRigCalibrationOperation::StereoRigCalibrationOperation()
+RigCalibrationOperation::RigCalibrationOperation()
 {
     mNumberOfPosesForCalibration = 20;
     mMillisecondsOfTemporisation = 700;
     mTargetCellLength = 1.0;
 }
 
-StereoRigCalibrationOperation::~StereoRigCalibrationOperation()
+RigCalibrationOperation::~RigCalibrationOperation()
 {
 }
 
-bool StereoRigCalibrationOperation::before()
+bool RigCalibrationOperation::before()
 {
     mFrameCount = 0;
     mClock.start();
@@ -44,20 +45,7 @@ bool StereoRigCalibrationOperation::before()
 
     if(ok)
     {
-        // check that output file can be open.
-
-        std::ofstream outputfile(mOutputPath.c_str(), std::ofstream::out);
-        if(outputfile.is_open())
-        {
-            outputfile.close();
-        }
-        else
-        {
-            mStatsPort->beginWrite();
-            mStatsPort->data().text = "Could not open output file!";
-            mStatsPort->endWrite();
-            ok = false;
-        }
+        ok = bool(mLeftCalibrationData) && bool(mRightCalibrationData);
     }
     
     if(ok)
@@ -79,7 +67,7 @@ bool StereoRigCalibrationOperation::before()
     return ok;
 }
 
-bool StereoRigCalibrationOperation::step()
+bool RigCalibrationOperation::step()
 {
     bool ret = true;
 
@@ -118,9 +106,9 @@ bool StereoRigCalibrationOperation::step()
 
         if( concat.isValid() )
         {
-            mVideoPort->beginWrite();
-            mVideoPort->data().image = concat.getFrame();
-            mVideoPort->endWrite();
+            videoPort()->beginWrite();
+            videoPort()->data().image = concat.getFrame();
+            videoPort()->endWrite();
 
             mFrameCount++;
         }
@@ -236,9 +224,9 @@ bool StereoRigCalibrationOperation::step()
 
     if( go_on && mLeftImagePoints.size() >= mNumberOfPosesForCalibration )
     {
-        mStatsPort->beginWrite();
-        mStatsPort->data().text = "Computing calibration data ...";
-        mStatsPort->endWrite();
+        statsPort()->beginWrite();
+        statsPort()->data().text = "Computing calibration data ...";
+        statsPort()->endWrite();
 
         calibrate();
         ret = false;
@@ -251,7 +239,7 @@ bool StereoRigCalibrationOperation::step()
     return ret;
 }
 
-void StereoRigCalibrationOperation::after()
+void RigCalibrationOperation::after()
 {
     if(mCamera)
     {
@@ -259,7 +247,7 @@ void StereoRigCalibrationOperation::after()
     }
 }
 
-void StereoRigCalibrationOperation::writeOutputText()
+void RigCalibrationOperation::writeOutputText()
 {
     std::stringstream s;
     s << "Frame count: " << mFrameCount << std::endl;
@@ -268,19 +256,19 @@ void StereoRigCalibrationOperation::writeOutputText()
     s << std::endl;
     s << "Video input: " << mCamera->getHumanName() << std::endl;
     s << "Target cell length: " << mTargetCellLength << std::endl;
-    s << "Output file: " << mOutputPath << std::endl;
+    s << "Rig calibration name: " << mCalibrationName << std::endl;
 
-    mStatsPort->beginWrite();
-    mStatsPort->data().text = s.str().c_str();
-    mStatsPort->endWrite();
+    statsPort()->beginWrite();
+    statsPort()->data().text = s.str().c_str();
+    statsPort()->endWrite();
 }
 
-void StereoRigCalibrationOperation::calibrate()
+void RigCalibrationOperation::calibrate()
 {
     bool ok = true;
     const char* error_message = "";
 
-    StereoRigCalibrationData calibration;
+    StereoRigCalibrationDataPtr calibration(new StereoRigCalibrationData());
 
     cv::Mat R;
     cv::Mat T;
@@ -297,9 +285,9 @@ void StereoRigCalibrationOperation::calibrate()
         err = cv::stereoCalibrate(
             mObjectPoints,
             mLeftImagePoints, mRightImagePoints,
-            mLeftCalibrationData.calibration_matrix, mLeftCalibrationData.distortion_coefficients,
-            mRightCalibrationData.calibration_matrix, mRightCalibrationData.distortion_coefficients,
-            mLeftCalibrationData.image_size, R, T, E, F,
+            mLeftCalibrationData->calibration_matrix, mLeftCalibrationData->distortion_coefficients,
+            mRightCalibrationData->calibration_matrix, mRightCalibrationData->distortion_coefficients,
+            mLeftCalibrationData->image_size, R, T, E, F,
             cv::CALIB_FIX_INTRINSIC,
             term);
     }
@@ -312,19 +300,18 @@ void StereoRigCalibrationOperation::calibrate()
         cv::cv2eigen<double,3,3>(R, Rbis);
         cv::cv2eigen<double,3,1>(T, Tbis);
 
-        calibration.left_camera_to_rig = Sophus::SE3d();
+        calibration->left_camera_to_rig = Sophus::SE3d();
 
-        calibration.right_camera_to_rig.setRotationMatrix(Rbis.transpose());
-        calibration.right_camera_to_rig.translation() = -Rbis.transpose() * Tbis;
+        calibration->right_camera_to_rig.setRotationMatrix(Rbis.transpose());
+        calibration->right_camera_to_rig.translation() = -Rbis.transpose() * Tbis;
 
-        //cv::cv2eigen<double,3,3>(F, calibration.fundamental_matrix);
-        //cv::cv2eigen<double,3,3>(E, calibration.essential_matrix);
+        //cv::cv2eigen<double,3,3>(F, calibration->fundamental_matrix);
+        //cv::cv2eigen<double,3,3>(E, calibration->essential_matrix);
     }
     
     if(ok)
     {
-        ok = calibration.saveToFile(mOutputPath);
-        error_message = "Error while saving calibration data to file.";
+        mResult = calibration;
     }
 
     if(ok)
@@ -335,39 +322,60 @@ void StereoRigCalibrationOperation::calibrate()
         s << std::endl;
 
         s << "Left camera to rig transformation:" << std::endl;
-        s << "left_x = " << calibration.left_camera_to_rig.translation().x() << std::endl;
-        s << "left_y = " << calibration.left_camera_to_rig.translation().y() << std::endl;
-        s << "left_z = " << calibration.left_camera_to_rig.translation().z() << std::endl;
-        s << "left_qx = " << calibration.left_camera_to_rig.unit_quaternion().x() << std::endl;
-        s << "left_qy = " << calibration.left_camera_to_rig.unit_quaternion().y() << std::endl;
-        s << "left_qz = " << calibration.left_camera_to_rig.unit_quaternion().z() << std::endl;
-        s << "left_qw = " << calibration.left_camera_to_rig.unit_quaternion().w() << std::endl;
+        s << "left_x = " << calibration->left_camera_to_rig.translation().x() << std::endl;
+        s << "left_y = " << calibration->left_camera_to_rig.translation().y() << std::endl;
+        s << "left_z = " << calibration->left_camera_to_rig.translation().z() << std::endl;
+        s << "left_qx = " << calibration->left_camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "left_qy = " << calibration->left_camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "left_qz = " << calibration->left_camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "left_qw = " << calibration->left_camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
         s << "Right camera to rig transformation:" << std::endl;
-        s << "right_x = " << calibration.right_camera_to_rig.translation().x() << std::endl;
-        s << "right_y = " << calibration.right_camera_to_rig.translation().y() << std::endl;
-        s << "right_z = " << calibration.right_camera_to_rig.translation().z() << std::endl;
-        s << "right_qx = " << calibration.right_camera_to_rig.unit_quaternion().x() << std::endl;
-        s << "right_qy = " << calibration.right_camera_to_rig.unit_quaternion().y() << std::endl;
-        s << "right_qz = " << calibration.right_camera_to_rig.unit_quaternion().z() << std::endl;
-        s << "right_qw = " << calibration.right_camera_to_rig.unit_quaternion().w() << std::endl;
+        s << "right_x = " << calibration->right_camera_to_rig.translation().x() << std::endl;
+        s << "right_y = " << calibration->right_camera_to_rig.translation().y() << std::endl;
+        s << "right_z = " << calibration->right_camera_to_rig.translation().z() << std::endl;
+        s << "right_qx = " << calibration->right_camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "right_qy = " << calibration->right_camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "right_qz = " << calibration->right_camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "right_qw = " << calibration->right_camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
-        mStatsPort->beginWrite();
-        mStatsPort->data().text = s.str().c_str();
-        mStatsPort->endWrite();
+        statsPort()->beginWrite();
+        statsPort()->data().text = s.str().c_str();
+        statsPort()->endWrite();
     }
     else
     {
-        mStatsPort->beginWrite();
-        mStatsPort->data().text = error_message;
-        mStatsPort->endWrite();
+        statsPort()->beginWrite();
+        statsPort()->data().text = error_message;
+        statsPort()->endWrite();
     }
 }
 
+const char* RigCalibrationOperation::getName()
+{
+    return "Rig calibration";
+}
+
+bool RigCalibrationOperation::success()
+{
+    return bool(mResult);
+}
+
+bool RigCalibrationOperation::saveResult(Project* proj)
+{
+    int rig_id;
+    return proj->saveRig(mResult, rig_id);
+}
+
+void RigCalibrationOperation::discardResult()
+{
+    mResult.reset();
+}
+
 /*
-void StereoRigCalibrationOperation::convertPoseFromOpenCVToSophus(
+void RigCalibrationOperation::convertPoseFromOpenCVToSophus(
     const cv::Mat& rodrigues,
     const cv::Mat& t,
     Sophus::SE3d& camera_to_object)

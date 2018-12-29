@@ -1,5 +1,5 @@
-/build
-/software/build
+/build*
+/software/build*
 *.swp
 *.swa
 *.jpg

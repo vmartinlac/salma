@@ -2,7 +2,10 @@
 
 #include "NewOperationDialog.h"
 #include "CameraList.h"
+#include "TargetScaleWidget.h"
 #include <QLineEdit>
+
+class CameraCalibrationListWidget;
 
 class NewRigCalibrationDialog : public NewOperationDialog
 {
@@ -18,11 +21,12 @@ protected slots:
 
 protected:
 
+    Project* mProject;
     QLineEdit* mName;
     CameraList* mLeftCamera;
     CameraList* mRightCamera;
-    // left calibration
-    // right calibration
-    QLineEdit* mTargetScale;
+    CameraCalibrationListWidget* mLeftCalibration;
+    CameraCalibrationListWidget* mRightCalibration;
+    TargetScaleWidget* mTargetScale;
 };
 

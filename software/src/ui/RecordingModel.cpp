@@ -37,5 +37,6 @@ void RecordingModel::refresh()
 
 int RecordingModel::indexToId(const QModelIndex& index)
 {
+	throw; //TODO
 }
 

@@ -11,28 +11,35 @@
 #include "VideoSource.h"
 #include "Operation.h"
 #include "CameraCalibrationData.h"
+#include "StereoRigCalibrationData.h"
 
-class StereoRigCalibrationOperation : public Operation
+class RigCalibrationOperation : public Operation
 {
 public:
 
-    StereoRigCalibrationOperation();
+    RigCalibrationOperation();
 
-    ~StereoRigCalibrationOperation() override;
+    ~RigCalibrationOperation() override;
+
+    const char* getName() override;
 
     bool before() override;
     bool step() override;
     void after() override;
 
+    bool success() override;
+    bool saveResult(Project* project) override;
+    void discardResult() override;
+
 public:
 
-    CameraCalibrationData mLeftCalibrationData;
-    CameraCalibrationData mRightCalibrationData;
+    std::string mCalibrationName;
+    CameraCalibrationDataPtr mLeftCalibrationData;
+    CameraCalibrationDataPtr mRightCalibrationData;
     double mTargetCellLength;
     VideoSourcePtr mCamera;
     int mNumberOfPosesForCalibration;
     int mMillisecondsOfTemporisation;
-    std::string mOutputPath;
 
 protected:
 
@@ -50,5 +57,6 @@ protected:
     std::vector< std::vector<cv::Point2f> > mLeftImagePoints;
     std::vector< std::vector<cv::Point2f> > mRightImagePoints;
     std::vector< std::vector<cv::Point3f> > mObjectPoints;
+    StereoRigCalibrationDataPtr mResult;
 };
 

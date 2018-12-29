@@ -7,6 +7,7 @@
 #include "VideoSystem.h"
 #include "NewCameraCalibrationDialog.h"
 #include "OperationDialog.h"
+#include "CameraCalibrationModel.h"
 
 CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent)
 {
@@ -47,9 +48,11 @@ void CameraCalibrationPanel::onNew()
 
         if(op)
         {
-            OperationDialog* opdlg = new OperationDialog(op, this);
+            OperationDialog* opdlg = new OperationDialog(mProject, op, this);
             opdlg->exec();
             delete opdlg;
+
+            mProject->cameraCalibrationModel()->refresh();
         }
     }
     else

@@ -2,6 +2,8 @@
 
 Operation::Operation()
 {
+	mVideoPort = nullptr;
+	mStatsPort = nullptr;
 }
 
 Operation::~Operation()
@@ -14,25 +16,6 @@ void Operation::setPorts( VideoInputPort* video, StatsInputPort* stats )
     mStatsPort = stats;
 }
 
-void Operation::setProject(Project* proj)
-{
-    mProject = proj;
-}
-
-bool Operation::before()
-{
-    return true;
-}
-
-void Operation::after()
-{
-}
-
-Project* Operation::project()
-{
-    return mProject;
-}
-
 VideoInputPort* Operation::videoPort()
 {
     return mVideoPort;
@@ -42,4 +25,5 @@ StatsInputPort* Operation::statsPort()
 {
     return mStatsPort;
 }
+
 

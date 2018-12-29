@@ -111,7 +111,7 @@ ReconstructionModel* Project::reconstructionModel()
     return mReconstructionModel;
 }
 
-bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
+bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 {
     bool ok = mDB.isOpen();;
 
@@ -119,11 +119,11 @@ bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
     {
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO 'camera_parameters' ('name','date','fx','fy','cx','cy','distortion_model') VALUES (?, DATETIME('NOW'), ?, ?, ?, ?, 0)");
-        q.addBindValue(camera.name.c_str());
-        q.addBindValue(camera.calibration_matrix.at<double>(0,0));
-        q.addBindValue(camera.calibration_matrix.at<double>(1,1));
-        q.addBindValue(camera.calibration_matrix.at<double>(0,2));
-        q.addBindValue(camera.calibration_matrix.at<double>(1,2));
+        q.addBindValue(camera->name.c_str());
+        q.addBindValue(camera->calibration_matrix.at<double>(0,0));
+        q.addBindValue(camera->calibration_matrix.at<double>(1,1));
+        q.addBindValue(camera->calibration_matrix.at<double>(0,2));
+        q.addBindValue(camera->calibration_matrix.at<double>(1,2));
 
         const bool ok = q.exec();
 
@@ -135,7 +135,7 @@ bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
 
     if(ok)
     {
-        const cv::Mat dist = camera.distortion_coefficients;
+        const cv::Mat dist = camera->distortion_coefficients;
 
         for(int j=0; ok && j<dist.cols; j++)
         {
@@ -152,9 +152,11 @@ bool Project::saveCamera(const CameraCalibrationData& camera, int& id)
     return ok;
 }
 
-bool Project::loadCamera(int id, CameraCalibrationData& camera)
+bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 {
     bool ok = mDB.isOpen();;
+
+    camera.reset(new CameraCalibrationData());
 
     if(ok)
     {
@@ -166,13 +168,13 @@ bool Project::loadCamera(int id, CameraCalibrationData& camera)
 
         if(ok)
         {
-            camera.name = q.value(0).toString().toStdString();
+            camera->name = q.value(0).toString().toStdString();
 
-            camera.calibration_matrix = cv::Mat(3, 3, CV_64F);
-            camera.calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
-            camera.calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
-            camera.calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
-            camera.calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
+            camera->calibration_matrix = cv::Mat(3, 3, CV_64F);
+            camera->calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
+            camera->calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
+            camera->calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
+            camera->calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
         }
     }
 
@@ -198,12 +200,17 @@ bool Project::loadCamera(int id, CameraCalibrationData& camera)
 
         if(ok)
         {
-            camera.distortion_coefficients = cv::Mat(1, values.size(), CV_64F);
+            camera->distortion_coefficients = cv::Mat(1, values.size(), CV_64F);
             for(size_t j=0; j<values.size(); j++)
             {
-                camera.distortion_coefficients.at<double>(j, 0) = values[j];
+                camera->distortion_coefficients.at<double>(j, 0) = values[j];
             }
         }
+    }
+
+    if(ok == false)
+    {
+        camera.reset();
     }
 
     return ok;
@@ -277,14 +284,14 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
     return ok;
 }
 
-bool Project::saveRig(const StereoRigCalibrationData& rig, int& id)
+bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
 {
-    ;
+    return false; // TODO
 }
 
-bool Project::loadRig(int id, StereoRigCalibrationData& rig)
+bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
 {
-    ;
+    return false; // TODO
 }
 
 bool Project::listCameras(CameraCalibrationList& list)

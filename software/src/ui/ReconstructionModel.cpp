@@ -37,5 +37,6 @@ void ReconstructionModel::refresh()
 
 int ReconstructionModel::indexToId(const QModelIndex& index)
 {
+	throw; //TODO
 }
 

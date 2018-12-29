@@ -13,12 +13,7 @@ NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* proj, QWidget* p
 {
     mName = new QLineEdit();
     mCamera = new CameraList();
-    mTargetScale = new QLineEdit();
-
-    QDoubleValidator* val = new QDoubleValidator();
-    val->setBottom(1.0e-6);
-    mTargetScale->setValidator(val);
-    mTargetScale->setText("1");
+    mTargetScale = new TargetScaleWidget();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
@@ -46,10 +41,11 @@ NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* proj, QWidget* p
 void NewCameraCalibrationDialog::accept()
 {
     QString name;
-    OperationPtr op;
     int camera_id = -1;
     VideoSourcePtr camera;
+    double scale = 1.0;
 
+    OperationPtr op;
     bool ok = true;
     const char* err = "";
 
@@ -58,6 +54,12 @@ void NewCameraCalibrationDialog::accept()
         name = mName->text();
         ok = (name.isEmpty() == false);
         err = "Incorrect name!";
+    }
+
+    if(ok)
+    {
+        scale = mTargetScale->getScale(ok);
+        err = "Incorrect target scale!";
     }
 
     if(ok)
@@ -77,8 +79,9 @@ void NewCameraCalibrationDialog::accept()
     if(ok)
     {
         CameraCalibrationOperation* myop = new CameraCalibrationOperation();
-        // TODO: set myop.
-        myop->setProject(project());
+        myop->mCalibrationName = mName->text().toStdString();
+        myop->mCamera = camera;
+        myop->mTargetCellLength = scale;
         op.reset(myop);
     }
 

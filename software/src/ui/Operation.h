@@ -14,24 +14,25 @@ public:
 
     virtual ~Operation();
 
-    void setProject( Project* proj );
     void setPorts( VideoInputPort* video, StatsInputPort* stats );
 
-    Project* project();
     VideoInputPort* videoPort();
     StatsInputPort* statsPort();
 
-    virtual bool before();
-    virtual bool step() = 0;
-    virtual void after();
-
     virtual const char* getName() = 0;
+
+    virtual bool before() = 0;
+    virtual bool step() = 0;
+    virtual void after() = 0;
+
+    virtual bool success() = 0;
+    virtual bool saveResult(Project* project) = 0;
+    virtual void discardResult() = 0;
 
 private:
 
     VideoInputPort* mVideoPort;
     StatsInputPort* mStatsPort;
-    Project* mProject;
 };
 
 typedef std::shared_ptr<Operation> OperationPtr;
