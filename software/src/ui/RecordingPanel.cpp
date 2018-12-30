@@ -1,4 +1,5 @@
 #include <QListWidget>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QTextEdit>
 #include <QToolBar>
@@ -18,6 +19,8 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
     mView = new QListView();
 
     mView->setModel(mProject->recordingModel());
+
+    connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
 
     mText->setReadOnly(true);
 
@@ -93,7 +96,7 @@ void RecordingPanel::onNewStereoRecording()
     }
     else
     {
-        QMessageBox::critical(this, "Error", "You need at least one camera!");
+        QMessageBox::critical(this, "Error", "You need at least two cameras!");
     }
 }
 
@@ -104,11 +107,69 @@ void RecordingPanel::onPlayRecording()
 
 void RecordingPanel::onRenameRecording()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    QString text;
+    int recording_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        recording_id = mProject->recordingModel()->indexToId(mView->currentIndex());
+        ok = (recording_id >= 0);
+    }
+
+    if(ok)
+    {
+        bool accepted;
+        text = QInputDialog::getText(this, "Rename", "New name?", QLineEdit::Normal, "", &accepted);
+
+        ok = accepted && (text.isEmpty() == false);
+
+        if(accepted == true && ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Incorrect name!");
+        }
+    }
+
+    if(ok)
+    {
+        ok = mProject->renameRecording(recording_id, text);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
+        }
+    }
 }
 
 void RecordingPanel::onDeleteRecording()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
+}
+
+void RecordingPanel::onSelect(const QModelIndex& ind)
+{
+    QString text;
+    int recording_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        recording_id = mProject->recordingModel()->indexToId(ind);
+        ok = (recording_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->describeRecording(recording_id, text);
+    }
+
+    if(ok)
+    {
+        mText->setText(text);
+    }
+    else
+    {
+        mText->setText(QString());
+    }
 }
 

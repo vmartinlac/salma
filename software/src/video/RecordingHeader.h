@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <string>
+#include <QDir>
 
 struct RecordingHeaderView
 {
@@ -12,8 +14,19 @@ struct RecordingHeaderFrame
     double timestamp;
 };
 
-struct RecordingHeader
+class RecordingHeader
 {
+public:
+
+    RecordingHeader()
+    {
+        id = -1;
+    }
+
+    int id;
+    std::string name;
+    std::string date;
+
     int num_views;
     int num_frames;
     QDir directory;

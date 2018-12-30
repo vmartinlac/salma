@@ -71,7 +71,7 @@ CREATE TABLE 'recording_views'
     'id' INTEGER PRIMARY KEY,
     'frame_id' INTEGER,
     'view' INTEGER,
-    'path' TEXT
+    'filename' TEXT
 );
 
 CREATE TABLE 'reconstructions'

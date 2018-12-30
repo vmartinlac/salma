@@ -78,6 +78,36 @@ bool Project::open(const QString& path)
     return ok;
 }
 
+bool Project::clear()
+{
+    mDB.exec("DELETE FROM `poses`");
+    mDB.exec("DELETE FROM `camera_parameters`");
+    mDB.exec("DELETE FROM `distortion_coefficients`");
+    mDB.exec("DELETE FROM `rig_parameters`");
+    mDB.exec("DELETE FROM `rig_cameras`");
+    mDB.exec("DELETE FROM `recordings`");
+    mDB.exec("DELETE FROM `recording_frames`");
+    mDB.exec("DELETE FROM `recording_views`");
+    mDB.exec("DELETE FROM `reconstructions`");
+    mDB.exec("DELETE FROM `settings`");
+    mDB.exec("DELETE FROM `frames`");
+    mDB.exec("DELETE FROM `views`");
+    mDB.exec("DELETE FROM `mappoints`");
+    mDB.exec("DELETE FROM `keypoints`");
+    mDB.exec("DELETE FROM `descriptors`");
+    mDB.exec("DELETE FROM `projections`");
+    mDB.exec("DELETE FROM `densepoints`");
+
+    changed();
+
+    return true;
+}
+
+bool Project::isOpen()
+{
+    return mDB.isOpen();
+}
+
 void Project::close()
 {
     mDir = QDir();
@@ -120,6 +150,8 @@ ReconstructionModel* Project::reconstructionModel()
 {
     return mReconstructionModel;
 }
+
+// CAMERA CALIBRATION
 
 bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 {
@@ -359,6 +391,8 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
     return ok;
 }
 
+// POSE
+
 bool Project::savePose(const Sophus::SE3d& pose, int& id)
 {
     bool ok = isOpen();
@@ -426,6 +460,8 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
 
     return ok;
 }
+
+// RIG CALIBRATION
 
 bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
 {
@@ -660,6 +696,150 @@ bool Project::listRigs(RigCalibrationList& list)
     return ok;
 }
 
+// RECORDING
+
+bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
+{
+    return false; // TODO
+}
+
+bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
+{
+    bool ok = isOpen();
+
+    rec.reset(new RecordingHeader());
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtome'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            rec->id = id;
+            rec->name = q.value(0).toString().toStdString();
+            rec->date = q.value(1).toString().toStdString();
+
+            rec->directory = mDir;
+            ok = rec->directory.cd(q.value(2).toString());
+
+            rec->num_views = q.value(3).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT recording_frames.time, recording_views.filename, recording_frames.rank, recording_views.view FROM recording_views, recording_frames WHERE recording_views.frame_id=recording_frames.id AND recording_frames.recording_id=? ORDER BY recording_frames.rank ASC, recording_views.view ASC");
+        q.addBindValue(id);
+        ok = q.exec();
+
+        while( ok && q.next() )
+        {
+            ; // TODO
+        }
+    }
+
+    if(ok == false)
+    {
+        rec.reset();
+    }
+
+    return ok;
+}
+
+bool Project::isRecordingMutable(int id, bool& mut)
+{
+    return false; // TODO
+}
+
+bool Project::describeRecording(int id, QString& descr)
+{
+    bool ok = true;
+
+    double duration = 0.0;
+    int num_frames = 0;
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT MAX(`rank`)+1 AS `number_of_frames`, MAX(`time`) AS `duration` FROM recording_frames WHERE recording_id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+        
+        if(ok)
+        {
+            if(q.next())
+            {
+                num_frames = q.value(0).toInt();
+                duration = q.value(1).toDouble();
+            }
+            else
+            {
+                num_frames = 0;
+                duration = 0.0;
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            std::stringstream s;
+
+            s << "<html><head></head><body>" << std::endl;
+
+            s << "<h3>Metadata</h3>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
+            s << "<tr><th>name</th><td>" << q.value(0).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>date</th><td>" << q.value(1).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            s << "<h3>Content</h3>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>Number of cameras:</th><td>" << q.value(3).toInt() << "</td></tr>" << std::endl;
+            s << "<tr><th>Directory:</th><td>" << q.value(2).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>Number of frames:</th><td>" << num_frames << "</td></tr>" << std::endl;
+            s << "<tr><th>Duration:</th><td>" << duration << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            s << "</body></html>" << std::endl;
+
+            descr = s.str().c_str();
+        }
+    }
+
+    return ok;
+}
+
+bool Project::renameRecording(int id, const QString& new_name)
+{
+    bool ok = isOpen();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("UPDATE recordings SET name=? WHERE id=?");
+        q.addBindValue(new_name);
+        q.addBindValue(id);
+
+        ok = q.exec() && (q.numRowsAffected() >= 1);
+    }
+
+    recordingModelChanged();
+
+    return ok;
+}
+
 bool Project::listRecordings(RecordingList& list)
 {
     bool ok = isOpen();
@@ -669,7 +849,7 @@ bool Project::listRecordings(RecordingList& list)
     if(ok)
     {
         QSqlQuery q(mDB);
-        ok = q.exec("SELECT id, name, date FROM recordings");
+        ok = q.exec("SELECT `id`, `name`, `date` FROM `recordings`");
 
         if(ok)
         {
@@ -691,6 +871,8 @@ bool Project::listRecordings(RecordingList& list)
 
     return ok;
 }
+
+// RECONSTRUCTION
 
 bool Project::listReconstructions(ReconstructionList& list)
 {
@@ -722,35 +904,5 @@ bool Project::listReconstructions(ReconstructionList& list)
     }
 
     return ok;
-}
-
-bool Project::clear()
-{
-    mDB.exec("DELETE FROM `poses`");
-    mDB.exec("DELETE FROM `camera_parameters`");
-    mDB.exec("DELETE FROM `distortion_coefficients`");
-    mDB.exec("DELETE FROM `rig_parameters`");
-    mDB.exec("DELETE FROM `rig_cameras`");
-    mDB.exec("DELETE FROM `recordings`");
-    mDB.exec("DELETE FROM `recording_frames`");
-    mDB.exec("DELETE FROM `recording_views`");
-    mDB.exec("DELETE FROM `reconstructions`");
-    mDB.exec("DELETE FROM `settings`");
-    mDB.exec("DELETE FROM `frames`");
-    mDB.exec("DELETE FROM `views`");
-    mDB.exec("DELETE FROM `mappoints`");
-    mDB.exec("DELETE FROM `keypoints`");
-    mDB.exec("DELETE FROM `descriptors`");
-    mDB.exec("DELETE FROM `projections`");
-    mDB.exec("DELETE FROM `densepoints`");
-
-    changed();
-
-    return true;
-}
-
-bool Project::isOpen()
-{
-    return mDB.isOpen();
 }
 

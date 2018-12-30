@@ -13,6 +13,7 @@
 #include "CameraCalibrationList.h"
 #include "RigCalibrationList.h"
 #include "RecordingList.h"
+#include "RecordingHeader.h"
 
 class Project : public QObject
 {
@@ -51,8 +52,12 @@ public:
     bool describeRig(int id, QString& descr);
     bool renameRig(int id, const QString& new_name);
 
+    bool saveRecording(RecordingHeaderPtr rec, int& id);
+    bool loadRecording(int id, RecordingHeaderPtr& rec);
     bool listRecordings(RecordingList& list);
+    bool isRecordingMutable(int id, bool& mut);
     bool describeRecording(int id, QString& descr);
+    bool renameRecording(int id, const QString& new_name);
 
     bool listReconstructions(ReconstructionList& list);
     bool describeReconstruction(int id, QString& descr);

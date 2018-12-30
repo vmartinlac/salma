@@ -11,6 +11,10 @@ public:
 
     MainWindow(QWidget* parent=nullptr);
 
+public slots:
+
+    void loadProjectGivenOnCommandLine(const QString& path);
+
 protected slots:
 
     void newProject();

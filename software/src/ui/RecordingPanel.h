@@ -22,6 +22,8 @@ protected slots:
     void onRenameRecording();
     void onDeleteRecording();
 
+    void onSelect(const QModelIndex&);
+
 protected:
 
     Project* mProject;

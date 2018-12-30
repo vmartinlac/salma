@@ -148,3 +148,13 @@ void MainWindow::newProject()
     }
 }
 
+void MainWindow::loadProjectGivenOnCommandLine(const QString& path)
+{
+    const bool ok = mProject->open(path);
+
+    if(ok == false)
+    {
+        QMessageBox::critical(this, "Error", "Could not load project!");
+    }
+}
+
