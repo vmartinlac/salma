@@ -232,6 +232,38 @@ bool Project::renameCamera(int id, const QString& new_name)
     return ok;
 }
 
+bool Project::listCameras(CameraCalibrationList& list)
+{
+    bool ok = mDB.isOpen();
+
+    list.clear();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        ok = q.exec("SELECT id, name, date FROM camera_parameters");
+
+        if(ok)
+        {
+            while(q.next())
+            {
+                CameraCalibrationListItem item;
+                item.id = q.value(0).toInt();
+                item.name = q.value(1).toString();
+                item.date = q.value(2).toString();
+                list.push_back(item);
+            }
+        }
+    }
+
+    if(ok == false)
+    {
+        list.clear();
+    }
+
+    return ok;
+}
+
 bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 {
     bool ok = mDB.isOpen();
@@ -378,7 +410,50 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
 
 bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
 {
-    return false; // TODO
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = (rig->id < 0);
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO `rig_parameters` (`name`, `date`, `number_of_cameras`) VALUES(?, DATE('NOW'), 2)");
+        q.addBindValue(rig->name.c_str());
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+            rig->id = id;
+        }
+    }
+
+    for(int i=0; ok && i<2; i++)
+    {
+        int pose_id = -1;
+
+        if(ok)
+        {
+            ok = savePose(rig->cameras[i].camera_to_rig, pose_id);
+        }
+
+        if(ok)
+        {
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO `rig_cameras`(`rank`, `camera_to_rig`, `camera_id`) VALUES(?,?,?)");
+            q.addBindValue(i);
+            q.addBindValue(pose_id);
+            q.addBindValue(rig->cameras[i].calibration->id);
+
+            ok = q.exec();
+        }
+    }
+
+    return ok;
 }
 
 bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
@@ -386,33 +461,18 @@ bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
     return false; // TODO
 }
 
-bool Project::listCameras(CameraCalibrationList& list)
+bool Project::renameRig(int id, const QString& new_name)
 {
     bool ok = mDB.isOpen();
-
-    list.clear();
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        ok = q.exec("SELECT id, name, date FROM camera_parameters");
+        q.prepare("UPDATE rig_parameters SET name=? WHERE id=?");
+        q.addBindValue(new_name);
+        q.addBindValue(id);
 
-        if(ok)
-        {
-            while(q.next())
-            {
-                CameraCalibrationListItem item;
-                item.id = q.value(0).toInt();
-                item.name = q.value(1).toString();
-                item.date = q.value(2).toString();
-                list.push_back(item);
-            }
-        }
-    }
-
-    if(ok == false)
-    {
-        list.clear();
+        ok = q.exec() && (q.numRowsAffected() >= 1);
     }
 
     return ok;
@@ -514,8 +574,8 @@ bool Project::listReconstructions(ReconstructionList& list)
     return ok;
 }
 
-void Project::clear()
+bool Project::clear()
 {
-    // TODO
+    return false;
 }
 

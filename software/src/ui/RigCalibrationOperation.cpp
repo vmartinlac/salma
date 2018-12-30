@@ -47,6 +47,11 @@ bool RigCalibrationOperation::before()
     {
         ok = bool(mLeftCalibrationData) && bool(mRightCalibrationData);
     }
+
+    if(ok)
+    {
+        ok = (mLeftCalibrationData->id >= 0 && mRightCalibrationData->id >= 0);
+    }
     
     if(ok)
     {
@@ -300,10 +305,15 @@ void RigCalibrationOperation::calibrate()
         cv::cv2eigen<double,3,3>(R, Rbis);
         cv::cv2eigen<double,3,1>(T, Tbis);
 
-        calibration->left_camera_to_rig = Sophus::SE3d();
+        calibration->name = mCalibrationName;
 
-        calibration->right_camera_to_rig.setRotationMatrix(Rbis.transpose());
-        calibration->right_camera_to_rig.translation() = -Rbis.transpose() * Tbis;
+        calibration->cameras[0].camera_to_rig = Sophus::SE3d();
+
+        calibration->cameras[1].camera_to_rig.setRotationMatrix(Rbis.transpose());
+        calibration->cameras[1].camera_to_rig.translation() = -Rbis.transpose() * Tbis;
+
+        calibration->cameras[0].calibration = mLeftCalibrationData;
+        calibration->cameras[1].calibration = mRightCalibrationData;
 
         //cv::cv2eigen<double,3,3>(F, calibration->fundamental_matrix);
         //cv::cv2eigen<double,3,3>(E, calibration->essential_matrix);
@@ -322,23 +332,23 @@ void RigCalibrationOperation::calibrate()
         s << std::endl;
 
         s << "Left camera to rig transformation:" << std::endl;
-        s << "left_x = " << calibration->left_camera_to_rig.translation().x() << std::endl;
-        s << "left_y = " << calibration->left_camera_to_rig.translation().y() << std::endl;
-        s << "left_z = " << calibration->left_camera_to_rig.translation().z() << std::endl;
-        s << "left_qx = " << calibration->left_camera_to_rig.unit_quaternion().x() << std::endl;
-        s << "left_qy = " << calibration->left_camera_to_rig.unit_quaternion().y() << std::endl;
-        s << "left_qz = " << calibration->left_camera_to_rig.unit_quaternion().z() << std::endl;
-        s << "left_qw = " << calibration->left_camera_to_rig.unit_quaternion().w() << std::endl;
+        s << "left_x = " << calibration->cameras[0].camera_to_rig.translation().x() << std::endl;
+        s << "left_y = " << calibration->cameras[0].camera_to_rig.translation().y() << std::endl;
+        s << "left_z = " << calibration->cameras[0].camera_to_rig.translation().z() << std::endl;
+        s << "left_qx = " << calibration->cameras[0].camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "left_qy = " << calibration->cameras[0].camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "left_qz = " << calibration->cameras[0].camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "left_qw = " << calibration->cameras[0].camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
         s << "Right camera to rig transformation:" << std::endl;
-        s << "right_x = " << calibration->right_camera_to_rig.translation().x() << std::endl;
-        s << "right_y = " << calibration->right_camera_to_rig.translation().y() << std::endl;
-        s << "right_z = " << calibration->right_camera_to_rig.translation().z() << std::endl;
-        s << "right_qx = " << calibration->right_camera_to_rig.unit_quaternion().x() << std::endl;
-        s << "right_qy = " << calibration->right_camera_to_rig.unit_quaternion().y() << std::endl;
-        s << "right_qz = " << calibration->right_camera_to_rig.unit_quaternion().z() << std::endl;
-        s << "right_qw = " << calibration->right_camera_to_rig.unit_quaternion().w() << std::endl;
+        s << "right_x = " << calibration->cameras[1].camera_to_rig.translation().x() << std::endl;
+        s << "right_y = " << calibration->cameras[1].camera_to_rig.translation().y() << std::endl;
+        s << "right_z = " << calibration->cameras[1].camera_to_rig.translation().z() << std::endl;
+        s << "right_qx = " << calibration->cameras[1].camera_to_rig.unit_quaternion().x() << std::endl;
+        s << "right_qy = " << calibration->cameras[1].camera_to_rig.unit_quaternion().y() << std::endl;
+        s << "right_qz = " << calibration->cameras[1].camera_to_rig.unit_quaternion().z() << std::endl;
+        s << "right_qw = " << calibration->cameras[1].camera_to_rig.unit_quaternion().w() << std::endl;
         s << std::endl;
 
         statsPort()->beginWrite();
@@ -355,7 +365,7 @@ void RigCalibrationOperation::calibrate()
 
 const char* RigCalibrationOperation::getName()
 {
-    return "Rig calibration";
+    return "Rig Calibration";
 }
 
 bool RigCalibrationOperation::success()
@@ -365,8 +375,23 @@ bool RigCalibrationOperation::success()
 
 bool RigCalibrationOperation::saveResult(Project* proj)
 {
-    int rig_id;
-    return proj->saveRig(mResult, rig_id);
+    bool ok = true;
+    int rig_id = -1;
+
+    proj->beginTransaction();
+
+	ok = proj->saveRig(mResult, rig_id);
+
+    if(ok)
+    {
+        proj->endTransaction();
+    }
+    else
+    {
+        proj->abortTransaction();
+    }
+
+    return ok;
 }
 
 void RigCalibrationOperation::discardResult()

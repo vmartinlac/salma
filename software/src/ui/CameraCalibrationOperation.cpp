@@ -279,13 +279,28 @@ void CameraCalibrationOperation::writeOutputText()
 
 const char* CameraCalibrationOperation::getName()
 {
-    return "Camera calibration";
+    return "Camera Calibration";
 }
 
 bool CameraCalibrationOperation::saveResult(Project* project)
 {
-    int camera_id;
-	return project->saveCamera(mResult, camera_id);
+    bool ok = true;
+    int camera_id = -1;
+
+    project->beginTransaction();
+
+	ok = project->saveCamera(mResult, camera_id);
+
+    if(ok)
+    {
+        project->endTransaction();
+    }
+    else
+    {
+        project->abortTransaction();
+    }
+
+    return ok;
 }
 
 void CameraCalibrationOperation::discardResult()

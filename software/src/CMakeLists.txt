@@ -1,7 +1,7 @@
 add_subdirectory(buildinfo)
 add_subdirectory(calibration)
 add_subdirectory(mvpnp)
-add_subdirectory(slam)
+#add_subdirectory(slam)
 add_subdirectory(stereomatcher)
 add_subdirectory(target)
 add_subdirectory(uicommon)

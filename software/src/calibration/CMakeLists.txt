@@ -8,8 +8,6 @@ add_library(
     CameraCalibrationData.cpp
     StereoRigCalibrationData.h
     StereoRigCalibrationData.cpp
-    TwoViewGeometry.h
-    TwoViewGeometry.cpp
 )
 
 target_include_directories(calibration INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -116,17 +116,23 @@ void OperationDialog::operationStopped()
     if( mOperation->success() )
     {
         QMessageBox::StandardButton ret = QMessageBox::question(this, "Result", "Save result?", QMessageBox::Yes|QMessageBox::No, QMessageBox::Yes);
+        bool ok = true;
 
         switch(ret)
         {
         case QMessageBox::Yes:
-            mOperation->saveResult(mProject);
+            ok = mOperation->saveResult(mProject);
             break;
         case QMessageBox::No:
             mOperation->discardResult();
             break;
         default:
             throw std::runtime_error("internal error");
+        }
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not save calibration into database!");
         }
     }
     else

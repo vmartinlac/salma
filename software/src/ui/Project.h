@@ -30,7 +30,7 @@ public:
     RecordingModel* recordingModel();
     ReconstructionModel* reconstructionModel();
 
-    void clear(); // Reset the project! Use with caution!
+    bool clear(); // Reset the project! Use with caution!
 
     void beginTransaction();
     void endTransaction();
@@ -48,6 +48,7 @@ public:
     bool listRigs(RigCalibrationList& list);
     bool isRigMutable(int id, bool& mut);
     bool describeRig(int id, QString& descr);
+    bool renameRig(int id, const QString& new_name);
 
     bool listRecordings(RecordingList& list);
     bool describeRecording(int id, QString& descr);
