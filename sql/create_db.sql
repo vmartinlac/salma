@@ -15,6 +15,8 @@ CREATE TABLE 'camera_parameters'
 	'id' INTEGER PRIMARY KEY,
 	'name' TEXT,
 	'date' TEXT,
+    'image_width' INTEGER,
+    'image_height' INTEGER,
 	'fx' FLOAT,
 	'fy' FLOAT,
 	'cx' FLOAT,

@@ -113,17 +113,19 @@ ReconstructionModel* Project::reconstructionModel()
 
 bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 {
-    bool ok = mDB.isOpen();;
+    bool ok = mDB.isOpen();
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO 'camera_parameters' ('name','date','fx','fy','cx','cy','distortion_model') VALUES (?, DATETIME('NOW'), ?, ?, ?, ?, 0)");
+        q.prepare("INSERT INTO `camera_parameters` (`name`,`date`,`fx`,`fy`,`cx`,`cy`,`distortion_model`, `image_width`, `image_height`) VALUES (?, DATETIME('NOW'), ?, ?, ?, ?, 0, ?, ?)");
         q.addBindValue(camera->name.c_str());
         q.addBindValue(camera->calibration_matrix.at<double>(0,0));
         q.addBindValue(camera->calibration_matrix.at<double>(1,1));
         q.addBindValue(camera->calibration_matrix.at<double>(0,2));
         q.addBindValue(camera->calibration_matrix.at<double>(1,2));
+        q.addBindValue(camera->image_size.width);
+        q.addBindValue(camera->image_size.height);
 
         const bool ok = q.exec();
 
@@ -140,7 +142,7 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
         for(int j=0; ok && j<dist.cols; j++)
         {
             QSqlQuery q(mDB);
-            q.prepare("INSERT INTO 'distortion_coefficients' ('camera_id', 'rank', 'value') VALUES (?,?,?)");
+            q.prepare("INSERT INTO `distortion_coefficients` (`camera_id`, `rank`, `value`) VALUES (?,?,?)");
             q.addBindValue(id);
             q.addBindValue(j);
             q.addBindValue(dist.at<double>(0, j));
@@ -152,16 +154,65 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
     return ok;
 }
 
+bool Project::describeCamera(int id, QString& descr)
+{
+    bool ok = mDB.isOpen();
+
+    CameraCalibrationDataPtr camera;
+
+    descr.clear();
+
+    if(ok)
+    {
+        ok = loadCamera(id, camera) && bool(camera);
+    }
+
+    if(ok)
+    {
+        std::stringstream s;
+        s << "<html><head></head><body>" << std::endl;
+        s << "<h3>Metadata</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << camera->name << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+        s << "<h3>Image resolution</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>width</th><td>" << camera->image_size.width << "</td></tr>" << std::endl;
+        s << "<tr><th>height</th><td>" << camera->image_size.height << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+        s << "<h3>Pinhole model</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>fx</th><td>" << camera->calibration_matrix.at<double>(0,0) << "</td></tr>" << std::endl;
+        s << "<tr><th>fy</th><td>" << camera->calibration_matrix.at<double>(1,1) << "</td></tr>" << std::endl;
+        s << "<tr><th>cx</th><td>" << camera->calibration_matrix.at<double>(0,2) << "</td></tr>" << std::endl;
+        s << "<tr><th>cy</th><td>" << camera->calibration_matrix.at<double>(1,2) << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+        s << "<h3>Lens distortion model</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        for(int i=0; i<camera->distortion_coefficients.cols; i++)
+        {
+            s << "<tr><th>" << i << "</th><td>" << camera->distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
+        }
+        s << "</table>" << std::endl;
+        s << "</body></html>" << std::endl;
+
+        descr = s.str().c_str();
+    }
+
+    return ok;
+}
+
 bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 {
-    bool ok = mDB.isOpen();;
+    bool ok = mDB.isOpen();
 
     camera.reset(new CameraCalibrationData());
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT 'name', 'date', 'fx', 'fy', 'cx', 'cy', 'distortion_model' FROM 'camera_parameters' WHERE id=?");
+        q.prepare("SELECT `name`, `date`, `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
         q.addBindValue(id);
 
         bool ok = q.exec() && q.next();
@@ -170,18 +221,26 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
         {
             camera->name = q.value(0).toString().toStdString();
 
-            camera->calibration_matrix = cv::Mat(3, 3, CV_64F);
+            camera->image_size.width = q.value(7).toInt();
+            camera->image_size.height = q.value(8).toInt();
+
+            camera->calibration_matrix.create(3, 3, CV_64F);
             camera->calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
-            camera->calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
+            camera->calibration_matrix.at<double>(0,1) = 0.0;
             camera->calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
+            camera->calibration_matrix.at<double>(1,0) = 0.0;
+            camera->calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
             camera->calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
+            camera->calibration_matrix.at<double>(2,0) = 0.0;
+            camera->calibration_matrix.at<double>(2,1) = 0.0;
+            camera->calibration_matrix.at<double>(2,2) = 1.0;
         }
     }
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT 'rank', 'value' FROM 'distortion_coefficients' WHERE 'camera_id'=? ORDER BY 'rank' ASC");
+        q.prepare("SELECT `rank`, `value` FROM `distortion_coefficients` WHERE `camera_id`=? ORDER BY `rank` ASC");
         q.addBindValue(id);
 
         std::vector<double> values;
@@ -200,10 +259,11 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 
         if(ok)
         {
-            camera->distortion_coefficients = cv::Mat(1, values.size(), CV_64F);
+            camera->distortion_coefficients.create(1, values.size(), CV_64F);
+
             for(size_t j=0; j<values.size(); j++)
             {
-                camera->distortion_coefficients.at<double>(j, 0) = values[j];
+                camera->distortion_coefficients.at<double>(0, j) = values[j];
             }
         }
     }
@@ -218,7 +278,7 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 
 bool Project::savePose(const Sophus::SE3d& pose, int& id)
 {
-    bool ok = mDB.isOpen();;
+    bool ok = mDB.isOpen();
 
     if(ok)
     {
@@ -248,7 +308,7 @@ bool Project::savePose(const Sophus::SE3d& pose, int& id)
 
 bool Project::loadPose(int id, Sophus::SE3d& pose)
 {
-    bool ok = mDB.isOpen();;
+    bool ok = mDB.isOpen();
 
     if(ok)
     {

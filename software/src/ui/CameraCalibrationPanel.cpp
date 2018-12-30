@@ -17,6 +17,8 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
 
     mView->setModel(mProject->cameraCalibrationModel());
 
+    connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
+
     mText->setReadOnly(true);
 
     QToolBar* tb = new QToolBar();
@@ -73,5 +75,32 @@ void CameraCalibrationPanel::onRename()
 void CameraCalibrationPanel::onDelete()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
+}
+
+void CameraCalibrationPanel::onSelect(const QModelIndex& ind)
+{
+    QString text;
+    int camera_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        camera_id = mProject->cameraCalibrationModel()->indexToId(ind);
+        ok = (camera_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->describeCamera(camera_id, text);
+    }
+
+    if(ok)
+    {
+        mText->setText(text);
+    }
+    else
+    {
+        mText->setText(QString());
+    }
 }
 

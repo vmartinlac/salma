@@ -40,15 +40,19 @@ public:
     bool loadCamera(int id, CameraCalibrationDataPtr& data);
     bool listCameras(CameraCalibrationList& list);
     bool isCameraMutable(int id, bool& mut);
+    bool describeCamera(int id, QString& descr);
 
     bool saveRig(StereoRigCalibrationDataPtr rig, int& id);
     bool loadRig(int id, StereoRigCalibrationDataPtr& rig);
     bool listRigs(RigCalibrationList& list);
     bool isRigMutable(int id, bool& mut);
+    bool describeRig(int id, QString& descr);
 
     bool listRecordings(RecordingList& list);
+    bool describeRecording(int id, QString& descr);
 
     bool listReconstructions(ReconstructionList& list);
+    bool describeReconstruction(int id, QString& descr);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);
