@@ -117,6 +117,11 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 
     if(ok)
     {
+        ok = (camera->id < 0);
+    }
+
+    if(ok)
+    {
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO `camera_parameters` (`name`,`date`,`fx`,`fy`,`cx`,`cy`,`distortion_model`, `image_width`, `image_height`) VALUES (?, DATETIME('NOW'), ?, ?, ?, ?, 0, ?, ?)");
         q.addBindValue(camera->name.c_str());
@@ -132,6 +137,7 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
         if(ok)
         {
             id = q.lastInsertId().toInt();
+            camera->id = id;
         }
     }
 
@@ -149,6 +155,11 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 
             ok = q.exec();
         }
+    }
+
+    if(ok == false)
+    {
+        camera->id = -1;
     }
 
     return ok;
@@ -175,6 +186,7 @@ bool Project::describeCamera(int id, QString& descr)
         s << "<table>" << std::endl;
         s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
         s << "<tr><th>name</th><td>" << camera->name << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << camera->date << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
         s << "<h3>Image resolution</h3>" << std::endl;
         s << "<table>" << std::endl;
@@ -203,6 +215,23 @@ bool Project::describeCamera(int id, QString& descr)
     return ok;
 }
 
+bool Project::renameCamera(int id, const QString& new_name)
+{
+    bool ok = mDB.isOpen();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("UPDATE camera_parameters SET name=? WHERE id=?");
+        q.addBindValue(new_name);
+        q.addBindValue(id);
+
+        ok = q.exec() && (q.numRowsAffected() >= 1);
+    }
+
+    return ok;
+}
+
 bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 {
     bool ok = mDB.isOpen();
@@ -212,14 +241,17 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, `date`, `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
+        q.prepare("SELECT `name`, datetime(`date`, 'localtime'), `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
         q.addBindValue(id);
 
         bool ok = q.exec() && q.next();
 
         if(ok)
         {
+            camera->id = id;
+
             camera->name = q.value(0).toString().toStdString();
+            camera->date = q.value(1).toString().toStdString();
 
             camera->image_size.width = q.value(7).toInt();
             camera->image_size.height = q.value(8).toInt();

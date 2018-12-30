@@ -41,6 +41,7 @@ public:
     bool listCameras(CameraCalibrationList& list);
     bool isCameraMutable(int id, bool& mut);
     bool describeCamera(int id, QString& descr);
+    bool renameCamera(int id, const QString& new_name);
 
     bool saveRig(StereoRigCalibrationDataPtr rig, int& id);
     bool loadRig(int id, StereoRigCalibrationDataPtr& rig);

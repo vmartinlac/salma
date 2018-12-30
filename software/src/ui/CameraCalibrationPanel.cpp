@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -69,7 +70,40 @@ void CameraCalibrationPanel::onNew()
 
 void CameraCalibrationPanel::onRename()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    QString text;
+    int camera_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        camera_id = mProject->cameraCalibrationModel()->indexToId(mView->currentIndex());
+        ok = (camera_id >= 0);
+    }
+
+    if(ok)
+    {
+        bool accepted;
+        text = QInputDialog::getText(this, "Rename", "New name?", QLineEdit::Normal, "", &accepted);
+
+        ok = accepted && (text.isEmpty() == false);
+
+        if(accepted == true && ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Incorrect name!");
+        }
+    }
+
+    if(ok)
+    {
+        ok = mProject->renameCamera(camera_id, text);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
+        }
+
+        mProject->cameraCalibrationModel()->refresh();
+    }
 }
 
 void CameraCalibrationPanel::onDelete()

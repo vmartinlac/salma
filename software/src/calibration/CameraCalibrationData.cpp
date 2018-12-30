@@ -9,6 +9,7 @@
 
 CameraCalibrationData::CameraCalibrationData()
 {
+    id = -1;
 }
 
 bool CameraCalibrationData::saveToFile(const std::string& path)
