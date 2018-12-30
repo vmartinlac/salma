@@ -59,7 +59,7 @@ void RigCalibrationPanel::onNew()
             opdlg->exec();
             delete opdlg;
 
-            mProject->rigCalibrationModel()->refresh();
+            //mProject->rigCalibrationModel()->refresh();
         }
     }
     else
@@ -102,7 +102,7 @@ void RigCalibrationPanel::onRename()
             QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
         }
 
-        mProject->rigCalibrationModel()->refresh();
+        //mProject->rigCalibrationModel()->refresh();
     }
 }
 

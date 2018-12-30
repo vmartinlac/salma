@@ -28,8 +28,6 @@ add_library(
 
     Project.h
     Project.cpp
-    ProjectDialog.h
-    ProjectDialog.cpp
 
     Operation.cpp
     Operation.h

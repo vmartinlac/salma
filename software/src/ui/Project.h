@@ -22,15 +22,16 @@ public:
 
     Project(QObject* parent=nullptr);
 
+    bool create(const QString& path);
     bool open(const QString& path);
+    bool clear(); // Reset the project! Use with caution!
     void close();
+    bool isOpen();
 
     CameraCalibrationModel* cameraCalibrationModel();
     RigCalibrationModel* rigCalibrationModel();
     RecordingModel* recordingModel();
     ReconstructionModel* reconstructionModel();
-
-    bool clear(); // Reset the project! Use with caution!
 
     void beginTransaction();
     void endTransaction();

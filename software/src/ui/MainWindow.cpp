@@ -20,7 +20,6 @@
 #include "RecordingPanel.h"
 #include "ReconstructionPanel.h"
 #include "AboutDialog.h"
-#include "ProjectDialog.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -94,16 +93,28 @@ void MainWindow::showAvailableCameras()
 
 void MainWindow::clearProject()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    const int ret = QMessageBox::question(this, "Clear Project", "Do you really want to clear project's content?", QMessageBox::Yes|QMessageBox::No);
+
+    if(ret == QMessageBox::Yes)
+    {
+        mProject->beginTransaction();
+
+        const bool ok = mProject->clear();
+
+        if(ok)
+        {
+            mProject->endTransaction();
+        }
+        else
+        {
+            mProject->abortTransaction();
+            QMessageBox::critical(this, "Error", "An error happened while clearing the project!");
+        }
+    }
 }
 
 void MainWindow::openProject()
 {
-    /*
-    ProjectDialog* dlg = new ProjectDialog(mProject, this);
-    dlg->exec();
-    delete dlg;
-    */
     QString ret = QFileDialog::getExistingDirectory(this, "Open project");
 
     if( ret.isEmpty() == false )
@@ -124,5 +135,16 @@ void MainWindow::closeProject()
 
 void MainWindow::newProject()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    QString ret = QFileDialog::getExistingDirectory(this, "New project");
+
+    if( ret.isEmpty() == false )
+    {
+        const bool ok = mProject->create(ret);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not create new project!");
+        }
+    }
 }
+

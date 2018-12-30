@@ -59,7 +59,7 @@ void CameraCalibrationPanel::onNew()
             opdlg->exec();
             delete opdlg;
 
-            mProject->cameraCalibrationModel()->refresh();
+            //mProject->cameraCalibrationModel()->refresh();
         }
     }
     else
@@ -102,7 +102,7 @@ void CameraCalibrationPanel::onRename()
             QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
         }
 
-        mProject->cameraCalibrationModel()->refresh();
+        //mProject->cameraCalibrationModel()->refresh();
     }
 }
 

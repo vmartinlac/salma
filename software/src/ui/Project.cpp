@@ -24,6 +24,16 @@ Project::Project(QObject* parent) : QObject(parent)
     connect(this, SIGNAL(changed()), this, SIGNAL(reconstructionModelChanged()));
 }
 
+bool Project::create(const QString& path)
+{
+    close();
+
+    // TODO
+    std::cout << "Not implemented yet!" << std::endl;
+
+    return false;
+}
+
 bool Project::open(const QString& path)
 {
     QString db_path;
@@ -113,7 +123,7 @@ ReconstructionModel* Project::reconstructionModel()
 
 bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     if(ok)
     {
@@ -162,12 +172,14 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
         camera->id = -1;
     }
 
+    cameraCalibrationModelChanged();
+
     return ok;
 }
 
 bool Project::describeCamera(int id, QString& descr)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     CameraCalibrationDataPtr camera;
 
@@ -222,7 +234,7 @@ bool Project::describeCamera(int id, QString& descr)
 
 bool Project::renameCamera(int id, const QString& new_name)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     if(ok)
     {
@@ -234,12 +246,14 @@ bool Project::renameCamera(int id, const QString& new_name)
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
 
+    cameraCalibrationModelChanged();
+
     return ok;
 }
 
 bool Project::listCameras(CameraCalibrationList& list)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     list.clear();
 
@@ -271,7 +285,7 @@ bool Project::listCameras(CameraCalibrationList& list)
 
 bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     camera.reset(new CameraCalibrationData());
 
@@ -347,7 +361,7 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 
 bool Project::savePose(const Sophus::SE3d& pose, int& id)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     if(ok)
     {
@@ -377,7 +391,7 @@ bool Project::savePose(const Sophus::SE3d& pose, int& id)
 
 bool Project::loadPose(int id, Sophus::SE3d& pose)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     if(ok)
     {
@@ -459,12 +473,14 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
         }
     }
 
+    rigCalibrationModelChanged();
+
     return ok;
 }
 
 bool Project::describeRig(int id, QString& descr)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     StereoRigCalibrationDataPtr rig;
 
@@ -512,7 +528,7 @@ bool Project::describeRig(int id, QString& descr)
 
 bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     rig.reset(new StereoRigCalibrationData());
 
@@ -595,7 +611,7 @@ bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
 
 bool Project::renameRig(int id, const QString& new_name)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     if(ok)
     {
@@ -607,12 +623,14 @@ bool Project::renameRig(int id, const QString& new_name)
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
 
+    rigCalibrationModelChanged();
+
     return ok;
 }
 
 bool Project::listRigs(RigCalibrationList& list)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     list.clear();
 
@@ -644,7 +662,7 @@ bool Project::listRigs(RigCalibrationList& list)
 
 bool Project::listRecordings(RecordingList& list)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     list.clear();
 
@@ -676,7 +694,7 @@ bool Project::listRecordings(RecordingList& list)
 
 bool Project::listReconstructions(ReconstructionList& list)
 {
-    bool ok = mDB.isOpen();
+    bool ok = isOpen();
 
     list.clear();
 
@@ -708,6 +726,31 @@ bool Project::listReconstructions(ReconstructionList& list)
 
 bool Project::clear()
 {
-    return false;
+    mDB.exec("DELETE FROM `poses`");
+    mDB.exec("DELETE FROM `camera_parameters`");
+    mDB.exec("DELETE FROM `distortion_coefficients`");
+    mDB.exec("DELETE FROM `rig_parameters`");
+    mDB.exec("DELETE FROM `rig_cameras`");
+    mDB.exec("DELETE FROM `recordings`");
+    mDB.exec("DELETE FROM `recording_frames`");
+    mDB.exec("DELETE FROM `recording_views`");
+    mDB.exec("DELETE FROM `reconstructions`");
+    mDB.exec("DELETE FROM `settings`");
+    mDB.exec("DELETE FROM `frames`");
+    mDB.exec("DELETE FROM `views`");
+    mDB.exec("DELETE FROM `mappoints`");
+    mDB.exec("DELETE FROM `keypoints`");
+    mDB.exec("DELETE FROM `descriptors`");
+    mDB.exec("DELETE FROM `projections`");
+    mDB.exec("DELETE FROM `densepoints`");
+
+    changed();
+
+    return true;
+}
+
+bool Project::isOpen()
+{
+    return mDB.isOpen();
 }
 
