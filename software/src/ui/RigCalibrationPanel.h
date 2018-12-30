@@ -18,6 +18,7 @@ protected slots:
     void onNew();
     void onRename();
     void onDelete();
+    void onSelect(const QModelIndex& ind);
 
 protected:
 

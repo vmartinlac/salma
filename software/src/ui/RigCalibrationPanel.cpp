@@ -1,4 +1,5 @@
 #include <QListWidget>
+#include <QInputDialog>
 #include <QTextEdit>
 #include <QToolBar>
 #include <QSplitter>
@@ -16,6 +17,8 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     mText = new QTextEdit();
 
     mView->setModel(mProject->rigCalibrationModel());
+
+    connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
 
     mText->setReadOnly(true);
 
@@ -67,11 +70,71 @@ void RigCalibrationPanel::onNew()
 
 void RigCalibrationPanel::onRename()
 {
-    QMessageBox::critical(this, "Error", "Not implemented!");
+    QString text;
+    int rig_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        rig_id = mProject->rigCalibrationModel()->indexToId(mView->currentIndex());
+        ok = (rig_id >= 0);
+    }
+
+    if(ok)
+    {
+        bool accepted;
+        text = QInputDialog::getText(this, "Rename", "New name?", QLineEdit::Normal, "", &accepted);
+
+        ok = accepted && (text.isEmpty() == false);
+
+        if(accepted == true && ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Incorrect name!");
+        }
+    }
+
+    if(ok)
+    {
+        ok = mProject->renameRig(rig_id, text);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
+        }
+
+        mProject->rigCalibrationModel()->refresh();
+    }
 }
 
 void RigCalibrationPanel::onDelete()
 {
     QMessageBox::critical(this, "Error", "Not implemented!");
+}
+
+void RigCalibrationPanel::onSelect(const QModelIndex& ind)
+{
+    QString text;
+    int rig_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        rig_id = mProject->rigCalibrationModel()->indexToId(ind);
+        ok = (rig_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->describeRig(rig_id, text);
+    }
+
+    if(ok)
+    {
+        mText->setText(text);
+    }
+    else
+    {
+        mText->setText(QString());
+    }
 }
 

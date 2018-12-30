@@ -182,17 +182,20 @@ bool Project::describeCamera(int id, QString& descr)
     {
         std::stringstream s;
         s << "<html><head></head><body>" << std::endl;
+
         s << "<h3>Metadata</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
         s << "<tr><th>name</th><td>" << camera->name << "</td></tr>" << std::endl;
         s << "<tr><th>date</th><td>" << camera->date << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
+
         s << "<h3>Image resolution</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>width</th><td>" << camera->image_size.width << "</td></tr>" << std::endl;
         s << "<tr><th>height</th><td>" << camera->image_size.height << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
+
         s << "<h3>Pinhole model</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>fx</th><td>" << camera->calibration_matrix.at<double>(0,0) << "</td></tr>" << std::endl;
@@ -200,6 +203,7 @@ bool Project::describeCamera(int id, QString& descr)
         s << "<tr><th>cx</th><td>" << camera->calibration_matrix.at<double>(0,2) << "</td></tr>" << std::endl;
         s << "<tr><th>cy</th><td>" << camera->calibration_matrix.at<double>(1,2) << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
+
         s << "<h3>Lens distortion model</h3>" << std::endl;
         s << "<table>" << std::endl;
         for(int i=0; i<camera->distortion_coefficients.cols; i++)
@@ -207,6 +211,7 @@ bool Project::describeCamera(int id, QString& descr)
             s << "<tr><th>" << i << "</th><td>" << camera->distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
         }
         s << "</table>" << std::endl;
+
         s << "</body></html>" << std::endl;
 
         descr = s.str().c_str();
@@ -273,7 +278,7 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, datetime(`date`, 'localtime'), `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
         q.addBindValue(id);
 
         bool ok = q.exec() && q.next();
@@ -420,7 +425,7 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO `rig_parameters` (`name`, `date`, `number_of_cameras`) VALUES(?, DATE('NOW'), 2)");
+        q.prepare("INSERT INTO `rig_parameters` (`name`, `date`, `number_of_cameras`) VALUES (?, DATETIME('NOW'), 2)");
         q.addBindValue(rig->name.c_str());
 
         ok = q.exec();
@@ -444,7 +449,8 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
         if(ok)
         {
             QSqlQuery q(mDB);
-            q.prepare("INSERT INTO `rig_cameras`(`rank`, `camera_to_rig`, `camera_id`) VALUES(?,?,?)");
+            q.prepare("INSERT INTO `rig_cameras` (`rig_id`, `rank`, `camera_to_rig`, `camera_id`) VALUES(?,?,?,?)");
+            q.addBindValue(id);
             q.addBindValue(i);
             q.addBindValue(pose_id);
             q.addBindValue(rig->cameras[i].calibration->id);
@@ -456,9 +462,135 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
     return ok;
 }
 
+bool Project::describeRig(int id, QString& descr)
+{
+    bool ok = mDB.isOpen();
+
+    StereoRigCalibrationDataPtr rig;
+
+    descr.clear();
+
+    if(ok)
+    {
+        ok = loadRig(id, rig) && bool(rig);
+    }
+
+    if(ok)
+    {
+        std::stringstream s;
+        s << "<html><head></head><body>" << std::endl;
+
+        s << "<h3>Metadata</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << rig->name << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << rig->date << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+
+        for(int i=0; i<2; i++)
+        {
+            s << "<h3>Camera #" << i << "</h3>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>Camera calibration</th><td><em>" << QString(rig->cameras[i].calibration->name.c_str()).toHtmlEscaped().toStdString() << "</em> (" << rig->cameras[i].calibration->id << ").</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_tx</th><td>" << rig->cameras[i].camera_to_rig.translation().x() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_ty</th><td>" << rig->cameras[i].camera_to_rig.translation().y() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_tz</th><td>" << rig->cameras[i].camera_to_rig.translation().z() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qx</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().x() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qy</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().y() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qz</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().z() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qw</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().w() << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+        }
+
+        s << "</body></html>" << std::endl;
+
+        descr = s.str().c_str();
+    }
+
+    return ok;
+}
+
 bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
 {
-    return false; // TODO
+    bool ok = mDB.isOpen();
+
+    rig.reset(new StereoRigCalibrationData());
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `number_of_cameras` FROM `rig_parameters` WHERE `id`=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            ok = (q.value(2).toInt() == 2);
+        }
+
+        if(ok)
+        {
+            rig->id = id;
+            rig->name = q.value(0).toString().toStdString();
+            rig->date = q.value(1).toString().toStdString();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `rank`, `camera_to_rig`, `camera_id` FROM `rig_cameras` WHERE `rig_id`=? ORDER BY `rank` ASC");
+        q.addBindValue(id);
+        ok = q.exec();
+
+        std::vector<StereoRigCalibrationDataCamera> cameras;
+
+        if(ok)
+        {
+            while(ok && q.next())
+            {
+                StereoRigCalibrationDataCamera item;
+
+                if(ok)
+                {
+                    ok = ( q.value(0).toInt() == cameras.size() );
+                }
+
+                if(ok)
+                {
+                    ok = loadPose( q.value(1).toInt(), item.camera_to_rig);
+                }
+
+                if(ok)
+                {
+                    ok = loadCamera( q.value(2).toInt(), item.calibration );
+                }
+
+                if(ok)
+                {
+                    cameras.push_back(std::move(item));
+                }
+            }
+        }
+
+        if(ok)
+        {
+            ok = ( cameras.size() == 2 );
+        }
+
+        if(ok)
+        {
+            rig->cameras[0] = std::move(cameras[0]);
+            rig->cameras[1] = std::move(cameras[1]);
+        }
+    }
+
+    if(ok == false)
+    {
+        rig.reset();
+    }
+
+    return ok;
 }
 
 bool Project::renameRig(int id, const QString& new_name)

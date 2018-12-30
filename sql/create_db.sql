@@ -14,7 +14,7 @@ CREATE TABLE 'camera_parameters'
 (
 	'id' INTEGER PRIMARY KEY,
 	'name' TEXT,
-	'date' TEXT,
+	'date' DATE,
     'image_width' INTEGER,
     'image_height' INTEGER,
 	'fx' FLOAT,
@@ -36,13 +36,14 @@ CREATE TABLE 'rig_parameters'
 (
 	'id' INTEGER PRIMARY KEY,
 	'name' TEXT,
-	'date' TEXT,
+	'date' DATE,
 	'number_of_cameras' INTEGER
 );
 
 CREATE TABLE 'rig_cameras'
 (
 	'id' INTEGER PRIMARY KEY,
+    'rig_id' INTEGER,
 	'rank' INTEGER,
 	'camera_to_rig' INTEGER, --id of corresponding pose.
 	'camera_id' INTEGER
@@ -52,7 +53,7 @@ CREATE TABLE 'recordings'
 (
 	'id' INTEGER PRIMARY KEY,
 	'name' TEXT,
-	'date' TEXT,
+	'date' DATE,
     'directory' TEXT,
 	'number_of_views' INTEGER
 );
