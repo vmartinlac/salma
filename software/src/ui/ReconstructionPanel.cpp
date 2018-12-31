@@ -1,4 +1,5 @@
 #include <QListWidget>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QTextEdit>
 #include <QToolBar>
@@ -16,6 +17,9 @@ ReconstructionPanel::ReconstructionPanel(Project* project, QWidget* parent)
     mView = new QListView();
 
     mView->setModel(mProject->reconstructionModel());
+
+    connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
+    connect(mView, SIGNAL(doubleClicked(const QModelIndex&)), this, SLOT(onShow()));
 
     mText->setReadOnly(true);
     
@@ -55,8 +59,6 @@ void ReconstructionPanel::onNew()
         OperationDialog* opdlg = new OperationDialog(mProject, op, this);
         opdlg->exec();
         delete opdlg;
-
-        mProject->reconstructionModel()->refresh();
     }
 }
 
@@ -67,11 +69,69 @@ void ReconstructionPanel::onShow()
 
 void ReconstructionPanel::onRename()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    QString text;
+    int reconstruction_id = -1;
+    bool ok = true;
+
+    if(ok)
+    {
+        reconstruction_id = mProject->reconstructionModel()->indexToId(mView->currentIndex());
+        ok = (reconstruction_id >= 0);
+    }
+
+    if(ok)
+    {
+        bool accepted;
+        text = QInputDialog::getText(this, "Rename", "New name?", QLineEdit::Normal, "", &accepted);
+
+        ok = accepted && (text.isEmpty() == false);
+
+        if(accepted == true && ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Incorrect name!");
+        }
+    }
+
+    if(ok)
+    {
+        ok = mProject->renameReconstruction(reconstruction_id, text);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
+        }
+    }
 }
 
 void ReconstructionPanel::onDelete()
 {
     QMessageBox::critical(this, "Error", "Not implemented");
+}
+
+void ReconstructionPanel::onSelect(const QModelIndex& ind)
+{
+    QString text;
+    int reconstruction_id;
+    bool ok = true;
+
+    if(ok)
+    {
+        reconstruction_id = mProject->reconstructionModel()->indexToId(ind);
+        ok = (reconstruction_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->describeReconstruction(reconstruction_id, text);
+    }
+
+    if(ok)
+    {
+        mText->setText(text);
+    }
+    else
+    {
+        mText->setText(QString());
+    }
 }
 

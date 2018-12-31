@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QStatusBar>
 #include <QTimer>
 #include <QTimer>
 #include <QDialog>
@@ -25,5 +26,6 @@ protected:
     VideoInputPort* mVideo;
     RecordingReaderPtr mReader;
     QTimer* mTimer;
+    QStatusBar* mStatusBar;
 };
 

@@ -1019,3 +1019,27 @@ bool Project::listReconstructions(ReconstructionList& list)
     return ok;
 }
 
+bool Project::describeReconstruction(int id, QString& descr)
+{
+    return false; // TODO
+}
+
+bool Project::renameReconstruction(int id, const QString& new_name)
+{
+    bool ok = isOpen();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("UPDATE reconstructions SET name=? WHERE id=?");
+        q.addBindValue(new_name);
+        q.addBindValue(id);
+
+        ok = q.exec() && (q.numRowsAffected() >= 1);
+    }
+
+    reconstructionModelChanged();
+
+    return ok;
+}
+

@@ -27,10 +27,13 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr reader, QWidget*
     VideoWidget* video_widget = new VideoWidget();
     mVideo = video_widget->getPort();
 
+    mStatusBar = new QStatusBar();
+
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb);
     lay->addWidget(slider);
     lay->addWidget(video_widget);
+    lay->addWidget(mStatusBar);
     
     setLayout(lay);
     setWindowTitle("Play Recording");

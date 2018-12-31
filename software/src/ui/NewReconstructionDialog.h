@@ -1,10 +1,10 @@
 
 #pragma once
 
-#include "NewOperationDialog.h"
-#include "CameraList.h"
-#include "TargetScaleWidget.h"
 #include <QLineEdit>
+#include "NewOperationDialog.h"
+#include "RigCalibrationListWidget.h"
+#include "RecordingListWidget.h"
 
 class NewReconstructionDialog : public NewOperationDialog
 {
@@ -21,5 +21,7 @@ protected slots:
 protected:
 
     QLineEdit* mName;
+    RecordingListWidget* mRecording;
+    RigCalibrationListWidget* mCalibration;
 };
 

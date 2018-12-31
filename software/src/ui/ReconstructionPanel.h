@@ -21,6 +21,8 @@ protected slots:
     void onRename();
     void onDelete();
 
+    void onSelect(const QModelIndex&);
+
 protected:
 
     QListView* mView;

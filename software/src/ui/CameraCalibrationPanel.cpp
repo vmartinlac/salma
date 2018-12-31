@@ -58,8 +58,6 @@ void CameraCalibrationPanel::onNew()
             OperationDialog* opdlg = new OperationDialog(mProject, op, this);
             opdlg->exec();
             delete opdlg;
-
-            //mProject->cameraCalibrationModel()->refresh();
         }
     }
     else

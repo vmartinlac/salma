@@ -60,8 +60,12 @@ public:
     bool renameRecording(int id, const QString& new_name);
     bool createRecordingDirectory(QDir& dir);
 
+    //bool saveReconstruction(SLAMReconstructionPtr rec, int& id);
+    //bool loadReconstruction(int id, SLAMReconstructionPtr& rec);
     bool listReconstructions(ReconstructionList& list);
+    bool isReconstructionMutable(int id, bool& mut);
     bool describeReconstruction(int id, QString& descr);
+    bool renameReconstruction(int id, const QString& new_name);
 
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);

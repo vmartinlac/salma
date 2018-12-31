@@ -23,6 +23,8 @@ add_library(
     CameraCalibrationListWidget.cpp
     RigCalibrationListWidget.h
     RigCalibrationListWidget.cpp
+    RecordingListWidget.h
+    RecordingListWidget.cpp
     FrameRateWidget.h
     FrameRateWidget.cpp
 
