@@ -1,7 +1,6 @@
 #define QT_NO_KEYWORDS
 
 #include <iostream>
-#include "VideoReader.h"
 #include "ArduinoTrigger.h"
 #include "MockCamera.h"
 #include "GenICamRig.h"
@@ -132,20 +131,6 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
 
     return ret;
 #endif
-}
-
-VideoSourcePtr VideoSystemImpl::createVideoSourceFromFileMono(const std::string& path)
-{
-    VideoReaderPtr ret(new VideoReader(1));
-    ret->setPath(path);
-    return ret;
-}
-
-VideoSourcePtr VideoSystemImpl::createVideoSourceFromFileStereo(const std::string& path)
-{
-    VideoReaderPtr ret(new VideoReader(2));
-    ret->setPath(path);
-    return ret;
 }
 
 VideoSourcePtr VideoSystemImpl::createVideoSourceMockMono()

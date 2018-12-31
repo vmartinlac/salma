@@ -26,9 +26,6 @@ public:
     virtual VideoSourcePtr createVideoSourceOpenCV(int id);
     virtual VideoSourcePtr createVideoSourceOpenCV(const std::string& filename);
 
-    virtual VideoSourcePtr createVideoSourceFromFileMono(const std::string& path);
-    virtual VideoSourcePtr createVideoSourceFromFileStereo(const std::string& path);
-
     virtual VideoSourcePtr createVideoSourceMockMono();
     virtual VideoSourcePtr createVideoSourceMockStereo();
 

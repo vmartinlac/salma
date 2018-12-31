@@ -14,11 +14,12 @@ add_library(
     VideoSystemImpl.h
     VideoSystem.cpp
     VideoSystem.h
+    RecordingReader.cpp
+    RecordingReader.h
+    RecordingHeader.h
     MockCamera.h
     MockCamera.cpp
     VideoErrorCode.h
-    VideoReader.cpp
-    VideoReader.h
     GenICamRig.cpp
     GenICamRig.h
     GenICamCamera.cpp
@@ -26,6 +27,6 @@ add_library(
     RecordingHeader.h
 )
 
-target_link_libraries(video PUBLIC Aravis opencv_core opencv_videoio opencv_imgproc Qt5::Core)
+target_link_libraries(video PUBLIC Aravis opencv_core opencv_videoio opencv_imgproc opencv_imgcodecs Qt5::Core)
 target_include_directories(video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

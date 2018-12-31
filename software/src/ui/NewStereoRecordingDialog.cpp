@@ -99,6 +99,7 @@ void NewStereoRecordingDialog::accept()
         else
         {
             ok = project()->createRecordingDirectory(directory);
+            err = "Could not create new directory! Please check access rights!";
         }
     }
 

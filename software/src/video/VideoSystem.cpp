@@ -51,16 +51,6 @@ VideoSourcePtr VideoSystem::createVideoSourceOpenCV(const std::string& filename)
     return VideoSourcePtr();
 }
 
-VideoSourcePtr VideoSystem::createVideoSourceFromFileMono(const std::string& path)
-{
-    return VideoSourcePtr();
-}
-
-VideoSourcePtr VideoSystem::createVideoSourceFromFileStereo(const std::string& path)
-{
-    return VideoSourcePtr();
-}
-
 VideoSourcePtr VideoSystem::createVideoSourceMockMono()
 {
     return VideoSourcePtr();
