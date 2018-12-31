@@ -1021,7 +1021,45 @@ bool Project::listReconstructions(ReconstructionList& list)
 
 bool Project::describeReconstruction(int id, QString& descr)
 {
-    return false; // TODO
+    bool ok = isOpen();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name FROM reconstructions reconstruction, rig_parameters rig, recordings recording WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            const int rig_id = q.value(2).toInt();
+            const int recording_id = q.value(4).toInt();
+            const std::string rig_name = q.value(3).toString().toStdString();
+            const std::string recording_name = q.value(5).toString().toStdString();
+
+            std::stringstream s;
+            s << "<html><head></head><body>" << std::endl;
+
+            s << "<h3>Metadata</h3>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
+            s << "<tr><th>name</th><td>" << q.value(0).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>date</th><td>" << q.value(1).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            s << "<h3>Input</h3>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>Recording</th><td><em>" << recording_name << "</em> (" << recording_id << ")</td></tr>" << std::endl;
+            s << "<tr><th>Rig calibration</th><td><em>" << rig_name << "</em> (" << rig_id << ")</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            s << "</body></html>" << std::endl;
+
+            descr = s.str().c_str();
+        }
+    }
+
+    return ok;
 }
 
 bool Project::renameReconstruction(int id, const QString& new_name)
