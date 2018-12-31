@@ -6,7 +6,6 @@ RecordingReader::RecordingReader(RecordingHeaderPtr header, bool asynchronous)
 {
     mAsynchronousLoading = asynchronous;
     mHeader = std::move(header);
-    mIsOpen = false;
 }
 
 RecordingReader::~RecordingReader()
@@ -20,14 +19,15 @@ std::string RecordingReader::getHumanName()
 
 bool RecordingReader::open()
 {
-    mIsOpen = true;
     mNextFrame = 0;
+    mNextImage = std::future<Image>();
     return true;
 }
 
 void RecordingReader::close()
 {
-    mIsOpen = false;
+    mNextFrame = -1;
+    mNextImage = std::future<Image>();
 }
 
 Image RecordingReader::loadImage(RecordingHeaderPtr header, int rank)

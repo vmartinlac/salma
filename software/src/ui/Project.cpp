@@ -704,7 +704,7 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
-        ok = ( rec->id < 0 && rec->frames.size() == rec->num_frames && rec->views.size() == rec->num_frames*rec->num_views );
+        ok = ( rec->id < 0 && rec->frames.size() == rec->num_frames && rec->views.size() == rec->num_frames*rec->num_views && rec->num_frames > 0 );
     }
 
     if(ok)
@@ -788,6 +788,8 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
         q.addBindValue(id);
         ok = q.exec();
 
+        rec->num_frames = 0;
+
         int i = 0;
 
         while( ok && q.next() )
@@ -802,6 +804,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
                 RecordingHeaderFrame f;
                 f.timestamp = q.value(1).toDouble();
                 rec->frames.push_back(f);
+                rec->num_frames++;
             }
 
             if(ok)
@@ -813,6 +816,8 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
 
             i++;
         }
+
+        ok = ok && (i == rec->num_views*rec->num_frames && rec->num_frames > 0);
     }
 
     if(ok == false)

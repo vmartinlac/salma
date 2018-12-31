@@ -11,6 +11,7 @@
 #include "NewMonoRecordingDialog.h"
 #include "NewStereoRecordingDialog.h"
 #include "OperationDialog.h"
+#include "RecordingPlayerDialog.h"
 
 RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 {
@@ -21,6 +22,7 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
     mView->setModel(mProject->recordingModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
+    connect(mView, SIGNAL(doubleClicked(const QModelIndex&)), this, SLOT(onPlayRecording()));
 
     mText->setReadOnly(true);
 
@@ -102,13 +104,39 @@ void RecordingPanel::onNewStereoRecording()
 
 void RecordingPanel::onPlayRecording()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    int recording_id = -1;
+    bool ok = true;
+    RecordingHeaderPtr header;
+
+    if(ok)
+    {
+        recording_id = mProject->recordingModel()->indexToId(mView->currentIndex());
+        ok = (recording_id >= 0);
+    }
+
+    if(ok)
+    {
+        mProject->loadRecording(recording_id, header);
+        ok = bool(header);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not load recording!");
+        }
+    }
+
+    if(ok)
+    {
+        RecordingPlayerDialog* dlg = new RecordingPlayerDialog(header, this);
+        dlg->exec();
+        delete dlg;
+    }
 }
 
 void RecordingPanel::onRenameRecording()
 {
     QString text;
-    int recording_id;
+    int recording_id = -1;
     bool ok = true;
 
     if(ok)

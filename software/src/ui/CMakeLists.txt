@@ -71,6 +71,8 @@ add_library(
     NewStereoRecordingDialog.cpp
     RecordingOperation.h
     RecordingOperation.cpp
+    RecordingPlayerDialog.h
+    RecordingPlayerDialog.cpp
 
     ReconstructionModel.h
     ReconstructionModel.cpp

@@ -34,7 +34,6 @@ protected:
 
     bool mAsynchronousLoading;
     RecordingHeaderPtr mHeader;
-    bool mIsOpen;
     int mNextFrame;
     std::future<Image> mNextImage;
 };
