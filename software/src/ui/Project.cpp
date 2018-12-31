@@ -872,6 +872,41 @@ bool Project::listRecordings(RecordingList& list)
     return ok;
 }
 
+bool Project::createRecordingDirectory(QDir& dir)
+{
+    QString name;
+    bool ok = true;
+
+    if(ok)
+    {
+        bool go_on = true;
+
+        for(int i=0; go_on && i<1000000; i++)
+        {
+            name = "rec_" + QString::number(i);
+            go_on = mDir.exists(name);
+        }
+
+        if(go_on)
+        {
+            ok = false;
+        }
+    }
+
+    if(ok)
+    {
+        dir = mDir;
+        ok = ( dir.mkdir(name) && dir.cd(name) );
+    }
+
+    if(ok == false)
+    {
+        dir = QDir();
+    }
+
+    return ok;
+}
+
 // RECONSTRUCTION
 
 bool Project::listReconstructions(ReconstructionList& list)

@@ -58,6 +58,7 @@ public:
     bool isRecordingMutable(int id, bool& mut);
     bool describeRecording(int id, QString& descr);
     bool renameRecording(int id, const QString& new_name);
+    bool createRecordingDirectory(QDir& dir);
 
     bool listReconstructions(ReconstructionList& list);
     bool describeReconstruction(int id, QString& descr);

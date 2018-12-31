@@ -7,6 +7,7 @@
 #include "RecordingOperation.h"
 #include "Image.h"
 #include "SyncIO.h"
+#include "Project.h"
 
 RecordingOperation::RecordingOperation()
 {
@@ -27,16 +28,29 @@ bool RecordingOperation::before()
 
     if(ok)
     {
-        ok = bool(mCamera) && (mCamera->getNumberOfCameras() == 2);
+        ok = (mRecordingName.empty() == false && mMaxFrameRate > 0.0);
     }
 
-    if( mVisualizationOnly == false )
+    if(ok)
     {
-        if(ok)
+        ok = bool(mCamera) && (mCamera->getNumberOfCameras() >= 1);
+    }
+
+    if(ok)
+    {
+        if(mVisualizationOnly)
         {
-            const QString csv_path = mOutputDirectory.absoluteFilePath("recording.csv");
-            mOutputCSV.open( csv_path.toLocal8Bit().data(), std::ofstream::out );
-            ok = mOutputCSV.is_open();
+            mResult.reset();
+        }
+        else
+        {
+            mResult.reset(new RecordingHeader());
+            mResult->id = -1;
+            mResult->name = mRecordingName;
+            mResult->date.clear();
+            mResult->num_views = mCamera->getNumberOfCameras();
+            mResult->num_frames = 0;
+            mResult->directory = mDirectory;
         }
     }
 
@@ -64,31 +78,46 @@ bool RecordingOperation::step()
         mCamera->read(image);
         mCamera->trigger();
 
-        if( image.isValid() && image.getNumberOfFrames() == 2 )
+        if( image.isValid() )
         {
-            if( mVisualizationOnly == false )
+            if( mVisualizationOnly )
             {
-                const QString left_basename = QString("frame_%1_left.bmp").arg(QString::number(mNumFrames), 6, '0');
-                const QString right_basename = QString("frame_%1_right.bmp").arg(QString::number(mNumFrames), 6, '0');
-
-                const QString left_filename = mOutputDirectory.absoluteFilePath(left_basename);
-                const QString right_filename = mOutputDirectory.absoluteFilePath(right_basename);
-
-                ret = ret && syncimwrite(left_filename.toLocal8Bit().data(), "bmp", image.getFrame(0));
-                ret = ret && syncimwrite(right_filename.toLocal8Bit().data(), "bmp", image.getFrame(1));
+                mNumFrames++;
+            }
+            else
+            {
+                ret = ret && ( image.getNumberOfFrames() == mResult->num_views );
 
                 if(ret)
                 {
-                    mOutputCSV << mNumFrames << " ";
-                    mOutputCSV << image.getTimestamp() << " ";
-                    mOutputCSV << left_basename.toLocal8Bit().data() << " ";
-                    mOutputCSV << right_basename.toLocal8Bit().data() << std::endl;
+                    for(int v=0; ret && v<image.getNumberOfFrames(); v++)
+                    {
+                        const QString str_frame = QString::number(mNumFrames);
+                        const QString str_view = QString::number(v);
+                        const QString basename = QString("frame_%1_%2.png").arg(str_frame, 8, '0').arg(str_view, 2, '0');
+                        const QString filename = mDirectory.absoluteFilePath(basename);
+                        ret = ret && syncimwrite(filename.toLocal8Bit().data(), ".png", image.getFrame(v));
+
+                        RecordingHeaderView rhv;
+                        rhv.filename = basename;
+                        mResult->views.push_back(rhv);
+                    }
+
+                    RecordingHeaderFrame rhf;
+                    rhf.timestamp = image.getTimestamp();
+                    mResult->frames.push_back(rhf);
+                    mResult->num_frames++;
+
+                    mNumFrames++;
+
+                    ret = ret && (mResult->num_frames == mResult->frames.size());
+                    ret = ret && (mResult->num_views*mResult->num_frames == mResult->views.size());
+                    ret = ret && (mNumFrames == mResult->num_frames);
                 }
             }
 
-            mNumFrames++;
-
             // display video.
+            if(image.getNumberOfFrames() > 1)
             {
                 Image concat;
                 image.concatenate(concat);
@@ -97,6 +126,12 @@ bool RecordingOperation::step()
 
                 videoPort()->beginWrite();
                 videoPort()->data().image = concat.getFrame();
+                videoPort()->endWrite();
+            }
+            else
+            {
+                videoPort()->beginWrite();
+                videoPort()->data().image = image.getFrame();
                 videoPort()->endWrite();
             }
 
@@ -110,12 +145,20 @@ bool RecordingOperation::step()
                 std::stringstream s;
 
                 s << "Frame count: " << mNumFrames << std::endl;
-                s << "Left image size: " << image.getFrame(0).cols << " * " << image.getFrame(0).rows << std::endl;
-                s << "Right image size: " << image.getFrame(1).cols << " * " << image.getFrame(1).rows << std::endl;
                 s << "Recording duration: " << minutes << " min " << seconds << " seconds" << std::endl;
                 s << std::endl;
+
                 s << "Camera name: " << mCamera->getHumanName() << std::endl;
-                s << "Output directory: " << mOutputDirectory.path().toStdString() << std::endl;
+                for(int v=0; v<image.getNumberOfFrames(); v++)
+                {
+                    s << "Image #" << v << "  size: " << image.getFrame(v).cols << " * " << image.getFrame(v).rows << std::endl;
+                }
+                s << std::endl;
+
+                if(mVisualizationOnly == false)
+                {
+                    s << "Output directory: " << mDirectory.path().toStdString() << std::endl;
+                }
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false") << std::endl;
                 s << "Max frame rate: " << mMaxFrameRate << std::endl;
 
@@ -147,16 +190,17 @@ bool RecordingOperation::step()
         ret = false;
     }
 
+    if(ret == false && bool(mResult))
+    {
+        mResult.reset();
+        mDirectory.removeRecursively();
+    }
+
     return ret;
 }
 
 void RecordingOperation::after()
 {
-    if( mVisualizationOnly == false )
-    {
-        mOutputCSV.close();
-    }
-
     if(mCamera)
     {
         mCamera->close();
@@ -170,14 +214,54 @@ const char* RecordingOperation::getName()
 
 bool RecordingOperation::success()
 {
-    return true;
+    return ( mVisualizationOnly || bool(mResult) );
 }
 
-bool RecordingOperation::saveResult(Project* p)
+bool RecordingOperation::saveResult(Project* project)
 {
-    return true;
+    bool ret = true;
+
+    if( mVisualizationOnly )
+    {
+        ret = true;
+    }
+    else
+    {
+        if( mResult )
+        {
+            bool ok = true;
+            int recording_id = -1;
+
+            project->beginTransaction();
+
+            ok = project->saveRecording(mResult, recording_id);
+
+            if(ok)
+            {
+                project->endTransaction();
+            }
+            else
+            {
+                project->abortTransaction();
+                mDirectory.removeRecursively();
+            }
+
+            ret = ok;
+        }
+        else
+        {
+            ret = false;
+        }
+    }
+
+    return ret;
 }
 
 void RecordingOperation::discardResult()
 {
+    if(mVisualizationOnly == false && bool(mResult))
+    {
+        mResult.reset();
+        mDirectory.removeRecursively();
+    }
 }

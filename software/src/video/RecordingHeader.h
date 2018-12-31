@@ -21,6 +21,8 @@ public:
     RecordingHeader()
     {
         id = -1;
+        num_views = 0;
+        num_frames = 0;
     }
 
     int id;

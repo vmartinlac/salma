@@ -1,4 +1,5 @@
 #include <QMenu>
+#include <QKeySequence>
 #include <QTreeWidget>
 #include <QTextEdit>
 #include <QMessageBox>
@@ -32,17 +33,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     QAction* aClose = menuProject->addAction("Close");
     QAction* aQuit = menuProject->addAction("Quit");
 
-    /*
-    QMenu* menuTools = menuBar()->addMenu("Tools");
-    QAction* aAcquirer = menuTools->addAction("Acquisition");
-    QAction* aPlayer = menuTools->addAction("Player");
-    QAction* aReconstruction = menuTools->addAction("Reconstruction");
-    QAction* aVisualizer = menuTools->addAction("Visualization");
-    */
-
     QMenu* menuHelp = menuBar()->addMenu("Help");
     QAction* aCameras = menuHelp->addAction("Available cameras");
     QAction* aAbout = menuHelp->addAction("About Salma");
+
+    aNew->setShortcut(QKeySequence("Ctrl+N"));
+    aOpen->setShortcut(QKeySequence("Ctrl+O"));
+    aClose->setShortcut(QKeySequence("Ctrl+W"));
+    aQuit->setShortcut(QKeySequence("Ctrl+Q"));
 
     connect(aNew, SIGNAL(triggered()), this, SLOT(newProject()));
     connect(aOpen, SIGNAL(triggered()), this, SLOT(openProject()));

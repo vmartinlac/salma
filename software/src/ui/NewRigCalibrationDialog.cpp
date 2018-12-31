@@ -111,7 +111,7 @@ void NewRigCalibrationDialog::accept()
     if(ok)
     {
         RigCalibrationOperation* myop = new RigCalibrationOperation();
-        myop->mCalibrationName = mName->text().toStdString();
+        myop->mCalibrationName = name.toStdString();
         myop->mCamera = camera;
         myop->mTargetCellLength = scale;
         myop->mLeftCalibrationData = left_calibration;

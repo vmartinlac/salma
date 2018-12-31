@@ -79,7 +79,7 @@ void NewCameraCalibrationDialog::accept()
     if(ok)
     {
         CameraCalibrationOperation* myop = new CameraCalibrationOperation();
-        myop->mCalibrationName = mName->text().toStdString();
+        myop->mCalibrationName = name.toStdString();
         myop->mCamera = camera;
         myop->mTargetCellLength = scale;
         op.reset(myop);

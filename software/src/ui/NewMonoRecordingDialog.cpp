@@ -45,9 +45,11 @@ NewMonoRecordingDialog::~NewMonoRecordingDialog()
 void NewMonoRecordingDialog::accept()
 {
     QString name;
+    QDir directory;
     int camera_id = -1;
-    double framerate;
     VideoSourcePtr camera;
+    double framerate;
+    bool visualization_only;
 
     OperationPtr op;
     bool ok = true;
@@ -81,10 +83,28 @@ void NewMonoRecordingDialog::accept()
 
     if(ok)
     {
+        visualization_only = mVisualizationOnly->isChecked();
+    }
+
+    if(ok)
+    {
+        if(visualization_only)
+        {
+            directory = QDir::temp();
+        }
+        else
+        {
+            ok = project()->createRecordingDirectory(directory);
+        }
+    }
+
+    if(ok)
+    {
         RecordingOperation* myop = new RecordingOperation();
-        myop->mRecordingName = mName->text().toStdString();
+        myop->mRecordingName = name.toStdString();
         myop->mCamera = camera;
-        myop->mVisualizationOnly = mVisualizationOnly->isChecked();
+        myop->mDirectory = std::move(directory);
+        myop->mVisualizationOnly = visualization_only;
         myop->mMaxFrameRate = framerate;
         op.reset(myop);
     }

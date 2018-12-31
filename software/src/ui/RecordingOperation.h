@@ -7,6 +7,7 @@
 #include <iostream>
 #include "VideoSource.h"
 #include "Operation.h"
+#include "RecordingHeader.h"
 
 class Project;
 
@@ -31,17 +32,16 @@ public:
 public:
 
     std::string mRecordingName;
+    QDir mDirectory;
     VideoSourcePtr mCamera;
     bool mVisualizationOnly;
     double mMaxFrameRate;
-    QString mDirectory;
-    QDir mOutputDirectory;
 
 protected:
 
     QTime mClock;
     int mNumFrames;
-    std::ofstream mOutputCSV;
     QTime mFrameRateClock;
+    RecordingHeaderPtr mResult;
 };
 

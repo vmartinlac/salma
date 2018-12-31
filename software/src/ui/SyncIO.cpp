@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <iostream>
 #include <fcntl.h>
 #include <opencv2/imgcodecs.hpp>
 #include "SyncIO.h"
@@ -16,7 +17,7 @@ bool syncimwrite(const std::string& path, const std::string& ext, const cv::Mat&
 
     if(ok)
     {
-        fd = open( path.c_str(), O_WRONLY|O_SYNC );
+        fd = open( path.c_str(), O_WRONLY|O_SYNC|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH );
         ok = (fd >= 0);
     }
 
