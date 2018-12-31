@@ -26,4 +26,21 @@ StatsInputPort* Operation::statsPort()
     return mStatsPort;
 }
 
+bool Operation::uibefore(QWidget* parent, Project* p)
+{
+    return true;
+}
+
+bool Operation::before()
+{
+    return true;
+}
+
+void Operation::after()
+{
+}
+
+void Operation::uiafter(QWidget* parent, Project* p)
+{
+}
 

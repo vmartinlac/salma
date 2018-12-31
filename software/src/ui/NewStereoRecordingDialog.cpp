@@ -47,7 +47,6 @@ NewStereoRecordingDialog::~NewStereoRecordingDialog()
 void NewStereoRecordingDialog::accept()
 {
     QString name;
-    QDir directory;
     int left_camera_id = -1;
     int right_camera_id = -1;
     VideoSourcePtr camera;
@@ -92,23 +91,9 @@ void NewStereoRecordingDialog::accept()
 
     if(ok)
     {
-        if(visualization_only)
-        {
-            directory = QDir::temp();
-        }
-        else
-        {
-            ok = project()->createRecordingDirectory(directory);
-            err = "Could not create new directory! Please check access rights!";
-        }
-    }
-
-    if(ok)
-    {
         RecordingOperation* myop = new RecordingOperation();
         myop->mRecordingName = name.toStdString();
         myop->mCamera = camera;
-        myop->mDirectory = std::move(directory);
         myop->mVisualizationOnly = visualization_only;
         myop->mMaxFrameRate = framerate;
         op.reset(myop);

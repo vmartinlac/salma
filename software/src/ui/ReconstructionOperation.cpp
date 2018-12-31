@@ -1,3 +1,4 @@
+#include <QMessageBox>
 #include "ReconstructionOperation.h"
 
 ReconstructionOperation::ReconstructionOperation()
@@ -11,6 +12,11 @@ ReconstructionOperation::~ReconstructionOperation()
 const char* ReconstructionOperation::getName()
 {
     return "Reconstruction";
+}
+
+bool ReconstructionOperation::uibefore(QWidget* parent, Project* project)
+{
+    return false;
 }
 
 bool ReconstructionOperation::before()
@@ -27,17 +33,7 @@ void ReconstructionOperation::after()
 {
 }
 
-bool ReconstructionOperation::success()
-{
-    return false;
-}
-
-bool ReconstructionOperation::saveResult(Project* project)
-{
-    return false;
-}
-
-void ReconstructionOperation::discardResult()
+void ReconstructionOperation::uiafter(QWidget* parent, Project* project)
 {
 }
 

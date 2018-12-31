@@ -19,12 +19,11 @@ public:
     ~CameraCalibrationOperation() override;
 
     const char* getName() override;
+
     bool before() override;
     bool step() override;
     void after() override;
-    bool success() override;
-    bool saveResult(Project* project) override;
-    void discardResult() override;
+    void uiafter(QWidget* parent, Project* project) override;
 
 public:
 

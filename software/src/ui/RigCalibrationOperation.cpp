@@ -3,6 +3,7 @@
 #include <thread>
 #include <sstream>
 #include <fstream>
+#include <QMessageBox>
 #include <QThread>
 #include <QTime>
 #include <sophus/average.hpp>
@@ -368,35 +369,32 @@ const char* RigCalibrationOperation::getName()
     return "Rig Calibration";
 }
 
-bool RigCalibrationOperation::success()
+void RigCalibrationOperation::uiafter(QWidget* parent, Project* proj)
 {
-    return bool(mResult);
-}
-
-bool RigCalibrationOperation::saveResult(Project* proj)
-{
-    bool ok = true;
-    int rig_id = -1;
-
-    proj->beginTransaction();
-
-	ok = proj->saveRig(mResult, rig_id);
-
-    if(ok)
+    if(mResult)
     {
-        proj->endTransaction();
+        bool ok = true;
+        int rig_id = -1;
+
+        proj->beginTransaction();
+
+        ok = proj->saveRig(mResult, rig_id);
+
+        if(ok)
+        {
+            proj->endTransaction();
+            QMessageBox::information(parent, "Success", "Calibration done!");
+        }
+        else
+        {
+            proj->abortTransaction();
+            QMessageBox::critical(parent, "Error", "Failed to save calibration to database!");
+        }
     }
     else
     {
-        proj->abortTransaction();
+        QMessageBox::critical(parent, "Error", "Calibration failed!");
     }
-
-    return ok;
-}
-
-void RigCalibrationOperation::discardResult()
-{
-    mResult.reset();
 }
 
 /*

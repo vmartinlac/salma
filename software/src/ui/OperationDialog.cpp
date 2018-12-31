@@ -6,6 +6,7 @@
 #include <QIcon>
 #include <QKeySequence>
 #include <QSplitter>
+#include <iostream>
 #include "OperationDialog.h"
 
 OperationDialog::OperationDialog(Project* proj, OperationPtr op, QWidget* parent) : QDialog(parent)
@@ -74,25 +75,46 @@ OperationDialog::OperationDialog(Project* proj, OperationPtr op, QWidget* parent
     setWindowTitle(mOperation->getName());
 }
 
+void OperationDialog::closeEvent(QCloseEvent* ev)
+{
+    if(mThread->isRunning())
+    {
+        //QMessageBox::critical(this, "Error", "Please stop operation before leaving!");
+        stopOperation();
+        ev->ignore();
+    }
+    else
+    {
+        QDialog::closeEvent(ev);
+    }
+}
+
 OperationDialog::~OperationDialog()
 {
+    // this should not happen! 
     if( mThread->isRunning() )
     {
-        mThread->requestInterruption();
-        mThread->wait();
-        
-        if(mOperation->success())
-        {
-            mOperation->discardResult();
-        }
+        std::cerr << "Dialog must not be destroyed while operation thread is running!" << std::endl;
+        abort();
     }
 }
 
 void OperationDialog::startOperation()
 {
-    mThread->start();
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
+
+    const bool ok = mOperation->uibefore(this, mProject);
+
+    if(ok)
+    {
+        mThread->start();
+    }
+    else
+    {
+        mActionStart->setEnabled(true);
+        mActionStop->setEnabled(false);
+    }
 }
 
 void OperationDialog::stopOperation()
@@ -110,34 +132,8 @@ void OperationDialog::operationStarted()
 
 void OperationDialog::operationStopped()
 {
+    mOperation->uiafter(this, mProject);
     mActionStart->setEnabled(false);
     mActionStop->setEnabled(false);
-
-    if( mOperation->success() )
-    {
-        QMessageBox::StandardButton ret = QMessageBox::question(this, "Result", "Save result?", QMessageBox::Yes|QMessageBox::No, QMessageBox::Yes);
-        bool ok = true;
-
-        switch(ret)
-        {
-        case QMessageBox::Yes:
-            ok = mOperation->saveResult(mProject);
-            break;
-        case QMessageBox::No:
-            mOperation->discardResult();
-            break;
-        default:
-            throw std::runtime_error("internal error");
-        }
-
-        if(ok == false)
-        {
-            QMessageBox::critical(this, "Error", "Could not save calibration into database!");
-        }
-    }
-    else
-    {
-        QMessageBox::information(this, "Result", "Operation was not successful");
-    }
 }
 

@@ -19,13 +19,11 @@ public:
 
     const char* getName() override;
 
+    bool uibefore(QWidget* parent, Project* project) override;
     bool before() override;
     bool step() override;
     void after() override;
-
-    bool success() override;
-    bool saveResult(Project* project) override;
-    void discardResult() override;
+    void uiafter(QWidget* parent, Project* project) override;
 
 public:
 

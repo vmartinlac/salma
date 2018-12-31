@@ -8,6 +8,7 @@
 #include "StatsWidget.h"
 
 class Project;
+class QCloseEvent;
 
 class OperationDialog : public QDialog
 {
@@ -24,6 +25,10 @@ protected slots:
     void stopOperation();
     void operationStarted();
     void operationStopped();
+
+protected:
+
+    void closeEvent(QCloseEvent* ev);
 
 protected:
 

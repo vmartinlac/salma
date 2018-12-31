@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 #include <QThread>
+#include <QMessageBox>
 #include <QTime>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -282,34 +283,31 @@ const char* CameraCalibrationOperation::getName()
     return "Camera Calibration";
 }
 
-bool CameraCalibrationOperation::saveResult(Project* project)
+void CameraCalibrationOperation::uiafter(QWidget* parent, Project* project)
 {
-    bool ok = true;
-    int camera_id = -1;
-
-    project->beginTransaction();
-
-	ok = project->saveCamera(mResult, camera_id);
-
-    if(ok)
+    if( mResult )
     {
-        project->endTransaction();
+        bool ok = true;
+        int camera_id = -1;
+
+        project->beginTransaction();
+
+        ok = project->saveCamera(mResult, camera_id);
+
+        if(ok)
+        {
+            project->endTransaction();
+            QMessageBox::information(parent, "Success", "Calibration done!");
+        }
+        else
+        {
+            project->abortTransaction();
+            QMessageBox::critical(parent, "Error", "Failed to save calibration to database!");
+        }
     }
     else
     {
-        project->abortTransaction();
+        QMessageBox::critical(parent, "Error", "Calibration failed!");
     }
-
-    return ok;
-}
-
-void CameraCalibrationOperation::discardResult()
-{
-    mResult.reset();
-}
-
-bool CameraCalibrationOperation::success()
-{
-    return bool(mResult);
 }
 

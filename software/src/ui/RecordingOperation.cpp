@@ -1,3 +1,4 @@
+#include <QMessageBox>
 #include <QThread>
 #include <thread>
 #include <opencv2/imgcodecs.hpp>
@@ -17,6 +18,27 @@ RecordingOperation::RecordingOperation()
 
 RecordingOperation::~RecordingOperation()
 {
+}
+
+bool RecordingOperation::uibefore(QWidget* parent, Project* project)
+{
+    bool ok = true;
+
+    if(mVisualizationOnly)
+    {
+        mDirectory = QDir::temp();
+    }
+    else
+    {
+        ok = project->createRecordingDirectory(mDirectory);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(parent, "Error", "Could not create directory! Check filesystem permissions!");
+        }
+    }
+
+    return ok;
 }
 
 bool RecordingOperation::before()
@@ -212,20 +234,9 @@ const char* RecordingOperation::getName()
     return "Recording";
 }
 
-bool RecordingOperation::success()
+void RecordingOperation::uiafter(QWidget* parent, Project* project)
 {
-    return ( mVisualizationOnly || bool(mResult) );
-}
-
-bool RecordingOperation::saveResult(Project* project)
-{
-    bool ret = true;
-
-    if( mVisualizationOnly )
-    {
-        ret = true;
-    }
-    else
+    if( mVisualizationOnly == false )
     {
         if( mResult )
         {
@@ -239,29 +250,19 @@ bool RecordingOperation::saveResult(Project* project)
             if(ok)
             {
                 project->endTransaction();
+                QMessageBox::information(parent, "Success", "Done recording!");
             }
             else
             {
                 project->abortTransaction();
                 mDirectory.removeRecursively();
+                QMessageBox::critical(parent, "Error", "Recording could not be saved to database!");
             }
-
-            ret = ok;
         }
         else
         {
-            ret = false;
+            QMessageBox::critical(parent, "Error", "Recording failed!");
         }
     }
-
-    return ret;
 }
 
-void RecordingOperation::discardResult()
-{
-    if(mVisualizationOnly == false && bool(mResult))
-    {
-        mResult.reset();
-        mDirectory.removeRecursively();
-    }
-}

@@ -5,6 +5,7 @@
 #include "StatsWidget.h"
 
 class Project;
+class QWidget;
 
 class Operation
 {
@@ -21,13 +22,11 @@ public:
 
     virtual const char* getName() = 0;
 
-    virtual bool before() = 0;
+    virtual bool uibefore(QWidget* parent, Project* p);
+    virtual bool before();
     virtual bool step() = 0;
-    virtual void after() = 0;
-
-    virtual bool success() = 0;
-    virtual bool saveResult(Project* project) = 0;
-    virtual void discardResult() = 0;
+    virtual void after();
+    virtual void uiafter(QWidget* parent, Project* p);
 
 private:
 
