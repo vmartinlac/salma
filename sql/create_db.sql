@@ -83,13 +83,10 @@ CREATE TABLE 'reconstructions'
     'recording_id' INTEGER
 );
 
-CREATE TABLE 'settings'
-(
-    'id' INTEGER PRIMARY KEY,
-    'reconstruction_id' INTEGER,
-    'name' TEXT,
-    'value' TEXT
-);
+--CREATE TABLE 'slam_configurations'
+--(
+--    'id' INTEGER PRIMARY KEY,
+--);
 
 CREATE TABLE 'frames'
 (
