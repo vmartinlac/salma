@@ -34,7 +34,7 @@ NewStereoRecordingDialog::NewStereoRecordingDialog(Project* proj, QWidget* paren
     vlay->addLayout(hlay);
 
     setLayout(vlay);
-    setWindowTitle("New stereo recording");
+    setWindowTitle("New Stereo Recording");
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));
@@ -47,10 +47,12 @@ NewStereoRecordingDialog::~NewStereoRecordingDialog()
 void NewStereoRecordingDialog::accept()
 {
     QString name;
+    QDir directory;
     int left_camera_id = -1;
     int right_camera_id = -1;
-    double framerate;
     VideoSourcePtr camera;
+    double framerate;
+    bool visualization_only;
 
     OperationPtr op;
     bool ok = true;
@@ -85,10 +87,28 @@ void NewStereoRecordingDialog::accept()
 
     if(ok)
     {
+        visualization_only = mVisualizationOnly->isChecked();
+    }
+
+    if(ok)
+    {
+        if(visualization_only)
+        {
+            directory = QDir::temp();
+        }
+        else
+        {
+            ok = project()->createRecordingDirectory(directory);
+        }
+    }
+
+    if(ok)
+    {
         RecordingOperation* myop = new RecordingOperation();
-        myop->mRecordingName = mName->text().toStdString();
+        myop->mRecordingName = name.toStdString();
         myop->mCamera = camera;
-        myop->mVisualizationOnly = mVisualizationOnly->isChecked();
+        myop->mDirectory = std::move(directory);
+        myop->mVisualizationOnly = visualization_only;
         myop->mMaxFrameRate = framerate;
         op.reset(myop);
     }

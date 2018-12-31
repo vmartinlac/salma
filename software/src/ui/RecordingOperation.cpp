@@ -157,7 +157,7 @@ bool RecordingOperation::step()
 
                 if(mVisualizationOnly == false)
                 {
-                    s << "Output directory: " << mDirectory.path().toStdString() << std::endl;
+                    s << "Output directory: " << mDirectory.dirName().toStdString() << std::endl;
                 }
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false") << std::endl;
                 s << "Max frame rate: " << mMaxFrameRate << std::endl;

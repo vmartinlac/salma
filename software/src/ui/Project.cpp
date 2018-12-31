@@ -700,7 +700,59 @@ bool Project::listRigs(RigCalibrationList& list)
 
 bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 {
-    return false; // TODO
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = ( rec->id < 0 && rec->frames.size() == rec->num_frames && rec->views.size() == rec->num_frames*rec->num_views );
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO recordings(name, date, directory, number_of_views) VALUES(?,DATETIME('now'),?,?)");
+        q.addBindValue(rec->name.c_str());
+        q.addBindValue(rec->directory.dirName());
+        q.addBindValue(rec->num_views);
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+            rec->id = id;
+        }
+    }
+
+    if(ok)
+    {
+        for(int i=0; ok && i<rec->num_frames; i++)
+        {
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO recording_frames(recording_id, rank, time) VALUES(?,?,?)");
+            q.addBindValue(id);
+            q.addBindValue(i);
+            q.addBindValue(rec->frames[i].timestamp);
+            ok = q.exec();
+
+            if(ok)
+            {
+                const int frame_id = q.lastInsertId().toInt();
+
+                for(int j=0; ok && j<rec->num_views; j++)
+                {
+                    q.prepare("INSERT INTO recording_views(frame_id,view,filename) VALUES(?,?,?)");
+                    q.addBindValue(frame_id);
+                    q.addBindValue(j);
+                    q.addBindValue(rec->views[i*rec->num_views+j].filename);
+                    ok = q.exec();
+                }
+            }
+        }
+    }
+
+    recordingModelChanged();
+
+    return ok;
 }
 
 bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
@@ -712,7 +764,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtome'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
         ok = q.exec() && q.next();
 
@@ -732,13 +784,34 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT recording_frames.time, recording_views.filename, recording_frames.rank, recording_views.view FROM recording_views, recording_frames WHERE recording_views.frame_id=recording_frames.id AND recording_frames.recording_id=? ORDER BY recording_frames.rank ASC, recording_views.view ASC");
+        q.prepare("SELECT f.rank, f.time, v.view, v.filename FROM recording_views v, recording_frames f WHERE v.frame_id=f.id AND f.recording_id=? ORDER BY f.rank ASC, v.view ASC");
         q.addBindValue(id);
         ok = q.exec();
 
+        int i = 0;
+
         while( ok && q.next() )
         {
-            ; // TODO
+            const int frame_rank = i / rec->num_views;
+            const int view_rank = i % rec->num_views;
+
+            ok = (frame_rank == q.value(0).toInt() && view_rank == q.value(2).toInt());
+
+            if( ok && view_rank == 0 )
+            {
+                RecordingHeaderFrame f;
+                f.timestamp = q.value(1).toDouble();
+                rec->frames.push_back(f);
+            }
+
+            if(ok)
+            {
+                RecordingHeaderView v;
+                v.filename = q.value(3).toString();
+                rec->views.push_back(v);
+            }
+
+            i++;
         }
     }
 

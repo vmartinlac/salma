@@ -32,7 +32,7 @@ NewMonoRecordingDialog::NewMonoRecordingDialog(Project* proj, QWidget* parent) :
     vlay->addLayout(hlay);
 
     setLayout(vlay);
-    setWindowTitle("New mono recording");
+    setWindowTitle("New Mono Recording");
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));

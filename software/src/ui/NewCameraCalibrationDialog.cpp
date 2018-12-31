@@ -32,7 +32,7 @@ NewCameraCalibrationDialog::NewCameraCalibrationDialog(Project* proj, QWidget* p
     vlay->addLayout(hlay);
 
     setLayout(vlay);
-    setWindowTitle("New camera calibration");
+    setWindowTitle("New Camera Calibration");
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));
