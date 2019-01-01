@@ -38,7 +38,14 @@ void VideoWidget::refresh()
     mPort->read(data);
 
     cv::Mat small;
-    cv::resize( data.image, small, cv::Size(target_width, data.image.rows*target_width/data.image.cols), cv::INTER_NEAREST );
+    if( data.image.cols > target_width )
+    {
+        cv::resize( data.image, small, cv::Size(target_width, data.image.rows*target_width/data.image.cols), cv::INTER_NEAREST );
+    }
+    else
+    {
+        small = data.image;
+    }
 
     cv::Mat rgb;
     cv::cvtColor(small, rgb, cv::COLOR_BGR2RGB);
@@ -52,10 +59,7 @@ void VideoWidget::refresh()
 
     mImage = img.copy();
 
-    if(width() < mImage.width() || height() < mImage.height())
-    {
-        setMinimumSize(mImage.width(), mImage.height());
-    }
+    resize(mImage.width(), mImage.height());
 
     update();
 }

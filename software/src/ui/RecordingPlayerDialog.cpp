@@ -158,7 +158,6 @@ void RecordingPlayerDialog::showFrame(int frame)
         {
             mVideo->beginWrite();
             mVideo->data().image = concat.getFrame();
-            std::cout << concat.getFrame().cols << " " << concat.getFrame().rows << std::endl;
             mVideo->endWrite();
 
             ok = true;
