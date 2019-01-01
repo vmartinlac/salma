@@ -1,43 +1,36 @@
 #pragma once
 
 #include <memory>
-#include <QJsonObject>
 #include <QDir>
-#include "VideoSource.h"
-#include "CameraCalibrationData.h"
+#include "RecordingReader.h"
 #include "StereoRigCalibrationData.h"
 #include "SLAMDataStructures.h"
 
-class SLAMProject
+class SLAMConfiguration
 {
 public:
 
-    SLAMProject();
-    ~SLAMProject();
-
-    bool load(const char* path);
-
-    CameraCalibrationDataPtr getLeftCameraCalibration();
-    CameraCalibrationDataPtr getRightCameraCalibration();
-    StereoRigCalibrationDataPtr getStereoRigCalibration();
-
-    VideoSourcePtr getVideo();
-
-    bool getParameterBoolean(const char* name, bool default_value);
-    int getParameterInteger(const char* name, int default_value);
-    double getParameterReal(const char* name, double default_value);
-
-    bool exportReconstruction(ReconstructionPtr reconstruction, const std::string& name);
-
-protected:
-
-    QDir mDir;
-    CameraCalibrationDataPtr mLeftCamera;
-    CameraCalibrationDataPtr mRightCamera;
-    StereoRigCalibrationDataPtr mStereoRig;
-    VideoSourcePtr mVideo;
-    QJsonObject mParameters;
+    int features_max_keypoints;
 };
 
-typedef std::shared_ptr<SLAMProject> SLAMProjectPtr;
+typedef std::shared_ptr<SLAMConfiguration> SLAMConfigurationPtr;
+
+class SLAMContext
+{
+public:
+
+    SLAMContext();
+    ~SLAMContext();
+
+    SLAMReconstructionPtr reconstruction;
+    StereoRigCalibrationDataPtr calibration;
+    RecordingReaderPtr recording;
+    SLAMConfigurationPtr configuration;
+};
+
+typedef std::shared_ptr<SLAMContext> SLAMContextPtr;
+
+class SLAMEngine
+{
+};
 
