@@ -1,38 +1,38 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <Eigen/Eigen>
-#include "TwoViewGeometry.h"
 #include "SLAMModuleTriangulation.h"
 
-SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) : SLAMModule(con)
 {
-    mLeftCamera = project->getLeftCameraCalibration();
-    mRightCamera = project->getRightCameraCalibration();
-    mRig = project->getStereoRigCalibration();
+    mLeftCamera = con->calibration->cameras[0].calibration;
+    mRightCamera = con->calibration->cameras[1].calibration;
+    mRig = con->calibration;
 
-    mEssentialMatrix = TwoViewGeometry::computeEssentialMatrix( mLeftCamera, mRightCamera, mRig );
+    mEssentialMatrix = mRig->computeEssentialMatrix(0, 1);
     mS << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0;
     mEssentialMatrixTilde = mS * mEssentialMatrix * mS.transpose();
 
-    mMinAngleBetweenRays = project->getParameterReal("triangulation_min_angle_between_rays", 3.0) * M_PI / 180.0;
-    mCheckPerpendicularLength = project->getParameterBoolean("triangulation_check_perpendicular_length", false);
-    mPerpendicularMaxLength = project->getParameterReal("triangulation_perpendicular_max_length", 0.0);
-    mMaxReprojectionError = project->getParameterReal("triangulation_max_reprojection_error", 2.0);
-    mInitialLifeTime = project->getParameterInteger("track_lifetime", 4);
-    mUseLindstrom = project->getParameterBoolean("triangulation_use_lindstrom", true);
+    mMinAngleBetweenRays = con->configuration->triangulation_min_angle_between_rays;
+    mCheckPerpendicularLength = con->configuration->triangulation_check_perpendicular_length;
+    mPerpendicularMaxLength = con->configuration->triangulation_perpendicular_max_length;
+    mMaxReprojectionError = con->configuration->triangulation_max_reprojection_error;
+    mInitialLifeTime = con->configuration->triangulation_track_lifetime;
+    mUseLindstrom = con->configuration->triangulation_use_lindstrom;
 }
 
 SLAMModuleTriangulation::~SLAMModuleTriangulation()
 {
 }
 
-void SLAMModuleTriangulation::run(FrameList& frames)
+void SLAMModuleTriangulation::operator()()
 {
+/*
     if( frames.empty() ) throw std::runtime_error("internal error");
 
     FramePtr frame = frames.front();
 
-    mNumberOfNewMapPoints = 0;
+    //mNumberOfNewMapPoints = 0;
 
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
@@ -58,18 +58,15 @@ void SLAMModuleTriangulation::run(FrameList& frames)
             frame->views[0].projections.push_back( left_proj );
             frame->views[1].projections.push_back( right_proj );
 
-            mNumberOfNewMapPoints++;
+            //mNumberOfNewMapPoints++;
         }
     }
+*/
 }
 
-int SLAMModuleTriangulation::getNumberOfNewMapPoints()
+SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)
 {
-    return mNumberOfNewMapPoints;
-}
-
-MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoint, int right_keypoint)
-{
+/*
     // Declare some variables.
 
     bool ok = true;
@@ -224,10 +221,13 @@ MapPointPtr SLAMModuleTriangulation::triangulate(FramePtr frame, int left_keypoi
     }
 
     return ret;
+*/
+    return SLAMMapPointPtr();
 }
 
 void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right )
 {
+/*
     // See "Triangulation Made Easy" from Peter Lindstrom, Lawrence Livermore National Laboratory.
 
     Eigen::Vector3d x_left_k = normalized_left;
@@ -255,5 +255,6 @@ void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_
         x_left_k = normalized_left - lambda * (mS.transpose() * n_left_k);
         x_right_k = normalized_right - lambda * (mS.transpose() * n_right_k);
     }
+*/
 }
 

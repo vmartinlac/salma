@@ -1,6 +1,7 @@
 
 add_library(
     ui
+
     STATIC
 
     db.qrc
@@ -29,6 +30,15 @@ add_library(
     RecordingListWidget.cpp
     FrameRateWidget.h
     FrameRateWidget.cpp
+
+    AboutDialog.h
+    AboutDialog.cpp
+
+    PathWidget.h
+    PathWidget.cpp
+
+    Port.h
+    Port.cpp
 
     Project.h
     Project.cpp
@@ -94,8 +104,8 @@ target_link_libraries(
     PUBLIC
     buildinfo
     calibration
-    uicommon
     video
+    target
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d

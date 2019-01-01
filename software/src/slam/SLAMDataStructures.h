@@ -11,11 +11,11 @@ Right is index 1.
 #include <sophus/se3.hpp>
 #include <Eigen/Eigen>
 
-class MapPoint
+class SLAMMapPoint
 {
 public:
 
-    MapPoint()
+    SLAMMapPoint()
     {
         id = -1;
     }
@@ -24,24 +24,24 @@ public:
     Eigen::Vector3d position;
 };
 
-typedef std::shared_ptr<MapPoint> MapPointPtr;
+typedef std::shared_ptr<SLAMMapPoint> SLAMMapPointPtr;
 
-enum ProjectionType
+enum SLAMProjectionType
 {
     PROJECTION_MAPPED,
     PROJECTION_TRACKED
 };
 
-class Projection
+class SLAMProjection
 {
 public:
-    MapPointPtr mappoint;
+    SLAMMapPointPtr mappoint;
     cv::Point2f point;
-    ProjectionType type;
+    SLAMProjectionType type;
     int max_lifetime;
 };
 
-class View
+class SLAMView
 {
 public:
 
@@ -49,14 +49,14 @@ public:
 
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
-    std::vector<Projection> projections;
+    std::vector<SLAMProjection> projections;
 };
 
-class Frame
+class SLAMFrame
 {
 public:
 
-    Frame()
+    SLAMFrame()
     {
         id = -1;
         timestamp = 0.0;
@@ -65,24 +65,22 @@ public:
 
     int id;
     double timestamp;
-    View views[2];
+    SLAMView views[2];
     std::vector< std::pair<int,int> > stereo_matches;
     Sophus::SE3d frame_to_world;
     bool aligned_wrt_previous_frame;
 };
 
-typedef std::shared_ptr<Frame> FramePtr;
+typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;
 
-typedef std::list<FramePtr> FrameList;
+typedef std::vector<SLAMFramePtr> SLAMFramePtrVector;
 
-class Reconstruction
+class SLAMReconstruction
 {
 public:
 
-    FrameList frames;
-    Sophus::SE3d left_camera_to_rig;
-    Sophus::SE3d right_camera_to_rig;
+    SLAMFramePtrVector frames;
 };
 
-typedef std::shared_ptr<Reconstruction> ReconstructionPtr;
+typedef std::shared_ptr<SLAMReconstruction> SLAMReconstructionPtr;
 

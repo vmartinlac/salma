@@ -3,8 +3,13 @@ add_library(
     slam
     STATIC
     FinitePriorityQueue.h
-    Debug.cpp
-    Debug.h
+    SLAMDataStructures.h
+    SLAMConfiguration.cpp
+    SLAMConfiguration.h
+    SLAMEngine.cpp
+    SLAMEngine.h
+    SLAMContext.cpp
+    SLAMContext.h
     SLAMModule.cpp
     SLAMModule.h
     SLAMModuleOpticalFlow.cpp
@@ -19,13 +24,6 @@ add_library(
     SLAMModuleTriangulation.h
     SLAMModuleDenseReconstruction.cpp
     SLAMModuleDenseReconstruction.h
-    SLAMProject.cpp
-    SLAMProject.h
-    SLAMDataStructures.h
-    #SLAMSystem.cpp
-    #SLAMSystem.h
-    #SLAMReconstructionDB.h
-    #SLAMReconstructionDB.cpp
 )
 
 target_link_libraries(

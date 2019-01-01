@@ -14,19 +14,17 @@ class SLAMModuleOpticalFlow : public SLAMModule
 {
 public:
 
-    SLAMModuleOpticalFlow(SLAMProjectPtr project);
+    SLAMModuleOpticalFlow(SLAMContextPtr con);
     ~SLAMModuleOpticalFlow() override;
 
-    void run(FrameList& frames) override;
+    void operator()() override;
 
 protected:
 
-    void processView(const View& view_prev, View& curr);
+    void processView(const SLAMView& view_prev, SLAMView& curr);
 
 protected:
 
     cv::Ptr<cv::SparsePyrLKOpticalFlow> mLKT;
 };
-
-typedef std::shared_ptr<SLAMModuleOpticalFlow> SLAMModuleOpticalFlowPtr;
 

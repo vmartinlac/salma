@@ -9,14 +9,14 @@ class SLAMModuleDenseReconstruction : public SLAMModule
 {
 public:
 
-    SLAMModuleDenseReconstruction(SLAMProjectPtr project);
+    SLAMModuleDenseReconstruction(SLAMContextPtr con);
     ~SLAMModuleDenseReconstruction();
 
-    void run(FrameList& frames) override;
+    bool init() override;
+
+    void operator()() override;
 
 protected:
-
-    void init();
 
     struct RectifiedCamera
     {
@@ -41,6 +41,4 @@ protected:
 
     RectificationParameters mRectification;
 };
-
-typedef std::shared_ptr<SLAMModuleDenseReconstruction> SLAMModuleDenseReconstructionPtr;
 

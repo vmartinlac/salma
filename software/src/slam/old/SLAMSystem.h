@@ -7,14 +7,6 @@
 #include "SLAMDataStructures.h"
 #include "SLAMProject.h"
 
-#include "SLAMModuleOpticalFlow.h"
-#include "SLAMModuleAlignment.h"
-
-#include "SLAMModuleFeatures.h"
-#include "SLAMModuleStereoMatcher.h"
-#include "SLAMModuleTriangulation.h"
-
-#include "SLAMModuleDenseReconstruction.h"
 
 class SLAMSystem
 {

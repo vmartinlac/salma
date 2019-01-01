@@ -1,16 +1,21 @@
 #include "SLAMModule.h"
 
-SLAMModule::SLAMModule(SLAMProjectPtr project)
+SLAMModule::SLAMModule(SLAMContextPtr con)
 {
-    mProject = std::move(project);
+    mContext = std::move(con);
 }
 
 SLAMModule::~SLAMModule()
 {
 }
 
-SLAMProjectPtr SLAMModule::getProject()
+SLAMContextPtr SLAMModule::context()
 {
-    return mProject;
+    return mContext;
+}
+
+bool SLAMModule::init()
+{
+    return true;
 }
 

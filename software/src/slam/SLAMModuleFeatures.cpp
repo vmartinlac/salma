@@ -1,18 +1,19 @@
-#include "Debug.h"
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleFeatures.h"
 
 //#define DEBUG_SHOW_FEATURES
 
-SLAMModuleFeatures::SLAMModuleFeatures(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) : SLAMModule(con)
 {
-    const double scale_factor = project->getParameterReal("features_scale_factor", 1.1);
-    const int min_width = project->getParameterInteger("features_min_width", 160);
-    const int max_features = project->getParameterInteger("features_max_features", 500);
-    const int patch_size = project->getParameterInteger("features_patch_size", 31);
-    const int fast_threshold = project->getParameterInteger("features_fast_threshold", 10);
+    const double scale_factor = con->configuration->features_scale_factor;
+    const int min_width = con->configuration->features_min_width;
+    const int max_features = con->configuration->features_max_features;
+    const int patch_size = con->configuration->features_patch_size;
+    const int fast_threshold = con->configuration->features_fast_threshold;
 
-    const int num_levels = std::floor( std::log(double(project->getLeftCameraCalibration()->image_size.width)/double(min_width)) / std::log(scale_factor) );
+    const int reference_image_width = con->calibration->cameras[0].calibration->image_size.width;
+
+    const int num_levels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(scale_factor) );
 
     mFeature2d = cv::ORB::create();
 
@@ -29,8 +30,9 @@ SLAMModuleFeatures::~SLAMModuleFeatures()
 {
 }
 
-void SLAMModuleFeatures::run(FrameList& frames)
+void SLAMModuleFeatures::operator()()
 {
+/*
     if( frames.empty() ) throw std::runtime_error("internal error");
 
     FramePtr frame = frames.front();
@@ -47,6 +49,7 @@ void SLAMModuleFeatures::run(FrameList& frames)
         frame->views[0].keypoints,
         frame->views[1].keypoints );
 #endif
+*/
 }
 
 void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)

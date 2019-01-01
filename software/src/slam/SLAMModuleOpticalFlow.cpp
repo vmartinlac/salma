@@ -1,17 +1,15 @@
 #include "SLAMModuleOpticalFlow.h"
 
-#include "Debug.h"
-#include "SLAMModuleOpticalFlow.h"
-
-SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMContextPtr con) : SLAMModule(con)
 {
-    const int size = project->getParameterInteger("optical_flow_window_size", 21);
+    const int size = con->configuration->opticalflow_window_size;
+
+    const int reference_image_width = con->calibration->cameras[0].calibration->image_size.width;
 
     const int min_width = 150;
-    const int max_level = std::floor( std::log(double(project->getLeftCameraCalibration()->image_size.width)/double(min_width)) / std::log(2.0) );
+    const int max_level = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(2.0) );
 
     mLKT = cv::SparsePyrLKOpticalFlow::create();
-
     mLKT->setWinSize(cv::Size(size, size));
     mLKT->setMaxLevel(max_level);
 }
@@ -20,8 +18,9 @@ SLAMModuleOpticalFlow::~SLAMModuleOpticalFlow()
 {
 }
 
-void SLAMModuleOpticalFlow::run(FrameList& frames)
+void SLAMModuleOpticalFlow::operator()()
 {
+    /*
     if( frames.empty() ) throw std::runtime_error("internal error");
 
     if( frames.size() >= 2 )
@@ -39,10 +38,12 @@ void SLAMModuleOpticalFlow::run(FrameList& frames)
         frames.front()->frame_to_world = Sophus::SE3d();
         frames.front()->aligned_wrt_previous_frame = false;
     }
+    */
 }
 
-void SLAMModuleOpticalFlow::processView(const View& prev_view, View& curr_view)
+void SLAMModuleOpticalFlow::processView(const SLAMView& prev_view, SLAMView& curr_view)
 {
+/*
     const std::vector<Projection>& proj_prev = prev_view.projections;
     std::vector<Projection>& proj_curr = curr_view.projections;
 
@@ -87,5 +88,6 @@ void SLAMModuleOpticalFlow::processView(const View& prev_view, View& curr_view)
             }
         }
     }
+*/
 }
 

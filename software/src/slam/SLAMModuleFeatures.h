@@ -13,10 +13,10 @@ class SLAMModuleFeatures : public SLAMModule
 {
 public:
 
-    SLAMModuleFeatures(SLAMProjectPtr project);
+    SLAMModuleFeatures(SLAMContextPtr con);
     ~SLAMModuleFeatures() override;
 
-    void run(FrameList& frames) override;
+    void operator()() override;
 
 protected:
 
@@ -26,6 +26,4 @@ protected:
 
     cv::Ptr<cv::ORB> mFeature2d;
 };
-
-typedef std::shared_ptr<SLAMModuleFeatures> SLAMModuleFeaturesPtr;
 

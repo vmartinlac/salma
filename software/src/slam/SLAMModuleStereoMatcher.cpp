@@ -4,29 +4,27 @@
 #include <utility>
 #include "SLAMModuleStereoMatcher.h"
 #include "FinitePriorityQueue.h"
-#include "Debug.h"
-#include "TwoViewGeometry.h"
 
 //#define DEBUG_SHOW_EPIPOLAR_LINES
 //#define DEBUG_SHOW_MATCHES
 
-SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) : SLAMModule(con)
 {
-    mCheckOctave = project->getParameterBoolean("stereo_matcher_check_octave", false);
+    mCheckOctave = con->configuration->stereomatcher_check_octave;
 
-    mCheckSymmetry = project->getParameterBoolean("stereo_matcher_check_symmetry", true);
+    mCheckSymmetry = con->configuration->stereomatcher_check_symmetry;
 
-    mCheckLowe = project->getParameterBoolean("stereo_matcher_check_lowe", true);
-    mLoweRatio = project->getParameterReal("stereo_matcher_lowe_ratio", 0.85);
+    mCheckLowe = con->configuration->stereomatcher_check_lowe;
+    mLoweRatio = con->configuration->stereomatcher_lowe_ratio;
 
-    mCheckEpipolar = project->getParameterBoolean("stereo_matcher_check_epipolar", true);
-    mEpipolarThreshold = project->getParameterReal("stereo_matcher_epipolar_threshold", 10.0);
+    mCheckEpipolar = con->configuration->stereomatcher_check_epipolar;
+    mEpipolarThreshold = con->configuration->stereomatcher_epipolar_threshold;
 
-    mCameraCalibration[0] = project->getLeftCameraCalibration();
-    mCameraCalibration[1] = project->getRightCameraCalibration();
-    mStereoRigCalibration = project->getStereoRigCalibration();
+    mCameraCalibration[0] = con->calibration->cameras[0].calibration;
+    mCameraCalibration[1] = con->calibration->cameras[1].calibration;
+    mStereoRigCalibration = con->calibration;
 
-    mFundamentalMatrices[0] = TwoViewGeometry::computeFundamentalMatrix( mCameraCalibration[0], mCameraCalibration[1], mStereoRigCalibration );
+    mFundamentalMatrices[0] = con->calibration->computeFundamentalMatrix(0, 1);
     mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
 
 }
@@ -35,7 +33,7 @@ SLAMModuleStereoMatcher::~SLAMModuleStereoMatcher()
 {
 }
 
-int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool check_symmetry)
+int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool check_symmetry)
 {
     const int other_view = (view + 1) % 2;
 
@@ -205,8 +203,9 @@ int SLAMModuleStereoMatcher::matchKeyPoint(FramePtr f, int view, int i, bool che
     return ret;
 }
 
-void SLAMModuleStereoMatcher::run(FrameList& frames)
+void SLAMModuleStereoMatcher::operator()()
 {
+    /*
     if( frames.empty() ) throw std::runtime_error("internal error");
 
     FramePtr f = frames.front();
@@ -265,5 +264,6 @@ void SLAMModuleStereoMatcher::run(FrameList& frames)
             matches);
     }
 #endif
+*/
 }
 

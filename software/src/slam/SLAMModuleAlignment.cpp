@@ -4,24 +4,24 @@
 #include <random>
 #include "SLAMModuleAlignment.h"
 
-SLAMModuleAlignment::SLAMModuleAlignment(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleAlignment::SLAMModuleAlignment(SLAMContextPtr con) : SLAMModule(con)
 {
-    mLeftCamera = project->getLeftCameraCalibration();
-    mRightCamera = project->getRightCameraCalibration();
-    mRig = project->getStereoRigCalibration();
-
     mSolver.reset(new MVPnP::SolverRANSACLM());
-
-    mSolver->setInlierRate( project->getParameterReal("alignment_ransac_inlier_rate", 0.8) );
-    mSolver->setInlierThreshold( project->getParameterReal("alignment_ransac_inlier_threshold", 8.0) );
+    mSolver->setInlierRate( con->configuration->alignment_ransac_inlier_rate );
+    mSolver->setInlierThreshold( con->configuration->alignment_ransac_inlier_threshold );
 }
 
 SLAMModuleAlignment::~SLAMModuleAlignment()
 {
 }
 
-void SLAMModuleAlignment::run(FrameList& frames)
+void SLAMModuleAlignment::operator()()
 {
+    StereoRigCalibrationDataPtr rig = context()->calibration;
+    CameraCalibrationDataPtr left_camera = rig->cameras[0].calibration;
+    CameraCalibrationDataPtr right_camera = rig->cameras[1].calibration;
+
+/*
     if( frames.empty() ) throw std::runtime_error("internal error");
 
     if( frames.size() >= 2 )
@@ -98,5 +98,6 @@ void SLAMModuleAlignment::run(FrameList& frames)
         frames.front()->frame_to_world = Sophus::SE3d();
         frames.front()->aligned_wrt_previous_frame = false;
     }
+*/
 }
 

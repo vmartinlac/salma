@@ -13,14 +13,14 @@ class SLAMModuleStereoMatcher : public SLAMModule
 {
 public:
 
-    SLAMModuleStereoMatcher(SLAMProjectPtr project);
+    SLAMModuleStereoMatcher(SLAMContextPtr con);
     ~SLAMModuleStereoMatcher() override;
 
-    void run(FrameList& frames) override;
+    void operator()() override;
 
 protected:
 
-    int matchKeyPoint(FramePtr frame, int view, int i, bool check_symmetry);
+    int matchKeyPoint(SLAMFramePtr frame, int view, int i, bool check_symmetry);
 
 protected:
 
@@ -37,6 +37,4 @@ protected:
     Eigen::Matrix3d mFundamentalMatrices[2];
     std::vector<cv::Point2f> mUndistortedPoints[2];
 };
-
-typedef std::shared_ptr<SLAMModuleStereoMatcher> SLAMModuleStereoMatcherPtr;
 

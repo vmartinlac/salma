@@ -1,19 +1,24 @@
 #pragma once
 
-#include "SLAMProject.h"
+#include "SLAMContext.h"
 
 class SLAMModule
 {
 public:
 
-    SLAMModule(SLAMProjectPtr project);
+    SLAMModule(SLAMContextPtr con);
     virtual ~SLAMModule();
 
-    SLAMProjectPtr getProject();
+    virtual bool init();
 
-    virtual void run(FrameList& frames) = 0;
+    virtual void operator()() = 0;
+
+    SLAMContextPtr context();
 
 private:
 
-    SLAMProjectPtr mProject;
+    SLAMContextPtr mContext;
 };
+
+typedef std::shared_ptr<SLAMModule> SLAMModulePtr;
+

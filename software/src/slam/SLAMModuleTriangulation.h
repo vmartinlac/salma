@@ -8,16 +8,14 @@ class SLAMModuleTriangulation : public SLAMModule
 {
 public:
 
-    SLAMModuleTriangulation(SLAMProjectPtr project);
+    SLAMModuleTriangulation(SLAMContextPtr con);
     ~SLAMModuleTriangulation() override;
 
-    void run(FrameList& frames) override;
-
-    int getNumberOfNewMapPoints();
+    void operator()() override;
 
 protected:
 
-    MapPointPtr triangulate(FramePtr frame, int left_keypoint, int right_keypoint);
+    SLAMMapPointPtr triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint);
 
     void correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right );
 
@@ -36,9 +34,5 @@ protected:
     double mMaxReprojectionError;
     int mInitialLifeTime;
     bool mUseLindstrom;
-
-    int mNumberOfNewMapPoints;
 };
-
-typedef std::shared_ptr<SLAMModuleTriangulation> SLAMModuleTriangulationPtr;
 
