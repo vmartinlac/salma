@@ -22,6 +22,8 @@ protected slots:
 
     void onSelect(const QModelIndex&);
 
+    void onModelChanged();
+
 protected:
 
     QListView* mView;

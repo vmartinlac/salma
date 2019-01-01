@@ -6,6 +6,8 @@
 #include "CameraCalibrationList.h"
 #include "RigCalibrationList.h"
 
+#define PROJECT_DATABASE_NAME "db.sqlite"
+
 Project::Project(QObject* parent) : QObject(parent)
 {
     mCameraCalibrationModel = new CameraCalibrationModel(this);
@@ -26,12 +28,83 @@ Project::Project(QObject* parent) : QObject(parent)
 
 bool Project::create(const QString& path)
 {
+    QString db_path;
+    QFile file;
+    QStringList statements;
+    bool ok = true;
+
     close();
 
-    // TODO
-    std::cout << "Not implemented yet!" << std::endl;
+    // open project directory.
 
-    return false;
+    if(ok)
+    {
+        mDir = QDir();
+        ok = mDir.cd(path);
+    }
+
+    // check if there is any existing db.
+
+    if(ok)
+    {
+        db_path = mDir.absoluteFilePath(PROJECT_DATABASE_NAME);
+        ok = ( QFileInfo::exists(db_path) == false );
+    }
+
+    // open sqlite database.
+
+    if(ok)
+    {
+        mDB = QSqlDatabase::database();
+        mDB.setDatabaseName(db_path);
+        ok = mDB.open();
+    }
+
+    // create the tables.
+
+    if(ok)
+    {
+        file.setFileName(":/db.sql");
+        ok = file.open(QIODevice::ReadOnly);
+    }
+
+    if(ok)
+    {
+        QString content = QString::fromUtf8(file.readAll());
+        statements = content.split(";", QString::SkipEmptyParts);
+
+        ok = mDB.transaction();
+
+        for(QStringList::iterator it=statements.begin(); ok && it!=statements.end(); it++)
+        {
+            if( it->contains("CREATE", Qt::CaseInsensitive) )
+            {
+                QSqlQuery q(mDB);
+                ok = q.exec(*it);
+            }
+        }
+
+        if(ok)
+        {
+            ok = mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
+
+    if( file.isOpen() )
+    {
+        file.close();
+    }
+
+    if(ok == false)
+    {
+        close();
+    }
+
+    return ok;
 }
 
 bool Project::open(const QString& path)
@@ -41,12 +114,13 @@ bool Project::open(const QString& path)
 
     if(ok)
     {
+        mDir = QDir();
         ok = mDir.cd(path);
     }
 
     if(ok)
     {
-        db_path = mDir.absoluteFilePath("db.sqlite");
+        db_path = mDir.absoluteFilePath(PROJECT_DATABASE_NAME);
         ok = QFileInfo::exists(db_path);
     }
 
@@ -116,19 +190,19 @@ void Project::close()
     changed();
 }
 
-void Project::beginTransaction()
+bool Project::transaction()
 {
-    mDB.transaction();
+    return mDB.transaction();
 }
 
-void Project::endTransaction()
+bool Project::commit()
 {
-    mDB.commit();
+    return mDB.commit();
 }
 
-void Project::abortTransaction()
+bool Project::rollback()
 {
-    mDB.rollback();
+    return mDB.rollback();
 }
 
 CameraCalibrationModel* Project::cameraCalibrationModel()

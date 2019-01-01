@@ -95,17 +95,29 @@ void MainWindow::clearProject()
 
     if(ret == QMessageBox::Yes)
     {
-        mProject->beginTransaction();
-
-        const bool ok = mProject->clear();
+        bool ok = true;
+        
+        if(ok)
+        {
+            ok = mProject->transaction();
+        }
 
         if(ok)
         {
-            mProject->endTransaction();
+            ok = mProject->clear();
+        }
+
+        if(ok)
+        {
+            ok = mProject->commit();
         }
         else
         {
-            mProject->abortTransaction();
+            mProject->rollback();
+        }
+
+        if(ok == false)
+        {
             QMessageBox::critical(this, "Error", "An error happened while clearing the project!");
         }
     }

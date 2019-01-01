@@ -376,18 +376,31 @@ void RigCalibrationOperation::uiafter(QWidget* parent, Project* proj)
         bool ok = true;
         int rig_id = -1;
 
-        proj->beginTransaction();
-
-        ok = proj->saveRig(mResult, rig_id);
+        if(ok)
+        {
+            ok = proj->transaction();
+        }
 
         if(ok)
         {
-            proj->endTransaction();
+            ok = proj->saveRig(mResult, rig_id);
+        }
+
+        if(ok)
+        {
+            ok = proj->commit();
+        }
+        else
+        {
+            proj->rollback();
+        }
+
+        if(ok)
+        {
             QMessageBox::information(parent, "Success", "Calibration done!");
         }
         else
         {
-            proj->abortTransaction();
             QMessageBox::critical(parent, "Error", "Failed to save calibration to database!");
         }
     }

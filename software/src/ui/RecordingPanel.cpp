@@ -19,6 +19,8 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
     mText = new QTextEdit();
     mView = new QListView();
 
+    connect(project, SIGNAL(recordingModelChanged()), this, SLOT(onModelChanged()));
+
     mView->setModel(mProject->recordingModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
@@ -199,5 +201,10 @@ void RecordingPanel::onSelect(const QModelIndex& ind)
     {
         mText->setText(QString());
     }
+}
+
+void RecordingPanel::onModelChanged()
+{
+    mText->clear();
 }
 

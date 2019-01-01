@@ -243,18 +243,31 @@ void RecordingOperation::uiafter(QWidget* parent, Project* project)
             bool ok = true;
             int recording_id = -1;
 
-            project->beginTransaction();
-
-            ok = project->saveRecording(mResult, recording_id);
+            if(ok)
+            {
+                ok = project->transaction();
+            }
 
             if(ok)
             {
-                project->endTransaction();
+                ok = project->saveRecording(mResult, recording_id);
+            }
+
+            if(ok)
+            {
+                ok = project->commit();
+            }
+            else
+            {
+                project->rollback();
+            }
+
+            if(ok)
+            {
                 QMessageBox::information(parent, "Success", "Done recording!");
             }
             else
             {
-                project->abortTransaction();
                 mDirectory.removeRecursively();
                 QMessageBox::critical(parent, "Error", "Recording could not be saved to database!");
             }

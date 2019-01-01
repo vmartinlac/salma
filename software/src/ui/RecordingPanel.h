@@ -23,6 +23,7 @@ protected slots:
     void onDeleteRecording();
 
     void onSelect(const QModelIndex&);
+    void onModelChanged();
 
 protected:
 

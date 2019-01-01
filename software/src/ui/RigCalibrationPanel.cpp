@@ -16,6 +16,8 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     mView = new QListView();
     mText = new QTextEdit();
 
+    connect(project, SIGNAL(rigCalibrationModelChanged()), this, SLOT(onModelChanged()));
+
     mView->setModel(mProject->rigCalibrationModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
@@ -136,5 +138,10 @@ void RigCalibrationPanel::onSelect(const QModelIndex& ind)
     {
         mText->setText(QString());
     }
+}
+
+void RigCalibrationPanel::onModelChanged()
+{
+    mText->clear();
 }
 

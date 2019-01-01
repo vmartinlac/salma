@@ -7,6 +7,8 @@
 
 int main(int num_args, char** args)
 {
+    Q_INIT_RESOURCE(db);
+
     QApplication app(num_args, args);
     app.setApplicationName("SALMA");
     app.setOrganizationName("Victor Martin Lac");

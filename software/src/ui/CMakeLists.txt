@@ -3,6 +3,8 @@ add_library(
     ui
     STATIC
 
+    db.qrc
+
     MainWindow.h
     MainWindow.cpp
     VideoWidget.h

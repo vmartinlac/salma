@@ -1,3 +1,4 @@
+
 CREATE TABLE 'poses'
 (
     'id' INTEGER PRIMARY KEY,
@@ -45,7 +46,7 @@ CREATE TABLE 'rig_cameras'
 	'id' INTEGER PRIMARY KEY,
     'rig_id' INTEGER,
 	'rank' INTEGER,
-	'camera_to_rig' INTEGER, --id of corresponding pose.
+	'camera_to_rig' INTEGER,
 	'camera_id' INTEGER
 );
 
@@ -83,17 +84,12 @@ CREATE TABLE 'reconstructions'
     'recording_id' INTEGER
 );
 
---CREATE TABLE 'slam_configurations'
---(
---    'id' INTEGER PRIMARY KEY,
---);
-
 CREATE TABLE 'frames'
 (
 	'id' INTEGER PRIMARY KEY,
 	'reconstruction_id' INTEGER,
 	'rank' INTEGER,
-	'rig_to_world' INTEGER, -- id of corresponding pose.
+	'rig_to_world' INTEGER,
 	'aligned_wrt_previous' BOOLEAN
 );
 

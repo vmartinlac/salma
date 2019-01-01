@@ -290,18 +290,31 @@ void CameraCalibrationOperation::uiafter(QWidget* parent, Project* project)
         bool ok = true;
         int camera_id = -1;
 
-        project->beginTransaction();
-
-        ok = project->saveCamera(mResult, camera_id);
+        if(ok)
+        {
+            ok = project->transaction();
+        }
 
         if(ok)
         {
-            project->endTransaction();
+            ok = project->saveCamera(mResult, camera_id);
+        }
+
+        if(ok)
+        {
+            ok = project->commit();
+        }
+        else
+        {
+            project->rollback();
+        }
+
+        if(ok)
+        {
             QMessageBox::information(parent, "Success", "Calibration done!");
         }
         else
         {
-            project->abortTransaction();
             QMessageBox::critical(parent, "Error", "Failed to save calibration to database!");
         }
     }

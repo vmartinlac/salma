@@ -16,6 +16,8 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
     mView = new QListView();
     mText = new QTextEdit();
 
+    connect(project, SIGNAL(cameraCalibrationModelChanged()), this, SLOT(onModelChanged()));
+
     mView->setModel(mProject->cameraCalibrationModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
@@ -134,5 +136,10 @@ void CameraCalibrationPanel::onSelect(const QModelIndex& ind)
     {
         mText->setText(QString());
     }
+}
+
+void CameraCalibrationPanel::onModelChanged()
+{
+    mText->clear();
 }
 

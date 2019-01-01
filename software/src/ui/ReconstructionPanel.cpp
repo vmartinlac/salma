@@ -16,6 +16,8 @@ ReconstructionPanel::ReconstructionPanel(Project* project, QWidget* parent)
     mText = new QTextEdit();
     mView = new QListView();
 
+    connect(project, SIGNAL(reconstructionModelChanged()), this, SLOT(onModelChanged()));
+
     mView->setModel(mProject->reconstructionModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
@@ -133,5 +135,10 @@ void ReconstructionPanel::onSelect(const QModelIndex& ind)
     {
         mText->setText(QString());
     }
+}
+
+void ReconstructionPanel::onModelChanged()
+{
+    mText->clear();
 }
 
