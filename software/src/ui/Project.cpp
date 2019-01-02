@@ -1157,11 +1157,344 @@ bool Project::renameReconstruction(int id, const QString& new_name)
 
 bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 {
-    return false;
+    bool ok = isOpen();
+
+    mMapPointToDB.clear();
+
+    if(ok)
+    {
+        ok = ( rec->id < 0 && rec->recording->id >= 0 && rec->rig->id >= 0 );
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO reconstructions(name, date, rig_id, recording_id) VALUES(?, DATETIME('now'), ?, ?)");
+        q.addBindValue(rec->name.c_str());
+        q.addBindValue(rec->rig->id);
+        q.addBindValue(rec->recording->id);
+        ok = q.exec();
+
+        if(ok)
+        {
+            rec->id = q.lastInsertId().toInt();
+            id = rec->id;
+        }
+    }
+
+    if(ok)
+    {
+        for(int i=0; ok && i<rec->frames.size(); i++)
+        {
+            int frame_id = -1;
+            ok = saveFrame(rec->frames[i], i, id, frame_id);
+        }
+    }
+
+    mMapPointToDB.clear();
+
+    return ok;
+}
+
+bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id)
+{
+    int pose_id = -1;
+    int frame_id = -1;
+
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = savePose(frame->frame_to_world, pose_id);
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO frames(reconstruction_id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous) VALUES(?,?,?,?,?,?)");
+        q.addBindValue(reconstruction_id);
+        q.addBindValue(frame->id);
+        q.addBindValue(frame->rank_in_recording);
+        q.addBindValue(frame->timestamp);
+        q.addBindValue(pose_id);
+        q.addBindValue(frame->aligned_wrt_previous_frame);
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+        }
+    }
+
+    for(int v=0; ok && v<2; v++)
+    {
+        for(int i=0; ok && i<frame->views[v].projections.size(); i++)
+        {
+            int mappoint_id = -1;
+
+            if(ok)
+            {
+                ok = saveMapPoint(frame->views[v].projections[i].mappoint, mappoint_id);
+            }
+
+            if(ok)
+            {
+                QSqlQuery q(mDB);
+                q.prepare("INSERT INTO projections (frame_id, view, x_distorted, y_distorted, type, mappoint_id) VALUES(?,?,?,?,?,?)");
+                q.addBindValue(id);
+                q.addBindValue(v);
+                q.addBindValue( frame->views[v].projections[i].point.x);
+                q.addBindValue( frame->views[v].projections[i].point.y);
+                switch(frame->views[v].projections[i].type)
+                {
+                case SLAM_PROJECTION_MAPPED:
+                    q.addBindValue("MAPPED");
+                    break;
+                case SLAM_PROJECTION_TRACKED:
+                    q.addBindValue("TRACKED");
+                    break;
+                default:
+                    throw std::runtime_error("internal error");
+                }
+                q.addBindValue(mappoint_id);
+
+                ok = q.exec();
+            }
+        }
+
+        for(int i=0; ok && i<frame->views[v].keypoints.size(); i++)
+        {
+            // TODO
+        }
+    }
+
+    return ok;
+}
+
+bool Project::loadMapPoint(int id, SLAMMapPointPtr& mappoint)
+{
+    bool ok = true;
+
+    std::map<int,SLAMMapPointPtr>::iterator it = mMapPointFromDB.find(id);
+
+    if( it == mMapPointFromDB.end() )
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rank, world_x, world_y, world_z FROM mappoints WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            mappoint.reset(new SLAMMapPoint());
+            mappoint->id = q.value(0).toInt();
+            mappoint->position.x() = q.value(1).toDouble();
+            mappoint->position.y() = q.value(2).toDouble();
+            mappoint->position.z() = q.value(3).toDouble();
+        }
+    }
+    else
+    {
+        mappoint = it->second;
+    }
+
+    if(ok == false)
+    {
+        mappoint.reset();
+    }
+
+    return ok;
+}
+
+bool Project::saveMapPoint(SLAMMapPointPtr mappoint, int& id)
+{
+    bool ok = true;
+
+    std::map<int,int>::iterator it = mMapPointToDB.find(mappoint->id);
+
+    if(it == mMapPointToDB.end())
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO mappoints(rank, world_x, world_y, world_z) VALUES(?,?,?,?)");
+        q.addBindValue(mappoint->id);
+        q.addBindValue(mappoint->position.x());
+        q.addBindValue(mappoint->position.y());
+        q.addBindValue(mappoint->position.z());
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+            mMapPointToDB[mappoint->id] = id;
+        }
+    }
+    else
+    {
+        id = it->second;
+    }
+
+    return ok;
 }
 
 bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 {
-    return false;
+    int recording_id = -1;
+    int rig_id = -1;
+
+    bool ok = isOpen();
+
+    rec.reset(new SLAMReconstruction);
+
+    mMapPointFromDB.clear();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT name,DATETIME(date,'localtime'),rig_id,recording_id FROM reconstructions WHERE id=?");
+        q.addBindValue(id);
+
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            rec->id = id;
+            rec->name = q.value(0).toString().toStdString();
+            rec->date = q.value(1).toString().toStdString();
+            rig_id = q.value(2).toInt();
+            recording_id = q.value(3).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        ok = loadRig(rig_id, rec->rig);
+    }
+
+    if(ok)
+    {
+        ok = loadRecording(recording_id, rec->recording);
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous FROM frames WHERE reconstruction_id=? ORDER BY rank ASC");
+        q.addBindValue(id);
+        ok = q.exec();
+
+        int count = 0;
+        while(ok && q.next())
+        {
+            const int frame_id = q.value(0).toInt();
+            SLAMFramePtr frame(new SLAMFrame());
+
+            if(ok)
+            {
+                ok = (q.value(1).toInt() == count);
+            }
+
+            if(ok)
+            {
+                frame->id = count;
+                frame->rank_in_recording = q.value(2).toInt();
+                frame->timestamp = q.value(3).toDouble();
+                frame->aligned_wrt_previous_frame = bool( q.value(5).toInt() );
+            }
+
+            if(ok)
+            {
+                ok = loadPose( q.value(4).toInt(), frame->frame_to_world );
+            }
+
+            if(ok)
+            {
+                ok = loadProjections(frame_id, frame);
+            }
+
+            if(ok)
+            {
+                ok = loadKeyPoints(frame_id, frame);
+            }
+
+            if(ok)
+            {
+                rec->frames.push_back(frame);
+            }
+
+            count++;
+        }
+    }
+
+    mMapPointFromDB.clear();
+
+    if(ok == false)
+    {
+        rec.reset();
+    }
+
+    return ok;
+}
+
+bool Project::loadProjections(int frame_id, SLAMFramePtr frame)
+{
+    bool ok = true;
+
+    QSqlQuery q(mDB);
+    q.prepare("SELECT view, x_distorted, y_distorted, type, mappoint_id FROM projections WHERE frame_id=?");
+    q.addBindValue(frame_id);
+    ok = q.exec();
+
+    while(ok && q.next())
+    {
+        SLAMProjection proj;
+        int view = -1;
+
+        if(ok)
+        {
+            view = q.value(0).toInt();
+            ok = (view == 0 || view == 1);
+        }
+
+        if(ok)
+        {
+            proj.point.x = q.value(1).toDouble();
+            proj.point.y = q.value(2).toDouble();
+
+            const QString str_type = q.value(3).toString();
+
+            if(str_type == "MAPPED")
+            {
+                proj.type = SLAM_PROJECTION_MAPPED;
+            }
+            else if(str_type == "TRACKED")
+            {
+                proj.type = SLAM_PROJECTION_TRACKED;
+            }
+            else
+            {
+                ok = false;
+            }
+        }
+
+        if(ok)
+        {
+            ok = loadMapPoint( q.value(4).toInt(), proj.mappoint );
+        }
+
+        if(ok)
+        {
+            frame->views[view].projections.push_back( std::move(proj) );
+        }
+    }
+
+    return ok;
+}
+
+bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
+{
+    // TODO!
+
+    return true;
 }
 

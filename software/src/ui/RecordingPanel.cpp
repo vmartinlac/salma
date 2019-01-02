@@ -118,8 +118,7 @@ void RecordingPanel::onPlayRecording()
 
     if(ok)
     {
-        mProject->loadRecording(recording_id, header);
-        ok = bool(header);
+        ok = mProject->loadRecording(recording_id, header) && bool(header);
 
         if(ok == false)
         {

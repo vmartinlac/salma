@@ -59,8 +59,8 @@ void SLAMModuleTriangulation::operator()()
             left_proj.max_lifetime = mInitialLifeTime;
             right_proj.max_lifetime = mInitialLifeTime;
 
-            left_proj.type = PROJECTION_MAPPED;
-            right_proj.type = PROJECTION_MAPPED;
+            left_proj.type = SLAM_PROJECTION_MAPPED;
+            right_proj.type = SLAM_PROJECTION_MAPPED;
 
             frame->views[0].projections.push_back( left_proj );
             frame->views[1].projections.push_back( right_proj );

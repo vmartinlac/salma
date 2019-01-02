@@ -73,6 +73,14 @@ protected:
     bool savePose(const Sophus::SE3d& pose, int& id);
     bool loadPose(int id, Sophus::SE3d& pose);
 
+    bool saveMapPoint(SLAMMapPointPtr mappoint, int& id);
+    bool loadMapPoint(int id, SLAMMapPointPtr& mappoint);
+
+    bool saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id);
+
+    bool loadProjections(int frame_id, SLAMFramePtr frame);
+    bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
+
 signals:
     
     void changed();
@@ -89,5 +97,8 @@ protected:
     RigCalibrationModel* mRigCalibrationModel;
     RecordingModel* mRecordingModel;
     ReconstructionModel* mReconstructionModel;
+
+    std::map<int,int> mMapPointToDB;
+    std::map<int,SLAMMapPointPtr> mMapPointFromDB;
 };
 

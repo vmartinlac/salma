@@ -18,7 +18,7 @@ public:
         StereoRigCalibrationDataPtr calibration,
         SLAMConfigurationPtr configuration);
 
-    bool processFrame(int frame_id, Image& image);
+    bool processFrame(int rank_in_recording, Image& image);
 
     bool finalize(SLAMReconstructionPtr& reconstruction);
 

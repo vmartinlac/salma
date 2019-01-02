@@ -51,7 +51,7 @@ bool SLAMEngine::initialize(
     return ok;
 }
 
-bool SLAMEngine::processFrame(int frame_id, Image& image)
+bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 {
     if( image.isValid() )
     {
@@ -59,7 +59,8 @@ bool SLAMEngine::processFrame(int frame_id, Image& image)
 
         SLAMFramePtr curr_frame(new SLAMFrame());
 
-        curr_frame->id = frame_id;
+        curr_frame->id = mContext->reconstruction->frames.size();
+        curr_frame->rank_in_recording = rank_in_recording;
         curr_frame->timestamp = image.getTimestamp();
         curr_frame->views[0].image = image.getFrame(0);
         curr_frame->views[1].image = image.getFrame(1);

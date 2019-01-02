@@ -66,7 +66,39 @@ void ReconstructionPanel::onNew()
 
 void ReconstructionPanel::onShow()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    int reconstruction_id = -1;
+    bool ok = true;
+    SLAMReconstructionPtr reconstruction;
+
+    if(ok)
+    {
+        reconstruction_id = mProject->reconstructionModel()->indexToId(mView->currentIndex());
+        ok = (reconstruction_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->loadReconstruction(reconstruction_id, reconstruction) && bool(reconstruction);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Could not load reconstruction!");
+        }
+    }
+
+    if(ok)
+    {
+        std::cout << "OK" << std::endl;
+        std::cout << reconstruction->frames.size() << std::endl;
+        std::cout << reconstruction->name << std::endl;
+        std::cout << reconstruction->frames.back()->views[0].projections.size() << std::endl;
+        // TODO
+        /*
+        RecordingPlayerDialog* dlg = new RecordingPlayerDialog(header, this);
+        dlg->exec();
+        delete dlg;
+        */
+    }
 }
 
 void ReconstructionPanel::onRename()

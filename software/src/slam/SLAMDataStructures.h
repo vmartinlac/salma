@@ -30,8 +30,8 @@ typedef std::shared_ptr<SLAMMapPoint> SLAMMapPointPtr;
 
 enum SLAMProjectionType
 {
-    PROJECTION_MAPPED,
-    PROJECTION_TRACKED
+    SLAM_PROJECTION_MAPPED,
+    SLAM_PROJECTION_TRACKED
 };
 
 class SLAMProjection
@@ -61,12 +61,16 @@ public:
     SLAMFrame()
     {
         id = -1;
+        rank_in_recording = -1;
         timestamp = 0.0;
         aligned_wrt_previous_frame = false;
     }
 
     int id;
+
+    int rank_in_recording;
     double timestamp;
+
     SLAMView views[2];
     std::vector< std::pair<int,int> > stereo_matches;
     Sophus::SE3d frame_to_world;
