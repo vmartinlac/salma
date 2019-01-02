@@ -1,5 +1,6 @@
 #include <QMessageBox>
 #include "ReconstructionOperation.h"
+#include "Project.h"
 
 ReconstructionOperation::ReconstructionOperation()
 {
@@ -24,6 +25,7 @@ bool ReconstructionOperation::before()
     bool ok = true;
 
     mReconstruction.reset();
+    mNextFrame = 0;
 
     if(ok)
     {
@@ -32,7 +34,12 @@ bool ReconstructionOperation::before()
 
     if(ok)
     {
-        mRecordingReader.reset(new RecordingReader(mRecordingHeader, true));
+        ok = ( mRecordingHeader->id >= 0 && mCalibration->id >= 0 );
+    }
+
+    if(ok)
+    {
+        mRecordingReader.reset(new RecordingReader(mRecordingHeader, false));
         mEngine.reset(new SLAMEngine());
         const bool ok = mEngine->initialize(mCalibration, mConfiguration);
     }
@@ -57,17 +64,58 @@ bool ReconstructionOperation::before()
 
 bool ReconstructionOperation::step()
 {
-    Image image;
+    bool ret = true;
 
-    mRecordingReader->read(image);
-    mRecordingReader->trigger();
-
-    if(image.isValid())
+    if(mNextFrame >= mRecordingHeader->num_frames)
     {
-        mEngine->processFrame(image);
+        ret = false;
+    }
+    else
+    {
+        Image image;
+
+        mRecordingReader->seek(mNextFrame);
+        mRecordingReader->read(image);
+        mRecordingReader->trigger();
+
+        if(image.isValid())
+        {
+
+            // set video output.
+            {
+                Image concat;
+                image.concatenate(concat);
+
+                videoPort()->beginWrite();
+                if( concat.isValid() )
+                {
+                    videoPort()->data().image = concat.getFrame();
+                }
+                else
+                {
+                    videoPort()->data().image.create(640, 480, CV_8UC3);
+                    videoPort()->data().image = cv::Scalar(64, 64, 64);
+                }
+                videoPort()->endWrite();
+            }
+
+            // set stats output.
+            {
+                std::stringstream s;
+                s << "Processing frame " << mNextFrame << std::endl;
+
+                statsPort()->beginWrite();
+                statsPort()->data().text = s.str().c_str();
+                statsPort()->endWrite();
+            }
+
+            mEngine->processFrame(mNextFrame, image);
+        }
+
+        mNextFrame++;
     }
 
-    return true;
+    return ret;
 }
 
 void ReconstructionOperation::after()
@@ -81,7 +129,45 @@ void ReconstructionOperation::uiafter(QWidget* parent, Project* project)
 {
     if( mReconstruction )
     {
-        // TODO: save the reconstruction into database.
+        bool ok = true;
+        int reconstruction_id = -1;
+
+        if(ok)
+        {
+            ok = project->transaction();
+        }
+
+        if(ok)
+        {
+            mReconstruction->id = -1;
+            mReconstruction->name = mReconstructionName;
+            mReconstruction->recording = mRecordingHeader;
+            mReconstruction->rig = mCalibration;
+
+            ok = project->saveReconstruction(mReconstruction, reconstruction_id);
+        }
+
+        if(ok)
+        {
+            ok = project->commit();
+        }
+        else
+        {
+            project->rollback();
+        }
+
+        if(ok)
+        {
+            QMessageBox::information(parent, "Success", "Reconstruction done!");
+        }
+        else
+        {
+            QMessageBox::critical(parent, "Error", "Failed to save reconstruction to database!");
+        }
+    }
+    else
+    {
+        QMessageBox::critical(parent, "Error", "Reconstruction failed!");
     }
 }
 

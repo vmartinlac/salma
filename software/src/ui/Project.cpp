@@ -1155,3 +1155,13 @@ bool Project::renameReconstruction(int id, const QString& new_name)
     return ok;
 }
 
+bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
+{
+    return false;
+}
+
+bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
+{
+    return false;
+}
+

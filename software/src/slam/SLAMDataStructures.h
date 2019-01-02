@@ -10,6 +10,8 @@ Right is index 1.
 #include <opencv2/core.hpp>
 #include <sophus/se3.hpp>
 #include <Eigen/Eigen>
+#include "StereoRigCalibrationData.h"
+#include "RecordingHeader.h"
 
 class SLAMMapPoint
 {
@@ -78,6 +80,18 @@ typedef std::vector<SLAMFramePtr> SLAMFramePtrVector;
 class SLAMReconstruction
 {
 public:
+
+    SLAMReconstruction()
+    {
+        id = -1;
+    }
+
+    int id;
+    std::string name;
+    std::string date;
+
+    RecordingHeaderPtr recording;
+    StereoRigCalibrationDataPtr rig;
 
     SLAMFramePtrVector frames;
 };

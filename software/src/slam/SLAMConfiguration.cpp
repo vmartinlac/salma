@@ -20,7 +20,7 @@ SLAMConfiguration::SLAMConfiguration()
     stereomatcher_check_symmetry = true;
     stereomatcher_check_lowe = true;
     stereomatcher_lowe_ratio = 0.85;
-    stereomatcher_check_epipolar = false;
+    stereomatcher_check_epipolar = true;
     stereomatcher_epipolar_threshold = 10.0;
 
     triangulation_min_angle_between_rays = 3.0 * M_PI / 180.0;

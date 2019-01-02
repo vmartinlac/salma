@@ -40,5 +40,6 @@ protected:
     RecordingReaderPtr mRecordingReader;
     SLAMReconstructionPtr mReconstruction;
     SLAMEnginePtr mEngine;
+    int mNextFrame;
 };
 

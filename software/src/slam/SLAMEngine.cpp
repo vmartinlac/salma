@@ -18,36 +18,40 @@ bool SLAMEngine::initialize(
     StereoRigCalibrationDataPtr calibration,
     SLAMConfigurationPtr configuration)
 {
-    mFrameCount = 0;
-
-    mContext.reset(new SLAMContext);
-    mContext->calibration = calibration;
-    mContext->configuration = configuration;
-    mContext->reconstruction.reset(new SLAMReconstruction());
-    mContext->debug.reset(new SLAMDebug( mContext->configuration ));
-
-    mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mContext));
-    mModuleAlignment.reset(new SLAMModuleAlignment(mContext));
-    mModuleFeatures.reset(new SLAMModuleFeatures(mContext));
-    mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mContext));
-    mModuleTriangulation.reset(new SLAMModuleTriangulation(mContext));
-    mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mContext));
-
     bool ok = true;
 
-    ok = ok && mContext->debug->init();
+    if(ok)
+    {
+        mContext.reset(new SLAMContext);
+        mContext->calibration = calibration;
+        mContext->configuration = configuration;
+        mContext->reconstruction.reset(new SLAMReconstruction());
+        mContext->debug.reset(new SLAMDebug( mContext->configuration ));
 
-    ok = ok && mModuleOpticalFlow->init();
-    ok = ok && mModuleAlignment->init();
-    ok = ok && mModuleFeatures->init();
-    ok = ok && mModuleStereoMatcher->init();
-    ok = ok && mModuleTriangulation->init();
-    ok = ok && mModuleDenseReconstruction->init();
+        mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mContext));
+        mModuleAlignment.reset(new SLAMModuleAlignment(mContext));
+        mModuleFeatures.reset(new SLAMModuleFeatures(mContext));
+        mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mContext));
+        mModuleTriangulation.reset(new SLAMModuleTriangulation(mContext));
+        mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mContext));
+    }
+
+    if(ok)
+    {
+        ok = ok && mContext->debug->init();
+
+        ok = ok && mModuleOpticalFlow->init();
+        ok = ok && mModuleAlignment->init();
+        ok = ok && mModuleFeatures->init();
+        ok = ok && mModuleStereoMatcher->init();
+        ok = ok && mModuleTriangulation->init();
+        ok = ok && mModuleDenseReconstruction->init();
+    }
 
     return ok;
 }
 
-bool SLAMEngine::processFrame(Image& image)
+bool SLAMEngine::processFrame(int frame_id, Image& image)
 {
     if( image.isValid() )
     {
@@ -55,7 +59,7 @@ bool SLAMEngine::processFrame(Image& image)
 
         SLAMFramePtr curr_frame(new SLAMFrame());
 
-        curr_frame->id = mFrameCount;
+        curr_frame->id = frame_id;
         curr_frame->timestamp = image.getTimestamp();
         curr_frame->views[0].image = image.getFrame(0);
         curr_frame->views[1].image = image.getFrame(1);
@@ -104,8 +108,6 @@ bool SLAMEngine::processFrame(Image& image)
             (*mModuleDenseReconstruction)();
         }
         */
-
-        mFrameCount++;
     }
 
     return true;
@@ -113,6 +115,26 @@ bool SLAMEngine::processFrame(Image& image)
 
 bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
 {
+    // assign map point ids.
+
+    int num_mappoints = 0;
+    for( SLAMFramePtr& f : mContext->reconstruction->frames )
+    {
+        for(int i=0; i<2; i++)
+        {
+            for( SLAMProjection& p : f->views[i].projections )
+            {
+                if(p.mappoint && p.mappoint->id < 0)
+                {
+                    p.mappoint->id = num_mappoints;
+                    num_mappoints++;
+                }
+            }
+        }
+    }
+
+    // put reconstruction aside and clear all what was allocated.
+
     reconstruction = std::move(mContext->reconstruction);
 
     mContext.reset();

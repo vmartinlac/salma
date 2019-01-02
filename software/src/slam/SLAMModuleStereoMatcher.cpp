@@ -158,7 +158,6 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
             line /= l;
 
             const double val = pointj.transpose() * line;
-            std::cout << val << std::endl;
 
             if( std::fabs(val) < mEpipolarThreshold )
             {

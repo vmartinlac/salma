@@ -18,7 +18,7 @@ public:
         StereoRigCalibrationDataPtr calibration,
         SLAMConfigurationPtr configuration);
 
-    bool processFrame(Image& image);
+    bool processFrame(int frame_id, Image& image);
 
     bool finalize(SLAMReconstructionPtr& reconstruction);
 
@@ -31,8 +31,6 @@ protected:
     SLAMModulePtr mModuleStereoMatcher;
     SLAMModulePtr mModuleTriangulation;
     SLAMModulePtr mModuleDenseReconstruction;
-
-    int mFrameCount;
 };
 
 typedef std::shared_ptr<SLAMEngine> SLAMEnginePtr;
