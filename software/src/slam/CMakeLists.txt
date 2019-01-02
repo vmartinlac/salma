@@ -24,6 +24,8 @@ add_library(
     SLAMModuleTriangulation.h
     SLAMModuleDenseReconstruction.cpp
     SLAMModuleDenseReconstruction.h
+    SLAMDebug.cpp
+    SLAMDebug.h
 )
 
 target_link_libraries(

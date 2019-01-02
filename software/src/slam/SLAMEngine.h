@@ -31,5 +31,9 @@ protected:
     SLAMModulePtr mModuleStereoMatcher;
     SLAMModulePtr mModuleTriangulation;
     SLAMModulePtr mModuleDenseReconstruction;
+
+    int mFrameCount;
 };
+
+typedef std::shared_ptr<SLAMEngine> SLAMEnginePtr;
 

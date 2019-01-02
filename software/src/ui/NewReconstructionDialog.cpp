@@ -9,6 +9,7 @@
 #include "NewReconstructionDialog.h"
 #include "VideoSystem.h"
 #include "ReconstructionOperation.h"
+#include "SLAMConfiguration.h"
 
 NewReconstructionDialog::NewReconstructionDialog(Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
 {
@@ -86,15 +87,17 @@ void NewReconstructionDialog::accept()
 
     if(ok)
     {
-        //ok = (recording->num_views == calibration->....);
         ok = (recording->num_views == 2);
-        err = "Number of views of rig and recording does not match!";
+        err = "Recording must be stereo!";
     }
 
     if(ok)
     {
         ReconstructionOperation* myop = new ReconstructionOperation();
         myop->mReconstructionName = mName->text().toStdString();
+        myop->mCalibration = calibration;
+        myop->mRecordingHeader = recording;
+        myop->mConfiguration.reset(new SLAMConfiguration());
         op.reset(myop);
     }
 

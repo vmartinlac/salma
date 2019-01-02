@@ -8,6 +8,9 @@
 #include "Tracker.h"
 #include "VideoSource.h"
 #include "Operation.h"
+#include "SLAMEngine.h"
+#include "SLAMConfiguration.h"
+#include "RecordingReader.h"
 
 class ReconstructionOperation : public Operation
 {
@@ -28,5 +31,14 @@ public:
 public:
 
     std::string mReconstructionName;
+    RecordingHeaderPtr mRecordingHeader;
+    StereoRigCalibrationDataPtr mCalibration;
+    SLAMConfigurationPtr mConfiguration;
+
+protected:
+
+    RecordingReaderPtr mRecordingReader;
+    SLAMReconstructionPtr mReconstruction;
+    SLAMEnginePtr mEngine;
 };
 

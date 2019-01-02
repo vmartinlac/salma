@@ -6,6 +6,7 @@ RecordingReader::RecordingReader(RecordingHeaderPtr header, bool asynchronous)
 {
     mAsynchronousLoading = asynchronous;
     mHeader = std::move(header);
+    mNextFrame = 0;
 }
 
 RecordingReader::~RecordingReader()

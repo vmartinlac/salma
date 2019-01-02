@@ -1,8 +1,6 @@
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleFeatures.h"
 
-//#define DEBUG_SHOW_FEATURES
-
 SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) : SLAMModule(con)
 {
 }
@@ -51,13 +49,20 @@ void SLAMModuleFeatures::operator()()
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
     }
 
-#ifdef DEBUG_SHOW_FEATURES
-    Debug::stereoimshow(
-        frame->views[0].image,
-        frame->views[1].image,
-        frame->views[0].keypoints,
-        frame->views[1].keypoints );
-#endif
+    if( context()->configuration->debug )
+    {
+        cv::Mat outimg;
+
+        cv::drawMatches(
+            frame->views[0].image,
+            frame->views[0].keypoints,
+            frame->views[1].image,
+            frame->views[1].keypoints,
+            std::vector<cv::DMatch>(),
+            outimg);
+
+        context()->debug->saveImage(frame->id, "FEATURES", outimg);
+    }
 }
 
 void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)

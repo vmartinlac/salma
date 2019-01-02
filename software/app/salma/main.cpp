@@ -1,3 +1,4 @@
+#include <iostream>
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QSqlDatabase>
@@ -5,9 +6,25 @@
 #include "VideoSystem.h"
 #include "MainWindow.h"
 
+void printWelcomeMessage()
+{
+    const std::string logo = BuildInfo::getAsciiLogo();
+
+    std::cout << logo << std::endl;
+    std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
+    std::cout << std::endl;
+    std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
+    std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
+    std::cout << std::endl;
+}
+
 int main(int num_args, char** args)
 {
     Q_INIT_RESOURCE(db);
+
+    printWelcomeMessage();
 
     QApplication app(num_args, args);
     app.setApplicationName("SALMA");
