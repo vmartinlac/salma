@@ -16,6 +16,7 @@ public:
     SLAMModuleStereoMatcher(SLAMContextPtr con);
     ~SLAMModuleStereoMatcher() override;
 
+    bool init() override;
     void operator()() override;
 
 protected:

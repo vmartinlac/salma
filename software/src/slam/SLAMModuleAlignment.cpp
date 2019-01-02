@@ -6,45 +6,45 @@
 
 SLAMModuleAlignment::SLAMModuleAlignment(SLAMContextPtr con) : SLAMModule(con)
 {
-    mSolver.reset(new MVPnP::SolverRANSACLM());
-    mSolver->setInlierRate( con->configuration->alignment_ransac_inlier_rate );
-    mSolver->setInlierThreshold( con->configuration->alignment_ransac_inlier_threshold );
 }
 
 SLAMModuleAlignment::~SLAMModuleAlignment()
 {
 }
 
+bool SLAMModuleAlignment::init()
+{
+    SLAMContextPtr con = context();
+
+    mSolver.reset(new MVPnP::SolverRANSACLM());
+    mSolver->setInlierRate( con->configuration->alignment_ransac_inlier_rate );
+    mSolver->setInlierThreshold( con->configuration->alignment_ransac_inlier_threshold );
+
+    return true;
+}
+
 void SLAMModuleAlignment::operator()()
 {
     StereoRigCalibrationDataPtr rig = context()->calibration;
-    CameraCalibrationDataPtr left_camera = rig->cameras[0].calibration;
-    CameraCalibrationDataPtr right_camera = rig->cameras[1].calibration;
 
-/*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    if( frames.size() >= 2 )
+    const int N_frames = reconstr->frames.size();
+
+    if( N_frames >= 2 )
     {
-        std::array<FramePtr,2> lastframes;
-        std::copy_n(frames.begin(), 2, lastframes.begin());
-
-        FramePtr current_frame = lastframes[0];
-        FramePtr previous_frame = lastframes[1];
+        SLAMFramePtr current_frame = reconstr->frames[N_frames-1];
+        SLAMFramePtr previous_frame = reconstr->frames[N_frames-2];
 
         std::vector<MVPnP::View> views(2);
 
-        views[0].calibration_matrix = mLeftCamera->calibration_matrix;
-        views[0].distortion_coefficients = mLeftCamera->distortion_coefficients;
-        views[0].rig_to_camera = mRig->left_camera_to_rig.inverse();
-
-        views[1].calibration_matrix = mRightCamera->calibration_matrix;
-        views[1].distortion_coefficients = mRightCamera->distortion_coefficients;
-        views[1].rig_to_camera = mRig->right_camera_to_rig.inverse();
-
         for(int i=0; i<2; i++)
         {
-            for( Projection& p : current_frame->views[i].projections )
+            views[i].calibration_matrix = rig->cameras[i].calibration->calibration_matrix;
+            views[i].distortion_coefficients = rig->cameras[i].calibration->distortion_coefficients;
+            views[i].rig_to_camera = rig->cameras[i].camera_to_rig.inverse();
+
+            for( SLAMProjection& p : current_frame->views[i].projections )
             {
                 cv::Point3f world;
                 world.x = p.mappoint->position.x();
@@ -93,11 +93,14 @@ void SLAMModuleAlignment::operator()()
             current_frame->views[1].projections.clear();
         }
     }
+    else if(N_frames == 1)
+    {
+        reconstr->frames.front()->frame_to_world = Sophus::SE3d();
+        reconstr->frames.front()->aligned_wrt_previous_frame = false;
+    }
     else
     {
-        frames.front()->frame_to_world = Sophus::SE3d();
-        frames.front()->aligned_wrt_previous_frame = false;
+        throw std::runtime_error("internal error");
     }
-*/
 }
 

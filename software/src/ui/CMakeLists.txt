@@ -109,6 +109,7 @@ target_link_libraries(
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d
+    slam
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

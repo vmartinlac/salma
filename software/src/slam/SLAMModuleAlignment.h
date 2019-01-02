@@ -13,6 +13,7 @@ public:
     SLAMModuleAlignment(SLAMContextPtr con);
     ~SLAMModuleAlignment() override;
 
+    bool init() override;
     void operator()() override;
 
 protected:

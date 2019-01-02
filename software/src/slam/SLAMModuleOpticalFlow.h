@@ -17,6 +17,8 @@ public:
     SLAMModuleOpticalFlow(SLAMContextPtr con);
     ~SLAMModuleOpticalFlow() override;
 
+    bool init() override;
+
     void operator()() override;
 
 protected:

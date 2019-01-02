@@ -16,6 +16,7 @@ public:
     SLAMModuleFeatures(SLAMContextPtr con);
     ~SLAMModuleFeatures() override;
 
+    bool init() override;
     void operator()() override;
 
 protected:

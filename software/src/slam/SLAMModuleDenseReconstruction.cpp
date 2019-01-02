@@ -11,9 +11,6 @@
 
 SLAMModuleDenseReconstruction::SLAMModuleDenseReconstruction(SLAMContextPtr con) : SLAMModule(con)
 {
-    mCameras[0] = con->calibration->cameras[0].calibration;
-    mCameras[1] = con->calibration->cameras[1].calibration;
-    mStereoRig = con->calibration;
 }
 
 SLAMModuleDenseReconstruction::~SLAMModuleDenseReconstruction()
@@ -22,6 +19,12 @@ SLAMModuleDenseReconstruction::~SLAMModuleDenseReconstruction()
 
 bool SLAMModuleDenseReconstruction::init()
 {
+    SLAMContextPtr con = context();
+
+    mCameras[0] = con->calibration->cameras[0].calibration;
+    mCameras[1] = con->calibration->cameras[1].calibration;
+    mStereoRig = con->calibration;
+
     const Sophus::SE3d left_to_right = mStereoRig->cameras[1].camera_to_rig.inverse() * mStereoRig->cameras[0].camera_to_rig;
 
     cv::eigen2cv( left_to_right.rotationMatrix(), mRectification.R );
@@ -59,10 +62,11 @@ bool SLAMModuleDenseReconstruction::init()
 
 void SLAMModuleDenseReconstruction::operator()()
 {
-    /*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    SLAMFramePtr frame = frames.front();
+    if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
+
+    SLAMFramePtr frame = reconstr->frames.back();
 
     cv::Mat rectified_left;
     cv::Mat rectified_right;
@@ -77,6 +81,5 @@ void SLAMModuleDenseReconstruction::operator()()
 #ifdef DEBUG_SHOW_RECTIFIED_IMAGES
     Debug::stereoimshow( rectified_left, rectified_right ); 
 #endif
-*/
 }
 

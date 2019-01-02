@@ -11,6 +11,7 @@ public:
     SLAMModuleTriangulation(SLAMContextPtr con);
     ~SLAMModuleTriangulation() override;
 
+    bool init() override;
     void operator()() override;
 
 protected:

@@ -10,6 +10,16 @@
 
 SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) : SLAMModule(con)
 {
+}
+
+SLAMModuleStereoMatcher::~SLAMModuleStereoMatcher()
+{
+}
+
+bool SLAMModuleStereoMatcher::init()
+{
+    SLAMContextPtr con = context();
+
     mCheckOctave = con->configuration->stereomatcher_check_octave;
 
     mCheckSymmetry = con->configuration->stereomatcher_check_symmetry;
@@ -27,10 +37,7 @@ SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) : SLAMModul
     mFundamentalMatrices[0] = con->calibration->computeFundamentalMatrix(0, 1);
     mFundamentalMatrices[1] = mFundamentalMatrices[0].transpose();
 
-}
-
-SLAMModuleStereoMatcher::~SLAMModuleStereoMatcher()
-{
+    return true;
 }
 
 int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool check_symmetry)
@@ -205,10 +212,11 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
 
 void SLAMModuleStereoMatcher::operator()()
 {
-    /*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    FramePtr f = frames.front();
+    if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
+
+    SLAMFramePtr f = reconstr->frames.back();
 
     // compute undistorted key points.
 
@@ -264,6 +272,5 @@ void SLAMModuleStereoMatcher::operator()()
             matches);
     }
 #endif
-*/
 }
 

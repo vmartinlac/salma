@@ -5,6 +5,16 @@
 
 SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) : SLAMModule(con)
 {
+}
+
+SLAMModuleTriangulation::~SLAMModuleTriangulation()
+{
+}
+
+bool SLAMModuleTriangulation::init()
+{
+    SLAMContextPtr con = context();
+
     mLeftCamera = con->calibration->cameras[0].calibration;
     mRightCamera = con->calibration->cameras[1].calibration;
     mRig = con->calibration;
@@ -19,29 +29,26 @@ SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) : SLAMModul
     mMaxReprojectionError = con->configuration->triangulation_max_reprojection_error;
     mInitialLifeTime = con->configuration->triangulation_track_lifetime;
     mUseLindstrom = con->configuration->triangulation_use_lindstrom;
-}
 
-SLAMModuleTriangulation::~SLAMModuleTriangulation()
-{
+    return true;
 }
 
 void SLAMModuleTriangulation::operator()()
 {
-/*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    FramePtr frame = frames.front();
+    if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
 
-    //mNumberOfNewMapPoints = 0;
+    SLAMFramePtr frame = reconstr->frames.back();
 
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
-        MapPointPtr world_point = triangulate( frame, p.first, p.second );
+        SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
 
         if(world_point)
         {
-            Projection left_proj;
-            Projection right_proj;
+            SLAMProjection left_proj;
+            SLAMProjection right_proj;
 
             left_proj.mappoint = world_point;
             right_proj.mappoint = world_point;
@@ -57,21 +64,17 @@ void SLAMModuleTriangulation::operator()()
 
             frame->views[0].projections.push_back( left_proj );
             frame->views[1].projections.push_back( right_proj );
-
-            //mNumberOfNewMapPoints++;
         }
     }
-*/
 }
 
 SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)
 {
-/*
     // Declare some variables.
 
     bool ok = true;
     Eigen::Vector3d result;
-    MapPointPtr ret;
+    SLAMMapPointPtr ret;
 
     // Compute normalized points.
 
@@ -106,11 +109,11 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
     // Triangulate first in rig frame. It will be transformed to world frame at the very end of this function.
     // We use the middle of the common perpendicular of the two rays.
 
-    const Eigen::Vector3d C0 = mRig->left_camera_to_rig.translation();
-    const Eigen::Matrix3d R0 = mRig->left_camera_to_rig.rotationMatrix();
+    const Eigen::Vector3d C0 = mRig->cameras[0].camera_to_rig.translation();
+    const Eigen::Matrix3d R0 = mRig->cameras[0].camera_to_rig.rotationMatrix();
 
-    const Eigen::Vector3d C1 = mRig->right_camera_to_rig.translation();
-    const Eigen::Matrix3d R1 = mRig->right_camera_to_rig.rotationMatrix();
+    const Eigen::Vector3d C1 = mRig->cameras[1].camera_to_rig.translation();
+    const Eigen::Matrix3d R1 = mRig->cameras[1].camera_to_rig.rotationMatrix();
 
     Eigen::Vector3d D0 = R0 * normalized_left;
     Eigen::Vector3d D1 = R1 * normalized_right;
@@ -164,8 +167,8 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
 
     if(ok)
     {
-        const Eigen::Vector3d in_left_camera = mRig->left_camera_to_rig.inverse() * result;
-        const Eigen::Vector3d in_right_camera = mRig->right_camera_to_rig.inverse() * result;
+        const Eigen::Vector3d in_left_camera = mRig->cameras[0].camera_to_rig.inverse() * result;
+        const Eigen::Vector3d in_right_camera = mRig->cameras[1].camera_to_rig.inverse() * result;
 
         ok = (in_left_camera.z() > 0.0 && in_right_camera.z() > 0.0);
 
@@ -216,13 +219,11 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
 
     if(ok)
     {
-        ret.reset(new MapPoint());
+        ret.reset(new SLAMMapPoint());
         ret->position = frame->frame_to_world * result;
     }
 
     return ret;
-*/
-    return SLAMMapPointPtr();
 }
 
 void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right )

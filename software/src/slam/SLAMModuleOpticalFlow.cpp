@@ -2,6 +2,16 @@
 
 SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMContextPtr con) : SLAMModule(con)
 {
+}
+
+SLAMModuleOpticalFlow::~SLAMModuleOpticalFlow()
+{
+}
+
+bool SLAMModuleOpticalFlow::init()
+{
+    SLAMContextPtr con = context();
+
     const int size = con->configuration->opticalflow_window_size;
 
     const int reference_image_width = con->calibration->cameras[0].calibration->image_size.width;
@@ -12,40 +22,38 @@ SLAMModuleOpticalFlow::SLAMModuleOpticalFlow(SLAMContextPtr con) : SLAMModule(co
     mLKT = cv::SparsePyrLKOpticalFlow::create();
     mLKT->setWinSize(cv::Size(size, size));
     mLKT->setMaxLevel(max_level);
-}
 
-SLAMModuleOpticalFlow::~SLAMModuleOpticalFlow()
-{
+    return true;
 }
 
 void SLAMModuleOpticalFlow::operator()()
 {
-    /*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    if( frames.size() >= 2 )
+    const int N = reconstr->frames.size();
+
+    if( N >= 2 )
     {
-        std::array<FramePtr,2> lastframes;
-        std::copy_n(frames.begin(), 2, lastframes.begin());
-
         for(int i=0; i<2; i++)
         {
-            processView( lastframes[1]->views[i], lastframes[0]->views[i] );
+            processView( reconstr->frames[N-2]->views[i], reconstr->frames[N-1]->views[i] );
         }
+    }
+    else if( N == 1 )
+    {
+        reconstr->frames.back()->frame_to_world = Sophus::SE3d();
+        reconstr->frames.back()->aligned_wrt_previous_frame = false;
     }
     else
     {
-        frames.front()->frame_to_world = Sophus::SE3d();
-        frames.front()->aligned_wrt_previous_frame = false;
+        throw std::runtime_error("internal error");
     }
-    */
 }
 
 void SLAMModuleOpticalFlow::processView(const SLAMView& prev_view, SLAMView& curr_view)
 {
-/*
-    const std::vector<Projection>& proj_prev = prev_view.projections;
-    std::vector<Projection>& proj_curr = curr_view.projections;
+    const std::vector<SLAMProjection>& proj_prev = prev_view.projections;
+    std::vector<SLAMProjection>& proj_curr = curr_view.projections;
 
     proj_curr.clear();
 
@@ -78,7 +86,7 @@ void SLAMModuleOpticalFlow::processView(const SLAMView& prev_view, SLAMView& cur
         {
             if( status[i] > 0 && proj_prev[i].max_lifetime > 0 )
             {
-                Projection proj;
+                SLAMProjection proj;
                 proj.point = points_curr[i];
                 proj.mappoint = proj_prev[i].mappoint;
                 proj.max_lifetime = proj_prev[i].max_lifetime - 1;
@@ -88,6 +96,5 @@ void SLAMModuleOpticalFlow::processView(const SLAMView& prev_view, SLAMView& cur
             }
         }
     }
-*/
 }
 

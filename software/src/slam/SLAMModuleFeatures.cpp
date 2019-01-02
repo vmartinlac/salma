@@ -5,6 +5,16 @@
 
 SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) : SLAMModule(con)
 {
+}
+
+SLAMModuleFeatures::~SLAMModuleFeatures()
+{
+}
+
+bool SLAMModuleFeatures::init()
+{
+    SLAMContextPtr con = context();
+
     const double scale_factor = con->configuration->features_scale_factor;
     const int min_width = con->configuration->features_min_width;
     const int max_features = con->configuration->features_max_features;
@@ -24,18 +34,17 @@ SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) : SLAMModule(con)
     mFeature2d->setPatchSize(patch_size);
     mFeature2d->setFastThreshold(fast_threshold);
     mFeature2d->setMaxFeatures(max_features);
-}
 
-SLAMModuleFeatures::~SLAMModuleFeatures()
-{
+    return true;
 }
 
 void SLAMModuleFeatures::operator()()
 {
-/*
-    if( frames.empty() ) throw std::runtime_error("internal error");
+    SLAMReconstructionPtr reconstr = context()->reconstruction;
 
-    FramePtr frame = frames.front();
+    if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
+
+    SLAMFramePtr frame = reconstr->frames.back();
 
     for(int i=0; i<2; i++)
     {
@@ -49,7 +58,6 @@ void SLAMModuleFeatures::operator()()
         frame->views[0].keypoints,
         frame->views[1].keypoints );
 #endif
-*/
 }
 
 void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
