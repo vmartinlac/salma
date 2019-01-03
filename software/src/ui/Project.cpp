@@ -1106,6 +1106,7 @@ bool Project::describeReconstruction(int id, QString& descr)
 
     int num_frames = 0;
     int num_mappoints = 0;
+    int num_densepoints = 0;
 
     if(ok)
     {
@@ -1141,7 +1142,6 @@ bool Project::describeReconstruction(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT COUNT(id) FROM frames WHERE reconstruction_id=?");
         q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,frames WHERE projections.frame_id=frames.id AND frames.reconstruction_id=?");
         q.addBindValue(id);
         ok = q.exec() && q.next();
@@ -1149,6 +1149,19 @@ bool Project::describeReconstruction(int id, QString& descr)
         if(ok)
         {
             num_mappoints = q.value(0).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(densepoints.id) FROM densepoints, frames WHERE densepoints.frame_id=frames.id AND frames.reconstruction_id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            num_densepoints = q.value(0).toInt();
         }
     }
 
@@ -1174,6 +1187,7 @@ bool Project::describeReconstruction(int id, QString& descr)
         s << "<table>" << std::endl;
         s << "<tr><th>Number of frames</th><td>" << num_frames << "</td></tr>" << std::endl;
         s << "<tr><th>Number of mappoints</th><td>" << num_mappoints << "</td></tr>" << std::endl;
+        s << "<tr><th>Number of densepoints</th><td>" << num_densepoints << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
         s << "</body></html>" << std::endl;
@@ -1240,6 +1254,8 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
     }
 
     mMapPointToDB.clear();
+
+    reconstructionModelChanged();
 
     return ok;
 }

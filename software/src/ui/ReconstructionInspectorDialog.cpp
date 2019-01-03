@@ -18,6 +18,9 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     }
 
     QToolBar* tb = new QToolBar();
+
+    QAction* aClose = tb->addAction("Close");
+    tb->addSeparator();
     tb->addWidget(mSegmentsWidget);
     QAction* aMapPoints = tb->addAction("MapPoints");
     QAction* aDensePoints = tb->addAction("DensePoints");
@@ -25,6 +28,7 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     QAction* aTrajectory = tb->addAction("Trajectory");
     tb->addSeparator();
     QAction* aExport = tb->addAction("Export");
+    QAction* aHome = tb->addAction("Home");
 
     aMapPoints->setCheckable(true);
     aDensePoints->setCheckable(true);
@@ -36,12 +40,14 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     aRigs->setChecked(true);
     aTrajectory->setChecked(true);
 
+    connect(aClose, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aTrajectory, SIGNAL(toggled(bool)), mViewer, SLOT(showTrajectory(bool)));
     connect(aRigs, SIGNAL(toggled(bool)), mViewer, SLOT(showRigs(bool)));
     connect(aDensePoints, SIGNAL(toggled(bool)), mViewer, SLOT(showDensePoints(bool)));
     connect(aMapPoints, SIGNAL(toggled(bool)), mViewer, SLOT(showMapPoints(bool)));
     connect(aExport, SIGNAL(triggered()), this, SLOT(onExport()));
     connect(mSegmentsWidget, SIGNAL(currentIndexChanged(int)), this, SLOT(onSelectSegment()));
+    connect(aHome, SIGNAL(triggered()), mViewer, SLOT(home()));
 
     /*
     mInformation = new QLabel();
@@ -85,6 +91,7 @@ void ReconstructionInspectorDialog::onSelectSegment()
         */
 
         mViewer->showSegment(seg);
+        //mViewer->home();
     }
 }
 
