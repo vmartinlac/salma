@@ -1097,6 +1097,16 @@ bool Project::describeReconstruction(int id, QString& descr)
 {
     bool ok = isOpen();
 
+    std::string reconstruction_name;
+    std::string reconstruction_date;
+    std::string recording_name;
+    int recording_id = -1;
+    std::string rig_name;
+    int rig_id = -1;
+
+    int num_frames = 0;
+    int num_mappoints = 0;
+
     if(ok)
     {
         QSqlQuery q(mDB);
@@ -1106,31 +1116,69 @@ bool Project::describeReconstruction(int id, QString& descr)
 
         if(ok)
         {
-            const int rig_id = q.value(2).toInt();
-            const int recording_id = q.value(4).toInt();
-            const std::string rig_name = q.value(3).toString().toStdString();
-            const std::string recording_name = q.value(5).toString().toStdString();
-
-            std::stringstream s;
-            s << "<html><head></head><body>" << std::endl;
-
-            s << "<h3>Metadata</h3>" << std::endl;
-            s << "<table>" << std::endl;
-            s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-            s << "<tr><th>name</th><td>" << q.value(0).toString().toStdString() << "</td></tr>" << std::endl;
-            s << "<tr><th>date</th><td>" << q.value(1).toString().toStdString() << "</td></tr>" << std::endl;
-            s << "</table>" << std::endl;
-
-            s << "<h3>Input</h3>" << std::endl;
-            s << "<table>" << std::endl;
-            s << "<tr><th>Recording</th><td><em>" << recording_name << "</em> (" << recording_id << ")</td></tr>" << std::endl;
-            s << "<tr><th>Rig calibration</th><td><em>" << rig_name << "</em> (" << rig_id << ")</td></tr>" << std::endl;
-            s << "</table>" << std::endl;
-
-            s << "</body></html>" << std::endl;
-
-            descr = s.str().c_str();
+            reconstruction_name = q.value(0).toString().toStdString();
+            reconstruction_date = q.value(1).toString().toStdString();
+            rig_id = q.value(2).toInt();
+            recording_id = q.value(4).toInt();
+            rig_name = q.value(3).toString().toStdString();
+            recording_name = q.value(5).toString().toStdString();
         }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(id) FROM frames WHERE reconstruction_id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            num_frames = q.value(0).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(id) FROM frames WHERE reconstruction_id=?");
+        q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,frames WHERE projections.frame_id=frames.id AND frames.reconstruction_id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            num_mappoints = q.value(0).toInt();
+        }
+    }
+
+    if(ok)
+    {
+        std::stringstream s;
+        s << "<html><head></head><body>" << std::endl;
+
+        s << "<h3>Metadata</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << reconstruction_name << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << reconstruction_date << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+
+        s << "<h3>Input</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>Recording</th><td><em>" << recording_name << "</em> (" << recording_id << ")</td></tr>" << std::endl;
+        s << "<tr><th>Rig calibration</th><td><em>" << rig_name << "</em> (" << rig_id << ")</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+
+        s << "<h3>Reconstruction</h3>" << std::endl;
+        s << "<table>" << std::endl;
+        s << "<tr><th>Number of frames</th><td>" << num_frames << "</td></tr>" << std::endl;
+        s << "<tr><th>Number of mappoints</th><td>" << num_mappoints << "</td></tr>" << std::endl;
+        s << "</table>" << std::endl;
+
+        s << "</body></html>" << std::endl;
+
+        descr = s.str().c_str();
     }
 
     return ok;
