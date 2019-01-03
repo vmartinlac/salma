@@ -97,6 +97,13 @@ add_library(
     NewReconstructionDialog.cpp
     ReconstructionOperation.h
     ReconstructionOperation.cpp
+
+    ViewerWidget.h
+    ViewerWidget.cpp
+    ViewerWidgetBase.h
+    ViewerWidgetBase.cpp
+    ReconstructionInspectorDialog.h
+    ReconstructionInspectorDialog.cpp
 )
 
 target_link_libraries(
@@ -105,11 +112,12 @@ target_link_libraries(
     buildinfo
     calibration
     video
+    slam
     target
+    openscenegraph
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d
-    slam
 )
 
 target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

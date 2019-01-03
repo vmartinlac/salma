@@ -134,6 +134,10 @@ bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
         }
     }
 
+    // build segments.
+
+    mContext->reconstruction->buildSegments();
+
     // put reconstruction aside and clear all what was allocated.
 
     reconstruction = std::move(mContext->reconstruction);

@@ -79,7 +79,12 @@ public:
 
 typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;
 
-typedef std::vector<SLAMFramePtr> SLAMFramePtrVector;
+class SLAMSegment
+{
+public:
+
+    std::vector<SLAMFramePtr> frames;
+};
 
 class SLAMReconstruction
 {
@@ -97,7 +102,13 @@ public:
     RecordingHeaderPtr recording;
     StereoRigCalibrationDataPtr rig;
 
-    SLAMFramePtrVector frames;
+    std::vector<SLAMFramePtr> frames;
+
+    std::vector<SLAMSegment> segments;
+
+public:
+
+    void buildSegments();
 };
 
 typedef std::shared_ptr<SLAMReconstruction> SLAMReconstructionPtr;

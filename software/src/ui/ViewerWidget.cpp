@@ -5,31 +5,56 @@
 #include <osg/Point>
 #include "ViewerWidget.h"
 
-ViewerWidget::ViewerWidget(
-    VisualizationDataPort* visudata,
-    VisualizationSettingsPort* visusettings,
-    QWidget* parent) : ViewerWidgetBase(parent)
+ViewerWidget::ViewerWidget( SLAMReconstructionPtr reconstr, QWidget* parent ) : ViewerWidgetBase(parent)
 {
-    mVisualizationSettings = visusettings;
-    mVisualizationData = visudata;
-
+    mReconstruction = reconstr;
     mShowRig = true;
     mShowTrajectory = true;
     mShowMapPoints = true;
     mShowDensePoints = true;
+    mCurrentSegment = -1;
+}
 
-    connect(mVisualizationData, SIGNAL(updated()), this, SLOT(buildScene()));
-    connect(mVisualizationSettings, SIGNAL(updated()), this, SLOT(applyVisualizationSettings()));
+void ViewerWidget::showSegment(int i)
+{
+    if( 0 <= i && i < mReconstruction->segments.size())
+    {
+        mCurrentSegment = i;
+    }
+    else
+    {
+        mCurrentSegment = -1;
+    }
 
-    buildScene();
+    updateSwitches();
+}
+
+void ViewerWidget::showMapPoints(bool val)
+{
+    mShowMapPoints = val;
+    updateSwitches();
+}
+
+void ViewerWidget::showDensePoints(bool val)
+{
+    mShowDensePoints = val;
+    updateSwitches();
+}
+
+void ViewerWidget::showRigs(bool val)
+{
+    mShowRig = val;
+    updateSwitches();
+}
+
+void ViewerWidget::showTrajectory(bool val)
+{
+    mShowTrajectory = val;
+    updateSwitches();
 }
 
 void ViewerWidget::buildScene()
 {
-    mVisualizationData->beginRead();
-
-    VisualizationData& vd = mVisualizationData->data();
-
     bool go_on = true;
 
     // clear previous scene.
@@ -42,14 +67,16 @@ void ViewerWidget::buildScene()
 
     if(go_on)
     {
-        go_on = bool(vd.reconstruction);
+        go_on = bool(mReconstruction);
     }
 
     // create rig node.
 
     if(go_on)
     {
-        mRigNode = createRigNode( vd.reconstruction->left_camera_to_rig, vd.reconstruction->right_camera_to_rig );
+        mRigNode = createRigNode(
+            mReconstruction->rig->cameras[0].camera_to_rig,
+            mReconstruction->rig->cameras[1].camera_to_rig);
         go_on = (mRigNode != nullptr);
     }
 
@@ -65,37 +92,34 @@ void ViewerWidget::buildScene()
 
     if(go_on)
     {
-        ReconstructionPtr rec = vd.reconstruction;
-
-        int count = 0;
-        for( std::pair<FrameList::iterator,FrameList::iterator>& pair : vd.segments )
+        for(int i=0; i<mReconstruction->segments.size(); i++)
         {
-            addSegment( rec, pair.first, pair.second );
-            count++;
+            addSegment(mReconstruction->segments[i]);
 
-            if( mSegments.size() != count || mSegmentSwitch->getNumChildren() != count ) throw std::runtime_error("internal error");
+            go_on = ( i+1 == mSegmentSwitch->getNumChildren() && i+1 == mSegments.size() );
         }
     }
 
     if(go_on)
     {
-        mSegmentSwitch->setSingleChildOn(0);
-        _viewer->setSceneData(mSegmentSwitch);
+        mShowRig = true;
+        mShowTrajectory = true;
+        mShowMapPoints = true;
+        mShowDensePoints = true;
+        mCurrentSegment = ( mReconstruction->segments.empty() ) ? -1 : 0;
+        updateSwitches();
+        setSceneData(mSegmentSwitch);
     }
     else
     {
-        _viewer->setSceneData(nullptr);
+        setSceneData(nullptr);
         mSegmentSwitch = nullptr;
         mSegments.clear();
         mRigNode = nullptr;
     }
-
-    mVisualizationData->endRead();
-
-    applyVisualizationSettings();
 }
 
-void ViewerWidget::applyVisualizationSettings()
+void ViewerWidget::updateSwitches()
 {
     if(mSegmentSwitch != nullptr)
     {
@@ -103,38 +127,30 @@ void ViewerWidget::applyVisualizationSettings()
 
         if( mSegmentSwitch->getNumChildren() == mSegments.size() )
         {
-            mVisualizationSettings->beginRead();
-
-            const int seg = mVisualizationSettings->data().segment;
-
-            if( 0 <= seg && seg < mSegmentSwitch->getNumChildren() )
+            if( 0 <= mCurrentSegment && mCurrentSegment < mSegmentSwitch->getNumChildren() )
             {
-                mSegmentSwitch->setSingleChildOn(seg);
+                mSegmentSwitch->setSingleChildOn(mCurrentSegment);
 
-                mSegments[seg].items->setValue( mSegments[seg].index_rig, mVisualizationSettings->data().show_rig );
-                mSegments[seg].items->setValue( mSegments[seg].index_mappoints, mVisualizationSettings->data().show_mappoints );
-                mSegments[seg].items->setValue( mSegments[seg].index_densepoints, mVisualizationSettings->data().show_densepoints );
-                mSegments[seg].items->setValue( mSegments[seg].index_trajectory, mVisualizationSettings->data().show_trajectory );
+                mSegments[mCurrentSegment].items->setValue( 0, mShowRig );
+                mSegments[mCurrentSegment].items->setValue( 1, mShowTrajectory );
+                mSegments[mCurrentSegment].items->setValue( 2, mShowMapPoints );
+                mSegments[mCurrentSegment].items->setValue( 3, mShowDensePoints );
             }
-
-            mVisualizationSettings->endRead();
         }
     }
 }
 
-osg::ref_ptr<osg::Node> ViewerWidget::createDensePointsNode( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+osg::ref_ptr<osg::Node> ViewerWidget::createDensePointsNode(SLAMSegment& seg)
 {
     return new osg::Group();
 }
 
-osg::ref_ptr<osg::Node> ViewerWidget::createRigNode( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+osg::ref_ptr<osg::Node> ViewerWidget::createRigNode(SLAMSegment& seg)
 {
     osg::ref_ptr<osg::Group> grp = new osg::Group();
 
-    for( FrameList::iterator it = A; it!=B; it++)
+    for(SLAMFramePtr frame : seg.frames)
     {
-        FramePtr frame = *it;
-
         osg::ref_ptr<osg::PositionAttitudeTransform> PAT = new osg::PositionAttitudeTransform();
         PAT->addChild(mRigNode);
         setPositionAttitude(PAT, frame->frame_to_world);
@@ -145,7 +161,7 @@ osg::ref_ptr<osg::Node> ViewerWidget::createRigNode( ReconstructionPtr rec, Fram
     return grp;
 }
 
-osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode(SLAMSegment& seg)
 {
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
     osg::ref_ptr<osg::Geode> geode = new osg::Geode();
@@ -154,12 +170,10 @@ osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode( ReconstructionPtr re
     osg::ref_ptr<osg::DrawElementsUInt> primitive = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES);
 
     int count = 0;
-    for(FrameList::iterator it=A; it!=B; it++)
+    for(SLAMFramePtr f : seg.frames)
     {
-        FramePtr f = *it;
-
-        const Sophus::SE3d left_camera_to_world = f->frame_to_world * rec->left_camera_to_rig;
-        const Sophus::SE3d right_camera_to_world = f->frame_to_world * rec->right_camera_to_rig;
+        const Sophus::SE3d left_camera_to_world = f->frame_to_world * mReconstruction->rig->cameras[0].camera_to_rig;
+        const Sophus::SE3d right_camera_to_world = f->frame_to_world * mReconstruction->rig->cameras[1].camera_to_rig;
 
         vertices->push_back( osg::Vec3(
             left_camera_to_world.translation().x(),
@@ -197,12 +211,12 @@ osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode( ReconstructionPtr re
     return geode;
 }
 
-osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( SLAMSegment& seg )
 {
     struct IndexedMapPoint
     {
         int index_in_vertex_array;
-        MapPointPtr mappoint;
+        SLAMMapPointPtr mappoint;
     };
 
     std::map<int,IndexedMapPoint> indexed_mappoints;
@@ -216,13 +230,11 @@ osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( ReconstructionPtr rec
 
     // mappoints.
 
-    for(FrameList::iterator it=A; it!=B; it++)
+    for(SLAMFramePtr f : seg.frames)
     {
-        FramePtr f = *it;
-
-        for(View& v : f->views)
+        for(SLAMView& v : f->views)
         {
-            for(Projection& p : v.projections)
+            for(SLAMProjection& p : v.projections)
             {
                 if(p.mappoint)
                 {
@@ -255,30 +267,25 @@ osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( ReconstructionPtr rec
     return geode;
 }
 
-void ViewerWidget::addSegment( ReconstructionPtr rec, FrameList::iterator A, FrameList::iterator B )
+void ViewerWidget::addSegment(SLAMSegment& seg)
 {
-    osg::ref_ptr<osg::Node> node_mappoints = createMapPointsNode(rec, A, B);
-    osg::ref_ptr<osg::Node> node_densepoints = createDensePointsNode(rec, A, B);
-    osg::ref_ptr<osg::Node> node_trajectory = createTrajectoryNode(rec, A, B);
-    osg::ref_ptr<osg::Node> node_rig = createRigNode(rec, A, B);
+    osg::ref_ptr<osg::Node> node_mappoints = createMapPointsNode(seg);
+    osg::ref_ptr<osg::Node> node_densepoints = createDensePointsNode(seg);
+    osg::ref_ptr<osg::Node> node_trajectory = createTrajectoryNode(seg);
+    osg::ref_ptr<osg::Node> node_rig = createRigNode(seg);
 
     osg::ref_ptr<osg::Switch> sw = new osg::Switch();
-    sw->addChild(node_mappoints);
-    sw->addChild(node_trajectory);
-    sw->addChild(node_densepoints);
     sw->addChild(node_rig);
+    sw->addChild(node_trajectory);
+    sw->addChild(node_mappoints);
+    sw->addChild(node_densepoints);
     sw->setAllChildrenOn();
 
     SegmentData s;
-    s.index_mappoints = 0;
-    s.index_trajectory = 1;
-    s.index_densepoints = 2;
-    s.index_rig = 3;
     s.items = sw;
 
-    mSegments.push_back(s);
-
     mSegmentSwitch->addChild(sw);
+    mSegments.push_back(s);
 }
 
 osg::ref_ptr<osg::Node> ViewerWidget::createCameraNode()

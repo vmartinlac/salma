@@ -9,6 +9,7 @@
 #include "Project.h"
 #include "OperationDialog.h"
 #include "NewReconstructionDialog.h"
+#include "ReconstructionInspectorDialog.h"
 
 ReconstructionPanel::ReconstructionPanel(Project* project, QWidget* parent)
 {
@@ -88,16 +89,19 @@ void ReconstructionPanel::onShow()
 
     if(ok)
     {
-        std::cout << "OK" << std::endl;
-        std::cout << reconstruction->frames.size() << std::endl;
-        std::cout << reconstruction->name << std::endl;
-        std::cout << reconstruction->frames.back()->views[0].projections.size() << std::endl;
-        // TODO
-        /*
-        RecordingPlayerDialog* dlg = new RecordingPlayerDialog(header, this);
+        ok = ( reconstruction->segments.empty() == false );
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "This reconstruction is empty!");
+        }
+    }
+
+    if(ok)
+    {
+        ReconstructionInspectorDialog* dlg = new ReconstructionInspectorDialog(reconstruction, this);
         dlg->exec();
         delete dlg;
-        */
     }
 }
 

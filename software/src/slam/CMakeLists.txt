@@ -3,6 +3,7 @@ add_library(
     slam
     STATIC
     FinitePriorityQueue.h
+    SLAMDataStructures.cpp
     SLAMDataStructures.h
     SLAMConfiguration.cpp
     SLAMConfiguration.h

@@ -1426,6 +1426,11 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         }
     }
 
+    if(ok)
+    {
+        rec->buildSegments();
+    }
+
     mMapPointFromDB.clear();
 
     if(ok == false)

@@ -18,6 +18,8 @@ class ViewerWidgetBase : public QOpenGLWidget
 public:
 
     ViewerWidgetBase(QWidget* parent=nullptr);
+    
+    void setSceneData(osg::ref_ptr<osg::Node> node);
 
 protected:
 
@@ -35,18 +37,10 @@ public slots:
 
     void home();
 
-protected slots:
+private:
 
-    void refresh();
-
-protected:
-
-    osg::ref_ptr<osgViewer::Viewer> _viewer;
-    osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> _window;
-    osg::ref_ptr<osg::PositionAttitudeTransform> _camera;
-    osg::ref_ptr<osg::Vec3Array> _landmarks;
-    osg::ref_ptr<osg::DrawArrays> _draw_landmarks;
-    osg::ref_ptr<osg::Geometry> _landmarks_geometry;
-    int _updateTimer;
+    osg::ref_ptr<osgViewer::Viewer> mViewer;
+    osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> mWindow;
+    int mUpdateTimer;
 };
 
