@@ -1,7 +1,7 @@
 
 add_library(
-    slam
-    STATIC
+    salma_slam
+    SHARED
     FinitePriorityQueue.h
     SLAMDataStructures.cpp
     SLAMDataStructures.h
@@ -30,9 +30,9 @@ add_library(
 )
 
 target_link_libraries(
-    slam
+    salma_slam
     PUBLIC
-    Threads::Threads
+    #Threads::Threads
     Qt5::Core
     Qt5::Widgets
     Eigen3::Eigen
@@ -40,11 +40,16 @@ target_link_libraries(
     opencv_features2d
     opencv_calib3d
     opencv_video
-    video
-    mvpnp
-    calibration
-    buildinfo
+    opencv_cudastereo
+    opencv_cudaimgproc
+    salma_video
+    salma_mvpnp
+    salma_calibration
+    salma_buildinfo
+    salma_stereomatcher
 )
 
-target_include_directories(slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(salma_slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+install(TARGETS salma_slam LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

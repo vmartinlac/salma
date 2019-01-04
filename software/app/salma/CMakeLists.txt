@@ -5,5 +5,7 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(salma PUBLIC ui)
+target_link_libraries(salma PUBLIC salma_ui)
+
+install(TARGETS salma RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

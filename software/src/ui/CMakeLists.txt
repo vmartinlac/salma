@@ -1,8 +1,8 @@
 
 add_library(
-    ui
+    salma_ui
 
-    STATIC
+    SHARED
 
     db.qrc
 
@@ -107,18 +107,20 @@ add_library(
 )
 
 target_link_libraries(
-    ui
+    salma_ui
     PUBLIC
-    buildinfo
-    calibration
-    video
-    slam
-    target
+    salma_buildinfo
+    salma_calibration
+    salma_video
+    salma_slam
+    salma_target
     openscenegraph
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d
 )
 
-target_include_directories(ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(salma_ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+install(TARGETS salma_ui LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

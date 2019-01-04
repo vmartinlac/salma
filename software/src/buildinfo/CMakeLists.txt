@@ -1,15 +1,16 @@
 
 add_library(
-    buildinfo
-    STATIC
+    salma_buildinfo
+    SHARED
     BuildInfo.h
     BuildInfo.cpp
 )
 
-target_include_directories(buildinfo INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(salma_buildinfo INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_definitions(
-    buildinfo PUBLIC
+    salma_buildinfo
+    PUBLIC
     BI_VERSION_MAJOR=0
     BI_VERSION_MINOR=1
     BI_VERSION_REVISION=0
@@ -18,4 +19,6 @@ target_compile_definitions(
     BI_CXX_COMPILER_ID="$<CXX_COMPILER_ID>"
     BI_CXX_COMPILER_VERSION="$<CXX_COMPILER_VERSION>"
 )
+
+install(TARGETS salma_buildinfo LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

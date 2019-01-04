@@ -9,22 +9,20 @@ public:
     SLAMConfiguration();
     ~SLAMConfiguration();
 
-    bool debug;
-
     // opticalflow
 
-    //bool opticalflow_debug;
+    bool opticalflow_debug;
     int opticalflow_window_size;
 
     // alignment
 
-    //bool alignment_debug;
+    bool alignment_debug;
     double alignment_ransac_inlier_rate;
     double alignment_ransac_inlier_threshold;
 
     // features
 
-    //bool features_debug;
+    bool features_debug;
     double features_scale_factor;
     int features_min_width;
     int features_max_features;
@@ -33,7 +31,7 @@ public:
 
     // stereomatcher
 
-    //bool stereomatcher_debug;
+    bool stereomatcher_debug;
     bool stereomatcher_check_octave;
     bool stereomatcher_check_symmetry;
     bool stereomatcher_check_lowe;
@@ -43,13 +41,17 @@ public:
 
     // triangulation.
 
-    //bool triangulation_debug;
+    bool triangulation_debug;
     double triangulation_min_angle_between_rays;
     bool triangulation_check_perpendicular_length;
     double triangulation_perpendicular_max_length;
     double triangulation_max_reprojection_error;
     int triangulation_track_lifetime;
     bool triangulation_use_lindstrom;
+
+    // dense reconstruction.
+
+    bool densereconstruction_debug;
 };
 
 typedef std::shared_ptr<SLAMConfiguration> SLAMConfigurationPtr;

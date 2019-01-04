@@ -103,12 +103,18 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
             //std::cout << "      Number of new mappoints: " << mModuleTriangulation->getNumberOfNewMapPoints() << std::endl;
         }
 
-        /*
         {
             std::cout << "   DENSE RECONSTRUCTION" << std::endl;
             (*mModuleDenseReconstruction)();
         }
-        */
+    }
+
+    // free old images.
+
+    for(int i=0; i<int(mContext->reconstruction->frames.size())-5; i++)
+    {
+        mContext->reconstruction->frames[i]->views[0].image = cv::Mat();
+        mContext->reconstruction->frames[i]->views[1].image = cv::Mat();
     }
 
     return true;

@@ -232,7 +232,7 @@ void SLAMModuleStereoMatcher::operator()()
     mUndistortedPoints[0].clear();
     mUndistortedPoints[1].clear();
 
-    if( context()->configuration->debug )
+    if( context()->configuration->stereomatcher_debug )
     {
         std::vector<cv::DMatch> matches2(matches.size());
 

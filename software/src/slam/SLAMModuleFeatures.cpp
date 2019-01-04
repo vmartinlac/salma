@@ -49,7 +49,7 @@ void SLAMModuleFeatures::operator()()
         runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
     }
 
-    if( context()->configuration->debug )
+    if( context()->configuration->features_debug )
     {
         cv::Mat outimg;
 

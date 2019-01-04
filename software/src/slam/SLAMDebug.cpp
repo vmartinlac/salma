@@ -21,14 +21,11 @@ bool SLAMDebug::init()
 
 void SLAMDebug::saveImage(int frame, const std::string& name, const cv::Mat& image)
 {
-    if(mConfiguration->debug)
-    {
-        std::stringstream s;
-        s << std::setfill('0') << std::setw(6) << mImageCount << '_' << frame << '_' << name << ".png";
+    std::stringstream s;
+    s << std::setfill('0') << std::setw(6) << mImageCount << '_' << frame << '_' << name << ".png";
 
-        cv::imwrite(s.str(), image);
+    cv::imwrite(s.str(), image);
 
-        mImageCount++;
-    }
+    mImageCount++;
 }
 

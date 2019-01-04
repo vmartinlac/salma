@@ -4,7 +4,6 @@ add_subdirectory(mvpnp)
 add_subdirectory(slam)
 add_subdirectory(stereomatcher)
 add_subdirectory(target)
-#add_subdirectory(uivisualization)
 add_subdirectory(ui)
 add_subdirectory(video)
 

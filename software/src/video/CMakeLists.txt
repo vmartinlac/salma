@@ -1,7 +1,7 @@
 
 add_library(
-    video
-    STATIC
+    salma_video
+    SHARED
     ArduinoTrigger.cpp
     ArduinoTrigger.h
     ExternalTrigger.cpp
@@ -27,6 +27,8 @@ add_library(
     RecordingHeader.h
 )
 
-target_link_libraries(video PUBLIC Aravis opencv_core opencv_videoio opencv_imgproc opencv_imgcodecs Qt5::Core)
-target_include_directories(video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(salma_video PUBLIC opencv_core Qt5::Core)
+target_link_libraries(salma_video PRIVATE Aravis opencv_videoio opencv_imgcodecs)
+target_include_directories(salma_video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+install(TARGETS salma_video LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
