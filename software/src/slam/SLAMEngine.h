@@ -25,9 +25,9 @@ public:
 protected:
 
     SLAMContextPtr mContext;
-    SLAMModulePtr mModuleOpticalFlow;
-    SLAMModulePtr mModuleAlignment;
     SLAMModulePtr mModuleFeatures;
+    SLAMModulePtr mModuleTemporalMatcher;
+    SLAMModulePtr mModuleAlignment;
     SLAMModulePtr mModuleStereoMatcher;
     SLAMModulePtr mModuleTriangulation;
     SLAMModulePtr mModuleDenseReconstruction;

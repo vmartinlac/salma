@@ -13,12 +13,12 @@ add_library(
     SLAMContext.h
     SLAMModule.cpp
     SLAMModule.h
-    SLAMModuleOpticalFlow.cpp
-    SLAMModuleOpticalFlow.h
     SLAMModuleAlignment.cpp
     SLAMModuleAlignment.h
     SLAMModuleFeatures.cpp
     SLAMModuleFeatures.h
+    SLAMModuleTemporalMatcher.cpp
+    SLAMModuleTemporalMatcher.h
     SLAMModuleStereoMatcher.cpp
     SLAMModuleStereoMatcher.h
     SLAMModuleTriangulation.cpp
@@ -40,8 +40,8 @@ target_link_libraries(
     opencv_features2d
     opencv_calib3d
     opencv_video
-    opencv_cudastereo
-    opencv_cudaimgproc
+    #opencv_cudastereo
+    #opencv_cudaimgproc
     salma_video
     salma_mvpnp
     salma_calibration

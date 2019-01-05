@@ -1,106 +1,107 @@
+#include <opencv2/calib3d.hpp>
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleTemporalMatcher.h"
-#include "Debug.h"
+#include "SLAMDebug.h"
 
-//#define DEBUG_SHOW_OPTICAL_FLOW
-//#define DEBUG_SHOW_MATCHES
-
-SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMProjectPtr project) : SLAMModule(project)
+SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMContextPtr con) : SLAMModule(con)
 {
-    mCheckSymmetry = project->getParameterBoolean("temporal_matcher_check_symmetry", true);
-    mCheckLowe = project->getParameterBoolean("temporal_matcher_check_lowe", true);
-    mLoweRatio = project->getParameterReal("temporal_matcher_lowe_ratio", 0.85);
-    mCheckOctave = project->getParameterBoolean("temporal_matcher_check_octave", false);
-    mPredictionRadius = project->getParameterReal("temporal_matcher_prediction_radius", 30.0);
-
-    const int size = project->getParameterInteger("temporal_matcher_window_size", 21);
-
-    const int min_width = 150;
-    const int max_level = std::floor( std::log(double(project->getLeftCameraCalibration()->image_size.width)/double(min_width)) / std::log(2.0) );
-
-    mLKT = cv::SparsePyrLKOpticalFlow::create();
-
-    mLKT->setWinSize(cv::Size(size, size));
-    mLKT->setMaxLevel(max_level);
 }
 
-void SLAMModuleTemporalMatcher::match(FramePtr frame)
+bool SLAMModuleTemporalMatcher::init()
 {
-    if( frame->previous_frame )
+    SLAMContextPtr con = context();
+
+    mCheckSymmetry = true; //project->getParameterBoolean("temporal_matcher_check_symmetry", true);
+    mCheckLowe = true; //project->getParameterBoolean("temporal_matcher_check_lowe", true);
+    mLoweRatio = true; //project->getParameterReal("temporal_matcher_lowe_ratio", 0.85);
+    mCheckOctave = true; //project->getParameterBoolean("temporal_matcher_check_octave", false);
+
+    return true;
+}
+
+void SLAMModuleTemporalMatcher::operator()()
+{
+    SLAMReconstructionPtr rec = context()->reconstruction;
+
+    const int N = rec->frames.size();
+
+    if( N >= 2 )
     {
-        processView(frame, 0);
-        processView(frame, 1);
+        processView(rec->frames[N-2], rec->frames[N-1], 0);
+        processView(rec->frames[N-2], rec->frames[N-1], 1);
     }
 }
 
-void SLAMModuleTemporalMatcher::processView(FramePtr frame, int view)
+void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view)
 {
-    View& previous_view = frame->previous_frame->views[view];
-    View& current_view = frame->views[view];
+    SLAMView& previous_view = prev_frame->views[view];
+    SLAMView& current_view = curr_frame->views[view];
 
     const int N = previous_view.keypoints.size();
 
-    std::vector<cv::Point2f> opticalflow_pre;
-    cv::KeyPoint::convert( previous_view.keypoints, opticalflow_pre );
-
-    std::vector<cv::Point2f> opticalflow_post;
-    std::vector<uint8_t> opticalflow_status;
-
-    if( N > 0 )
-    {
-        mLKT->calc(
-            previous_view.image,
-            current_view.image,
-            opticalflow_pre,
-            opticalflow_post,
-            opticalflow_status);
-    }
-
     for(int i=0; i<N; i++)
     {
-        if( opticalflow_status[i] > 0 )
+        const int j = matchKeyPoint(i, previous_view, current_view, mCheckSymmetry);
+
+        if( j >= 0 )
         {
-            const int j = matchKeyPoint(i, opticalflow_post[i], previous_view, current_view, mCheckSymmetry);
-
-            if( j >= 0 )
+            /*
+            if( current_view.tracks[j].anterior_match >= 0 )
             {
-                if( current_view.tracks[j].anterior_match >= 0 )
-                {
-                    std::cerr << "Keypoint already matched!" << std::endl;
-                }
+                std::cerr << "Keypoint already matched!" << std::endl;
+            }
+            */
 
-                current_view.tracks[j].anterior_match = i;
-                previous_view.tracks[i].posterior_match = j;
+            current_view.tracks[j].previous_match = i;
+            previous_view.tracks[i].next_match = j;
+
+            SLAMProjectionType t = previous_view.tracks[i].projection_type;
+            
+            if( t == SLAM_PROJECTION_MAPPED || t == SLAM_PROJECTION_TRACKED )
+            {
+                if( bool(current_view.tracks[i].projection_mappoint) == false ) throw std::runtime_error("internal error");
+
+                current_view.tracks[j].projection_type = SLAM_PROJECTION_TRACKED;
+                current_view.tracks[j].projection_mappoint = previous_view.tracks[i].projection_mappoint;
+
+                SLAMProjection proj;
+                proj.type = SLAM_PROJECTION_TRACKED;
+                proj.mappoint = current_view.tracks[j].projection_mappoint;
+
+                current_view.projections.push_back(proj);
             }
         }
     }
 
-#ifdef DEBUG_SHOW_MATCHES
+    if( context()->configuration->temporalmatcher_debug)
     {
-        std::vector< std::pair<int,int> > matches;
+        std::vector<cv::DMatch> matches;
 
         for(int j=0; j<current_view.keypoints.size(); j++)
         {
-            const int i = current_view.tracks[j].match_in_previous_frame;
+            const int i = current_view.tracks[j].previous_match;
 
             if( i >= 0 )
             {
-                matches.push_back( std::pair<int,int>(i, j) );
+                matches.push_back( cv::DMatch(i, j, 1.0) );
             }
         }
-        std::cout << "M " << view << " " << matches.size() << std::endl;
 
-        Debug::stereoimshow(
+        cv::Mat outimg;
+
+        cv::drawMatches(
             previous_view.image,
-            current_view.image,
             previous_view.keypoints,
+            current_view.image,
             current_view.keypoints,
-            matches);
+            matches,
+            outimg);
+
+        context()->debug->saveImage(curr_frame->id, "TEMPORALMATCHING_match", outimg);
     }
-#endif
 }
 
-int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const cv::Point2f& prediction, const View& from, const View& to, bool check_symmetry)
+int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry)
 {
     FinitePriorityQueueF<int, double, 2> queue;
 
@@ -145,18 +146,9 @@ int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const cv::Point2f& predictio
         ret = queue.top();
     }
 
-    if( ret >= 0 )
-    {
-        const double distance = cv::norm(to.keypoints[ret].pt - from.keypoints[i].pt);
-        if( distance > mPredictionRadius )
-        {
-            ret = -1;
-        }
-    }
-
     if( ret >= 0 && check_symmetry )
     {
-        const int other = matchKeyPoint(ret, from.keypoints[i].pt, to, from, false);
+        const int other = matchKeyPoint(ret, to, from, false);
 
         if(other != i)
         {

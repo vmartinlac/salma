@@ -9,17 +9,6 @@ public:
     SLAMConfiguration();
     ~SLAMConfiguration();
 
-    // opticalflow
-
-    bool opticalflow_debug;
-    int opticalflow_window_size;
-
-    // alignment
-
-    bool alignment_debug;
-    double alignment_ransac_inlier_rate;
-    double alignment_ransac_inlier_threshold;
-
     // features
 
     bool features_debug;
@@ -28,6 +17,20 @@ public:
     int features_max_features;
     int features_patch_size;
     int features_fast_threshold;
+
+    // temporal matcher
+
+    bool temporalmatcher_debug;
+    bool temporalmatcher_check_symmetry;
+    bool temporalmatcher_check_lowe;
+    double temporalmatcher_lowe_ratio;
+    bool temporalmatcher_check_octave;
+
+    // alignment
+
+    bool alignment_debug;
+    double alignment_ransac_inlier_rate;
+    double alignment_ransac_inlier_threshold;
 
     // stereomatcher
 

@@ -1,5 +1,5 @@
 #include <Eigen/Eigen>
-#include <opencv2/cudaimgproc.hpp>
+//#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -55,6 +55,7 @@ bool SLAMModuleDenseReconstruction::init()
             mRectification.cameras[i].map1 );
     }
 
+    /*
     {
         int ndisp = 0;
         int iters = 0;
@@ -70,6 +71,7 @@ bool SLAMModuleDenseReconstruction::init()
         mSBP = cv::cuda::createStereoBeliefPropagation(ndisp, iters, levels);
         //std::cout << ndisp << " " << iters << " " << levels << std::endl;
     }
+    */
 
     return true;
 }

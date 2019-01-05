@@ -30,6 +30,7 @@ typedef std::shared_ptr<SLAMMapPoint> SLAMMapPointPtr;
 
 enum SLAMProjectionType
 {
+    SLAM_PROJECTION_NONE,
     SLAM_PROJECTION_MAPPED,
     SLAM_PROJECTION_TRACKED
 };
@@ -37,10 +38,34 @@ enum SLAMProjectionType
 class SLAMProjection
 {
 public:
+
+    SLAMProjection()
+    {
+        type = SLAM_PROJECTION_NONE;
+    }
+
     SLAMMapPointPtr mappoint;
     cv::Point2f point;
     SLAMProjectionType type;
     int max_lifetime;
+};
+
+class SLAMTrack
+{
+public:
+
+    SLAMTrack()
+    {
+        previous_match = -1;
+        next_match = -1;
+        projection_type = SLAM_PROJECTION_NONE;
+    }
+
+    int previous_match;
+    int next_match;
+
+    SLAMProjectionType projection_type;
+    SLAMMapPointPtr projection_mappoint;
 };
 
 class SLAMView
@@ -52,6 +77,7 @@ public:
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
     std::vector<SLAMProjection> projections;
+    std::vector<SLAMTrack> tracks;
 };
 
 class SLAMFrame

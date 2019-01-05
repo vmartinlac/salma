@@ -1,6 +1,6 @@
-#include "SLAMModuleOpticalFlow.h"
-#include "SLAMModuleAlignment.h"
 #include "SLAMModuleFeatures.h"
+#include "SLAMModuleTemporalMatcher.h"
+#include "SLAMModuleAlignment.h"
 #include "SLAMModuleStereoMatcher.h"
 #include "SLAMModuleTriangulation.h"
 #include "SLAMModuleDenseReconstruction.h"
@@ -28,9 +28,9 @@ bool SLAMEngine::initialize(
         mContext->reconstruction.reset(new SLAMReconstruction());
         mContext->debug.reset(new SLAMDebug( mContext->configuration ));
 
-        mModuleOpticalFlow.reset(new SLAMModuleOpticalFlow(mContext));
-        mModuleAlignment.reset(new SLAMModuleAlignment(mContext));
         mModuleFeatures.reset(new SLAMModuleFeatures(mContext));
+        mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mContext));
+        mModuleAlignment.reset(new SLAMModuleAlignment(mContext));
         mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mContext));
         mModuleTriangulation.reset(new SLAMModuleTriangulation(mContext));
         mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mContext));
@@ -40,9 +40,9 @@ bool SLAMEngine::initialize(
     {
         ok = ok && mContext->debug->init();
 
-        ok = ok && mModuleOpticalFlow->init();
-        ok = ok && mModuleAlignment->init();
         ok = ok && mModuleFeatures->init();
+        ok = ok && mModuleTemporalMatcher->init();
+        ok = ok && mModuleAlignment->init();
         ok = ok && mModuleStereoMatcher->init();
         ok = ok && mModuleTriangulation->init();
         ok = ok && mModuleDenseReconstruction->init();
@@ -70,10 +70,33 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
         std::cout << "PROCESSING FRAME " << curr_frame->id << std::endl;
 
         {
-            std::cout << "   OPTICAL FLOW" << std::endl;
-            (*mModuleOpticalFlow)();
-            std::cout << "      Number of projections on left view: " << curr_frame->views[0].projections.size() << std::endl;
-            std::cout << "      Number of projections on right view: " << curr_frame->views[1].projections.size() << std::endl;
+            std::cout << "   FEATURES DETECTION" << std::endl;
+            (*mModuleFeatures)();
+            std::cout << "      Num keypoints on left view: " << curr_frame->views[0].keypoints.size() << std::endl;
+            std::cout << "      Num keypoints on right view: " << curr_frame->views[1].keypoints.size() << std::endl;
+        }
+
+        {
+            std::cout << "   TEMPORAL MATCHER" << std::endl;
+            (*mModuleTemporalMatcher)();
+
+            auto count_matches = [] (SLAMView& v) -> int
+            {
+                int ret = 0;
+                for(int i=0; i<v.tracks.size(); i++)
+                {
+                    if(v.tracks[i].previous_match >= 0)
+                    {
+                        ret++;
+                    }
+                }
+                return ret;
+            };
+
+            const int left_count = count_matches( curr_frame->views[0] );
+            const int right_count = count_matches( curr_frame->views[1] );
+            std::cout << "      Num matches on left view: " << left_count << std::endl;
+            std::cout << "      Num matches on right view: " << right_count << std::endl;
         }
 
         {
@@ -82,13 +105,6 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
             std::cout << "      Alignment status: " << ( (curr_frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
             std::cout << "      Position: " << curr_frame->frame_to_world.translation().transpose() << std::endl;
             std::cout << "      Attitude: " << curr_frame->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
-        }
-
-        {
-            std::cout << "   FEATURES DETECTION" << std::endl;
-            (*mModuleFeatures)();
-            std::cout << "      Num keypoints on left view: " << curr_frame->views[0].keypoints.size() << std::endl;
-            std::cout << "      Num keypoints on right view: " << curr_frame->views[1].keypoints.size() << std::endl;
         }
 
         {
@@ -149,9 +165,9 @@ bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
     reconstruction = std::move(mContext->reconstruction);
 
     mContext.reset();
-    mModuleOpticalFlow.reset();
-    mModuleAlignment.reset();
     mModuleFeatures.reset();
+    mModuleTemporalMatcher.reset();
+    mModuleAlignment.reset();
     mModuleStereoMatcher.reset();
     mModuleTriangulation.reset();
     mModuleDenseReconstruction.reset();

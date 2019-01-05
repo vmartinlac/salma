@@ -38,21 +38,30 @@ void SLAMModuleAlignment::operator()()
 
         std::vector<MVPnP::View> views(2);
 
+        std::vector<int> projections[2];
+
         for(int i=0; i<2; i++)
         {
             views[i].calibration_matrix = rig->cameras[i].calibration->calibration_matrix;
             views[i].distortion_coefficients = rig->cameras[i].calibration->distortion_coefficients;
             views[i].rig_to_camera = rig->cameras[i].camera_to_rig.inverse();
 
-            for( SLAMProjection& p : current_frame->views[i].projections )
+            for(int j=0; j<current_frame->views[i].tracks.size(); j++)
             {
-                cv::Point3f world;
-                world.x = p.mappoint->position.x();
-                world.y = p.mappoint->position.y();
-                world.z = p.mappoint->position.z();
+                if( current_frame->views[i].tracks[j].projection_type == SLAM_PROJECTION_TRACKED )
+                {
+                    SLAMMapPointPtr mp = current_frame->views[i].tracks[j].projection_mappoint;
 
-                views[i].projections.push_back( p.point );
-                views[i].points.push_back( world );
+                    projections[i].push_back(j);
+
+                    cv::Point3f world;
+                    world.x = mp->position.x();
+                    world.y = mp->position.y();
+                    world.z = mp->position.z();
+
+                    views[i].projections.push_back( current_frame->views[i].keypoints[j].pt );
+                    views[i].points.push_back( world );
+                }
             }
         }
 
@@ -68,17 +77,15 @@ void SLAMModuleAlignment::operator()()
 
             for(int i=0; i<2; i++)
             {
-                int j = 0;
-                while( j < current_frame->views[i].projections.size() )
+                if( inliers[i].size() != projections[i].size() ) throw std::runtime_error("internal error");
+
+                for(int j=0; j<inliers[i].size(); j++)
                 {
-                    if( inliers[i][j] )
+                    if(inliers[i][j] == false)
                     {
-                        j++;
-                    }
-                    else
-                    {
-                        current_frame->views[i].projections[j] = current_frame->views[i].projections.back();
-                        current_frame->views[i].projections.pop_back();
+                        const int keypoint = projections[i][j];
+                        current_frame->views[i].tracks[keypoint].projection_type = SLAM_PROJECTION_NONE;
+                        current_frame->views[i].tracks[keypoint].projection_mappoint.reset();
                     }
                 }
             }
@@ -89,8 +96,15 @@ void SLAMModuleAlignment::operator()()
         {
             current_frame->frame_to_world = Sophus::SE3d();
             current_frame->aligned_wrt_previous_frame = false;
-            current_frame->views[0].projections.clear();
-            current_frame->views[1].projections.clear();
+
+            for(int i=0; i<2; i++)
+            {
+                for(int j=0; j<current_frame->views[i].tracks.size(); j++)
+                {
+                    current_frame->views[i].tracks[j].projection_type = SLAM_PROJECTION_NONE;
+                    current_frame->views[i].tracks[j].projection_mappoint.reset();
+                }
+            }
         }
     }
     else if(N_frames == 1)

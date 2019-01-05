@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <opencv2/cudastereo.hpp>
+//#include <opencv2/cudastereo.hpp>
 #include <opencv2/core.hpp>
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
@@ -42,6 +42,6 @@ protected:
 
     RectificationParameters mRectification;
 
-    cv::Ptr<cv::cuda::StereoBeliefPropagation> mSBP;
+    //cv::Ptr<cv::cuda::StereoBeliefPropagation> mSBP;
 };
 

@@ -47,23 +47,11 @@ void SLAMModuleTriangulation::operator()()
 
         if(world_point)
         {
-            SLAMProjection left_proj;
-            SLAMProjection right_proj;
+            frame->views[0].tracks[p.first].projection_type = SLAM_PROJECTION_MAPPED;
+            frame->views[0].tracks[p.first].projection_mappoint = world_point;
 
-            left_proj.mappoint = world_point;
-            right_proj.mappoint = world_point;
-
-            left_proj.point = frame->views[0].keypoints[p.first].pt;
-            right_proj.point = frame->views[1].keypoints[p.second].pt;
-
-            left_proj.max_lifetime = mInitialLifeTime;
-            right_proj.max_lifetime = mInitialLifeTime;
-
-            left_proj.type = SLAM_PROJECTION_MAPPED;
-            right_proj.type = SLAM_PROJECTION_MAPPED;
-
-            frame->views[0].projections.push_back( left_proj );
-            frame->views[1].projections.push_back( right_proj );
+            frame->views[1].tracks[p.second].projection_type = SLAM_PROJECTION_MAPPED;
+            frame->views[1].tracks[p.second].projection_mappoint = world_point;
         }
     }
 }

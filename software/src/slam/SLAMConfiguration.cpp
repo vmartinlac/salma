@@ -3,19 +3,22 @@
 
 SLAMConfiguration::SLAMConfiguration()
 {
-    opticalflow_debug = false;
-    opticalflow_window_size = 21;
-
-    alignment_debug = false;
-    alignment_ransac_inlier_rate = 0.8;
-    alignment_ransac_inlier_threshold = 8.0;
-
     features_debug = false;
     features_scale_factor = 1.1;
     features_min_width = 160;
     features_max_features = 500;
     features_patch_size = 31;
     features_fast_threshold = 10;
+
+    temporalmatcher_debug = true;
+    temporalmatcher_check_symmetry = true;
+    temporalmatcher_check_lowe = true;
+    temporalmatcher_lowe_ratio = 0.85;
+    temporalmatcher_check_octave = false;
+
+    alignment_debug = false;
+    alignment_ransac_inlier_rate = 0.8;
+    alignment_ransac_inlier_threshold = 8.0;
 
     stereomatcher_debug = false;
     stereomatcher_check_octave = false;
