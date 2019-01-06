@@ -25,6 +25,8 @@ bool SLAMModuleAlignment::init()
 
 void SLAMModuleAlignment::operator()()
 {
+    std::cout << "   ALIGNMENT" << std::endl;
+
     StereoRigCalibrationDataPtr rig = context()->calibration;
 
     SLAMReconstructionPtr reconstr = context()->reconstruction;
@@ -46,20 +48,21 @@ void SLAMModuleAlignment::operator()()
             views[i].distortion_coefficients = rig->cameras[i].calibration->distortion_coefficients;
             views[i].rig_to_camera = rig->cameras[i].camera_to_rig.inverse();
 
-            for(int j=0; j<current_frame->views[i].tracks.size(); j++)
-            {
-                if( current_frame->views[i].tracks[j].projection_type == SLAM_PROJECTION_TRACKED )
-                {
-                    SLAMMapPointPtr mp = current_frame->views[i].tracks[j].projection_mappoint;
+            SLAMView& v = current_frame->views[i];
+            const int N_keypoints = v.keypoints.size();
 
+            for(int j=0; j<N_keypoints; j++)
+            {
+                if( v.tracks[j].mappoint )
+                {
                     projections[i].push_back(j);
 
                     cv::Point3f world;
-                    world.x = mp->position.x();
-                    world.y = mp->position.y();
-                    world.z = mp->position.z();
+                    world.x = v.tracks[j].mappoint->position.x();
+                    world.y = v.tracks[j].mappoint->position.y();
+                    world.z = v.tracks[j].mappoint->position.z();
 
-                    views[i].projections.push_back( current_frame->views[i].keypoints[j].pt );
+                    views[i].projections.push_back( v.keypoints[j].pt );
                     views[i].points.push_back( world );
                 }
             }
@@ -75,6 +78,9 @@ void SLAMModuleAlignment::operator()()
         {
             if( inliers.size() != 2 ) throw std::runtime_error("internal error");
 
+            int num_outliers = 0;
+            int num_inliers_and_outliers = 0;
+
             for(int i=0; i<2; i++)
             {
                 if( inliers[i].size() != projections[i].size() ) throw std::runtime_error("internal error");
@@ -84,13 +90,17 @@ void SLAMModuleAlignment::operator()()
                     if(inliers[i][j] == false)
                     {
                         const int keypoint = projections[i][j];
-                        current_frame->views[i].tracks[keypoint].projection_type = SLAM_PROJECTION_NONE;
-                        current_frame->views[i].tracks[keypoint].projection_mappoint.reset();
+                        current_frame->views[i].tracks[keypoint].mappoint.reset();
+                        num_outliers++;
                     }
+
+                    num_inliers_and_outliers++;
                 }
             }
 
             current_frame->aligned_wrt_previous_frame = true;
+
+            std::cout << "      Number of outliers: " << num_outliers << " ( " << round(100.0*num_outliers/num_inliers_and_outliers) << " % )" << std::endl;
         }
         else
         {
@@ -101,8 +111,7 @@ void SLAMModuleAlignment::operator()()
             {
                 for(int j=0; j<current_frame->views[i].tracks.size(); j++)
                 {
-                    current_frame->views[i].tracks[j].projection_type = SLAM_PROJECTION_NONE;
-                    current_frame->views[i].tracks[j].projection_mappoint.reset();
+                    current_frame->views[i].tracks[j].mappoint.reset();
                 }
             }
         }
@@ -116,5 +125,9 @@ void SLAMModuleAlignment::operator()()
     {
         throw std::runtime_error("internal error");
     }
+
+    std::cout << "      Alignment status: " << ( (reconstr->frames.back()->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
+    std::cout << "      Position: " << reconstr->frames.back()->frame_to_world.translation().transpose() << std::endl;
+    std::cout << "      Attitude: " << reconstr->frames.back()->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
 }
 

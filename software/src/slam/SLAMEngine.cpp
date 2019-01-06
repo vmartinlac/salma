@@ -69,66 +69,19 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
         std::cout << "PROCESSING FRAME " << curr_frame->id << std::endl;
 
-        {
-            std::cout << "   FEATURES DETECTION" << std::endl;
-            (*mModuleFeatures)();
-            std::cout << "      Num keypoints on left view: " << curr_frame->views[0].keypoints.size() << std::endl;
-            std::cout << "      Num keypoints on right view: " << curr_frame->views[1].keypoints.size() << std::endl;
-        }
-
-        {
-            std::cout << "   TEMPORAL MATCHER" << std::endl;
-            (*mModuleTemporalMatcher)();
-
-            auto count_matches = [] (SLAMView& v) -> int
-            {
-                int ret = 0;
-                for(int i=0; i<v.tracks.size(); i++)
-                {
-                    if(v.tracks[i].previous_match >= 0)
-                    {
-                        ret++;
-                    }
-                }
-                return ret;
-            };
-
-            const int left_count = count_matches( curr_frame->views[0] );
-            const int right_count = count_matches( curr_frame->views[1] );
-            std::cout << "      Num matches on left view: " << left_count << std::endl;
-            std::cout << "      Num matches on right view: " << right_count << std::endl;
-        }
-
-        {
-            std::cout << "   ALIGNMENT" << std::endl;
-            (*mModuleAlignment)();
-            std::cout << "      Alignment status: " << ( (curr_frame->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
-            std::cout << "      Position: " << curr_frame->frame_to_world.translation().transpose() << std::endl;
-            std::cout << "      Attitude: " << curr_frame->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
-        }
-
-        {
-            std::cout << "   STEREO MATCHING" << std::endl;
-            (*mModuleStereoMatcher)();
-            std::cout << "      Number of stereo matches: " << curr_frame->stereo_matches.size() << std::endl;
-        }
-
-        {
-            std::cout << "   TRIANGULATION" << std::endl;
-            (*mModuleTriangulation)();
-            //std::cout << "      Number of new mappoints: " << mModuleTriangulation->getNumberOfNewMapPoints() << std::endl;
-        }
-
-        {
-            std::cout << "   DENSE RECONSTRUCTION" << std::endl;
-            (*mModuleDenseReconstruction)();
-        }
+        (*mModuleFeatures)();
+        (*mModuleTemporalMatcher)();
+        (*mModuleAlignment)();
+        (*mModuleStereoMatcher)();
+        (*mModuleTriangulation)();
+        (*mModuleDenseReconstruction)();
     }
 
     // free old images.
 
-    for(int i=0; i<int(mContext->reconstruction->frames.size())-5; i++)
+    if( mContext->reconstruction->frames.size() >= 2 )
     {
+        const int i = int( mContext->reconstruction->frames.size() ) - 2;
         mContext->reconstruction->frames[i]->views[0].image = cv::Mat();
         mContext->reconstruction->frames[i]->views[1].image = cv::Mat();
     }
@@ -145,11 +98,11 @@ bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
     {
         for(int i=0; i<2; i++)
         {
-            for( SLAMProjection& p : f->views[i].projections )
+            for( SLAMTrack& t : f->views[i].tracks )
             {
-                if(p.mappoint && p.mappoint->id < 0)
+                if(t.mappoint && t.mappoint->id < 0)
                 {
-                    p.mappoint->id = num_mappoints;
+                    t.mappoint->id = num_mappoints;
                     num_mappoints++;
                 }
             }

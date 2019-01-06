@@ -1263,7 +1263,6 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id)
 {
     int pose_id = -1;
-    int frame_id = -1;
 
     bool ok = true;
 
@@ -1292,43 +1291,49 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
 
     for(int v=0; ok && v<2; v++)
     {
-        for(int i=0; ok && i<frame->views[v].projections.size(); i++)
+        const int N_keypoints = frame->views[v].keypoints.size();
+
+        for(int i=0; ok && i<N_keypoints; i++)
         {
-            int mappoint_id = -1;
+            int keypoint_id = -1;
 
-            if(ok)
-            {
-                ok = saveMapPoint(frame->views[v].projections[i].mappoint, mappoint_id);
-            }
-
-            if(ok)
             {
                 QSqlQuery q(mDB);
-                q.prepare("INSERT INTO projections (frame_id, view, x_distorted, y_distorted, type, mappoint_id) VALUES(?,?,?,?,?,?)");
+                q.prepare("INSERT INTO keypoints (frame_id, view, rank, u, v) VALUES (?,?,?,?,?)");
                 q.addBindValue(id);
                 q.addBindValue(v);
-                q.addBindValue( frame->views[v].projections[i].point.x);
-                q.addBindValue( frame->views[v].projections[i].point.y);
-                switch(frame->views[v].projections[i].type)
-                {
-                case SLAM_PROJECTION_MAPPED:
-                    q.addBindValue("MAPPED");
-                    break;
-                case SLAM_PROJECTION_TRACKED:
-                    q.addBindValue("TRACKED");
-                    break;
-                default:
-                    throw std::runtime_error("internal error");
-                }
-                q.addBindValue(mappoint_id);
-
+                q.addBindValue(i);
+                q.addBindValue( frame->views[v].keypoints[i].pt.x );
+                q.addBindValue( frame->views[v].keypoints[i].pt.y );
                 ok = q.exec();
-            }
-        }
 
-        for(int i=0; ok && i<frame->views[v].keypoints.size(); i++)
-        {
-            // TODO
+                if(ok)
+                {
+                    keypoint_id = q.lastInsertId().toInt();
+                }
+            }
+
+            if( frame->views[v].tracks[i].mappoint )
+            {
+                int mappoint_id = -1;
+
+                if(ok)
+                {
+                    ok = saveMapPoint(frame->views[v].tracks[i].mappoint, mappoint_id);
+                }
+
+                if(ok)
+                {
+                    QSqlQuery q(mDB);
+                    q.prepare("INSERT INTO projections (keypoint_id, mappoint_id) VALUES(?,?)");
+                    q.addBindValue(keypoint_id);
+                    q.addBindValue(mappoint_id);
+
+                    ok = q.exec();
+                }
+            }
+
+            // TODO: save descriptor.
         }
     }
 
@@ -1473,11 +1478,6 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 
             if(ok)
             {
-                ok = loadProjections(frame_id, frame);
-            }
-
-            if(ok)
-            {
                 ok = loadKeyPoints(frame_id, frame);
             }
 
@@ -1505,65 +1505,98 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     return ok;
 }
 
-bool Project::loadProjections(int frame_id, SLAMFramePtr frame)
+bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
 {
     bool ok = true;
 
-    QSqlQuery q(mDB);
-    q.prepare("SELECT view, x_distorted, y_distorted, type, mappoint_id FROM projections WHERE frame_id=?");
-    q.addBindValue(frame_id);
-    ok = q.exec();
+    frame->views[0].keypoints.clear();
+    frame->views[0].tracks.clear();
+    frame->views[1].keypoints.clear();
+    frame->views[1].tracks.clear();
 
-    while(ok && q.next())
+    if(ok)
     {
-        SLAMProjection proj;
-        int view = -1;
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id, view, rank, u, v FROM keypoints WHERE frame_id=? ORDER BY view ASC, rank ASC");
+        q.addBindValue(frame_id);
+        ok = q.exec();
 
-        if(ok)
+        while(ok && q.next())
         {
-            view = q.value(0).toInt();
-            ok = (view == 0 || view == 1);
-        }
+            int keypoint_id = -1;
+            int view = -1;
 
-        if(ok)
-        {
-            proj.point.x = q.value(1).toDouble();
-            proj.point.y = q.value(2).toDouble();
+            cv::KeyPoint kpt;
 
-            const QString str_type = q.value(3).toString();
-
-            if(str_type == "MAPPED")
+            if(ok)
             {
-                proj.type = SLAM_PROJECTION_MAPPED;
+                keypoint_id = q.value(0).toInt();
+                view = q.value(1).toInt();
+                ok = (view == 0 || view == 1);
             }
-            else if(str_type == "TRACKED")
-            {
-                proj.type = SLAM_PROJECTION_TRACKED;
-            }
-            else
-            {
-                ok = false;
-            }
-        }
 
-        if(ok)
-        {
-            ok = loadMapPoint( q.value(4).toInt(), proj.mappoint );
-        }
+            if(ok)
+            {
+                ok = ( frame->views[view].keypoints.size() == q.value(2).toInt() );
+            }
 
-        if(ok)
-        {
-            frame->views[view].projections.push_back( std::move(proj) );
+            if(ok)
+            {
+                kpt.pt.x = q.value(3).toDouble();
+                kpt.pt.y = q.value(4).toDouble();
+            }
+
+            if(ok)
+            {
+                frame->views[view].keypoints.push_back(kpt);
+            }
         }
     }
 
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT projections.mappoint_id, keypoints.view, keypoints.rank FROM projections, keypoints WHERE keypoints.frame_id=? AND projections.keypoint_id=keypoints.id");
+        q.addBindValue(frame_id);
+        ok = q.exec();
+
+        frame->views[0].tracks.resize( frame->views[0].keypoints.size() );
+        frame->views[1].tracks.resize( frame->views[1].keypoints.size() );
+
+        while(ok && q.next())
+        {
+            int keypoint_rank = -1;
+            int view = -1;
+
+            if(ok)
+            {
+                view = q.value(1).toInt();
+                ok = (view == 0 || view == 1);
+            }
+
+            if(ok)
+            {
+                keypoint_rank = q.value(2).toInt();
+                ok = ( 0 <= keypoint_rank && keypoint_rank < frame->views[view].keypoints.size() );
+            }
+
+            if(ok)
+            {
+                ok = loadMapPoint( q.value(0).toInt(), frame->views[view].tracks[keypoint_rank].mappoint );
+            }
+        }
+    }
+
+    // TODO: load descriptors!
+
+    if(ok == false)
+    {
+        frame->views[0].keypoints.clear();
+        frame->views[0].tracks.clear();
+        frame->views[1].keypoints.clear();
+        frame->views[1].tracks.clear();
+    }
+
     return ok;
-}
-
-bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
-{
-    // TODO!
-
-    return true;
 }
 

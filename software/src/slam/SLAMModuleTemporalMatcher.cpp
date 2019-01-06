@@ -21,9 +21,12 @@ bool SLAMModuleTemporalMatcher::init()
 
 void SLAMModuleTemporalMatcher::operator()()
 {
+    std::cout << "   TEMPORAL MATCHER" << std::endl;
     SLAMReconstructionPtr rec = context()->reconstruction;
 
     const int N = rec->frames.size();
+
+    // TODO multiple frames.
 
     if( N >= 2 )
     {
@@ -36,6 +39,12 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
 {
     SLAMView& previous_view = prev_frame->views[view];
     SLAMView& current_view = curr_frame->views[view];
+
+    const bool dbg = context()->configuration->temporalmatcher_debug;
+    std::vector<cv::DMatch> dbg_matches;
+
+    int match_count = 0;
+    int projection_count = 0;
 
     const int N = previous_view.keypoints.size();
 
@@ -52,41 +61,27 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
             }
             */
 
-            current_view.tracks[j].previous_match = i;
-            previous_view.tracks[i].next_match = j;
+            //current_view.tracks[j].previous_match = i;
+            //previous_view.tracks[i].next_match = j;
 
-            SLAMProjectionType t = previous_view.tracks[i].projection_type;
-            
-            if( t == SLAM_PROJECTION_MAPPED || t == SLAM_PROJECTION_TRACKED )
+            current_view.tracks[j].mappoint = previous_view.tracks[i].mappoint;
+
+            if( current_view.tracks[j].mappoint )
             {
-                if( bool(current_view.tracks[i].projection_mappoint) == false ) throw std::runtime_error("internal error");
+                projection_count++;
+            }
 
-                current_view.tracks[j].projection_type = SLAM_PROJECTION_TRACKED;
-                current_view.tracks[j].projection_mappoint = previous_view.tracks[i].projection_mappoint;
+            match_count++;
 
-                SLAMProjection proj;
-                proj.type = SLAM_PROJECTION_TRACKED;
-                proj.mappoint = current_view.tracks[j].projection_mappoint;
-
-                current_view.projections.push_back(proj);
+            if(dbg)
+            {
+                dbg_matches.push_back( cv::DMatch(i, j, 1.0) );
             }
         }
     }
 
-    if( context()->configuration->temporalmatcher_debug)
+    if(dbg)
     {
-        std::vector<cv::DMatch> matches;
-
-        for(int j=0; j<current_view.keypoints.size(); j++)
-        {
-            const int i = current_view.tracks[j].previous_match;
-
-            if( i >= 0 )
-            {
-                matches.push_back( cv::DMatch(i, j, 1.0) );
-            }
-        }
-
         cv::Mat outimg;
 
         cv::drawMatches(
@@ -94,11 +89,14 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
             previous_view.keypoints,
             current_view.image,
             current_view.keypoints,
-            matches,
+            dbg_matches,
             outimg);
 
         context()->debug->saveImage(curr_frame->id, "TEMPORALMATCHING_match", outimg);
     }
+
+    std::cout << "      Match count on view " << view << ": " << match_count << std::endl;
+    std::cout << "      Projection count on view " << view << ": " << projection_count << std::endl;
 }
 
 int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry)

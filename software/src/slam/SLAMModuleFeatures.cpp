@@ -38,6 +38,8 @@ bool SLAMModuleFeatures::init()
 
 void SLAMModuleFeatures::operator()()
 {
+    std::cout << "   FEATURES DETECTION" << std::endl;
+
     SLAMReconstructionPtr reconstr = context()->reconstruction;
 
     if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
@@ -46,8 +48,7 @@ void SLAMModuleFeatures::operator()()
 
     for(int i=0; i<2; i++)
     {
-        runOnView(frame->views[i].image, frame->views[i].keypoints, frame->views[i].descriptors);
-        frame->views[i].tracks.resize( frame->views[i].keypoints.size() );
+        processView(frame->views[i]);
     }
 
     if( context()->configuration->features_debug )
@@ -64,11 +65,15 @@ void SLAMModuleFeatures::operator()()
 
         context()->debug->saveImage(frame->id, "FEATURES", outimg);
     }
+
+    std::cout << "      Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
+    std::cout << "      Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
 }
 
-void SLAMModuleFeatures::runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+void SLAMModuleFeatures::processView(SLAMView& v)
 {
-    mFeature2d->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
+    mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
+    v.tracks.resize( v.keypoints.size() );
 }
 
 /*

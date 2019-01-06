@@ -234,18 +234,18 @@ osg::ref_ptr<osg::Node> ViewerWidget::createMapPointsNode( SLAMSegment& seg )
     {
         for(SLAMView& v : f->views)
         {
-            for(SLAMProjection& p : v.projections)
+            for(SLAMTrack& t : v.tracks)
             {
-                if(p.mappoint)
+                if(t.mappoint)
                 {
-                    if( indexed_mappoints.count(p.mappoint->id) == 0 )
+                    if( indexed_mappoints.count(t.mappoint->id) == 0 )
                     {
-                        IndexedMapPoint& imp = indexed_mappoints[p.mappoint->id];
-                        imp.mappoint = p.mappoint;
+                        IndexedMapPoint& imp = indexed_mappoints[t.mappoint->id];
+                        imp.mappoint = t.mappoint;
                         imp.index_in_vertex_array = num_mappoints;
                         num_mappoints++;
 
-                        vertices->push_back( osg::Vec3( p.mappoint->position.x(), p.mappoint->position.y(), p.mappoint->position.z() ) );
+                        vertices->push_back( osg::Vec3( t.mappoint->position.x(), t.mappoint->position.y(), t.mappoint->position.z() ) );
                     }
                 }
             }

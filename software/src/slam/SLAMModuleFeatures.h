@@ -21,7 +21,7 @@ public:
 
 protected:
 
-    void runOnView(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
+    void processView(SLAMView& v);
 
 protected:
 

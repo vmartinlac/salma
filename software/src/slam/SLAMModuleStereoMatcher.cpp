@@ -182,6 +182,8 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
 
 void SLAMModuleStereoMatcher::operator()()
 {
+    std::cout << "   STEREO MATCHING" << std::endl;
+
     SLAMReconstructionPtr reconstr = context()->reconstruction;
 
     if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
@@ -253,5 +255,7 @@ void SLAMModuleStereoMatcher::operator()()
 
         context()->debug->saveImage(f->id, "STEREOMATCHING_matching", outimg);
     }
+
+    std::cout << "      Number of stereo matches: " << f->stereo_matches.size() << std::endl;
 }
 

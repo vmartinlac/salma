@@ -35,25 +35,32 @@ bool SLAMModuleTriangulation::init()
 
 void SLAMModuleTriangulation::operator()()
 {
+    std::cout << "   TRIANGULATION" << std::endl;
+
     SLAMReconstructionPtr reconstr = context()->reconstruction;
 
     if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
+
+    int triangulation_count = 0;
 
     SLAMFramePtr frame = reconstr->frames.back();
 
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
+        // TODO: triangulate only on regions where there are no projections.
+
         SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
 
         if(world_point)
         {
-            frame->views[0].tracks[p.first].projection_type = SLAM_PROJECTION_MAPPED;
-            frame->views[0].tracks[p.first].projection_mappoint = world_point;
+            frame->views[0].tracks[p.first].mappoint = world_point;
+            frame->views[1].tracks[p.second].mappoint = world_point;
 
-            frame->views[1].tracks[p.second].projection_type = SLAM_PROJECTION_MAPPED;
-            frame->views[1].tracks[p.second].projection_mappoint = world_point;
+            triangulation_count++;
         }
     }
+
+    std::cout << "      Number of new mappoints: " << triangulation_count << std::endl;
 }
 
 SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)

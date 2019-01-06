@@ -109,6 +109,7 @@ CREATE TABLE 'keypoints'
     'id' INTEGER PRIMARY KEY,
     'frame_id' INTEGER,
     'view' INTEGER,
+    'rank' INTEGER,
     'u' FLOAT,
     'v' FLOAT
 );
@@ -124,11 +125,7 @@ CREATE TABLE 'descriptors'
 CREATE TABLE 'projections'
 (
 	'id' INTEGER PRIMARY KEY,
-    'frame_id' INTEGER,
-    'view' INTEGER,
-	'x_distorted' FLOAT,
-    'y_distorted' FLOAT,
-	'type' INTEGER,
+    'keypoint_id' INTEGER,
 	'mappoint_id' INTEGER
 );
 

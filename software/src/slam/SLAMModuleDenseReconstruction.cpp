@@ -78,6 +78,8 @@ bool SLAMModuleDenseReconstruction::init()
 
 void SLAMModuleDenseReconstruction::operator()()
 {
+    std::cout << "   DENSE RECONSTRUCTION" << std::endl;
+
     SLAMReconstructionPtr reconstr = context()->reconstruction;
 
     if( reconstr->frames.empty() ) throw std::runtime_error("internal error");

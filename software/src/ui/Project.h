@@ -78,7 +78,6 @@ protected:
 
     bool saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id);
 
-    bool loadProjections(int frame_id, SLAMFramePtr frame);
     bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
 
 signals:
