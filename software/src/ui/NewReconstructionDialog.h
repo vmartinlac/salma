@@ -20,6 +20,11 @@ protected slots:
 
 protected:
 
+    QWidget* createNameAndInputTab();
+    QWidget* createConfigurationTab();
+
+protected:
+
     QLineEdit* mName;
     RecordingListWidget* mRecording;
     RigCalibrationListWidget* mCalibration;

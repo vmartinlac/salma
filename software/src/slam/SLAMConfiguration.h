@@ -17,6 +17,7 @@ public:
     int features_max_features;
     int features_patch_size;
     int features_fast_threshold;
+    //bool features_uniformize;
 
     // temporal matcher
 

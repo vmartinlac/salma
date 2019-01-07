@@ -131,6 +131,8 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
         ret = queue.top();
     }
 
+    //std::cout << "A " << ret << std::endl;
+
     if( ret >= 0 && mCheckEpipolar )
     {
         const int j = ret;
@@ -166,6 +168,7 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
             }
         }
     }
+    //std::cout << "B " << ret << std::endl;
 
     if( ret >= 0 && check_symmetry )
     {
@@ -176,6 +179,7 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
             ret = -1;
         }
     }
+    //std::cout << "C " << ret << std::endl;
 
     return ret;
 }

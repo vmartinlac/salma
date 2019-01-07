@@ -1,4 +1,5 @@
-
+#include <QTabWidget>
+#include <QLabel>
 #include <QVBoxLayout>
 #include <QSettings>
 #include <QMessageBox>
@@ -13,14 +14,9 @@
 
 NewReconstructionDialog::NewReconstructionDialog(Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
 {
-    mName = new QLineEdit();
-    mRecording = new RecordingListWidget(proj);
-    mCalibration = new RigCalibrationListWidget(proj);
-
-    QFormLayout* form = new QFormLayout();
-    form->addRow("Name:", mName);
-    form->addRow("Recording:", mRecording);
-    form->addRow("Rig calibration:", mCalibration);
+    QTabWidget* tab = new QTabWidget();
+    tab->addTab(createNameAndInputTab(), "Name and Input");
+    tab->addTab(createConfigurationTab(), "Configuration");
 
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
@@ -30,7 +26,7 @@ NewReconstructionDialog::NewReconstructionDialog(Project* proj, QWidget* parent)
     hlay->addWidget(btncancel);
 
     QVBoxLayout* vlay = new QVBoxLayout();
-    vlay->addLayout(form);
+    vlay->addWidget(tab);
     vlay->addLayout(hlay);
 
     setLayout(vlay);
@@ -38,6 +34,28 @@ NewReconstructionDialog::NewReconstructionDialog(Project* proj, QWidget* parent)
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));
+}
+
+QWidget* NewReconstructionDialog::createNameAndInputTab()
+{
+    mName = new QLineEdit();
+    mRecording = new RecordingListWidget(project());
+    mCalibration = new RigCalibrationListWidget(project());
+
+    QFormLayout* form = new QFormLayout();
+    form->addRow("Name:", mName);
+    form->addRow("Recording:", mRecording);
+    form->addRow("Rig calibration:", mCalibration);
+
+    QWidget* ret = new QWidget;
+    ret->setLayout(form);
+
+    return ret;
+}
+
+QWidget* NewReconstructionDialog::createConfigurationTab()
+{
+    return new QLabel("TODO");
 }
 
 void NewReconstructionDialog::accept()

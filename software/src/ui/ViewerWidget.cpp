@@ -85,7 +85,7 @@ void ViewerWidget::buildScene()
     if(go_on)
     {
         mSegmentSwitch = new osg::Switch();
-        mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        //mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     }
 
     // create each segment.

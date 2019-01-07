@@ -22,6 +22,7 @@ public:
 protected:
 
     void processView(SLAMView& v);
+    void uniformize(std::vector<cv::KeyPoint>& keypoints);
 
 protected:
 

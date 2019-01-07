@@ -79,13 +79,16 @@ int MVPnP::Solver::findInliers(
         }
 
         std::vector<cv::Point2f> projected;
-        cv::projectPoints(
-            to_project,
-            cv::Mat::zeros(3,1,CV_64F),
-            cv::Mat::zeros(3,1,CV_64F),
-            views[i].calibration_matrix,
-            views[i].distortion_coefficients,
-            projected);
+        if( to_project.empty() == false )
+        {
+            cv::projectPoints(
+                to_project,
+                cv::Mat::zeros(3,1,CV_64F),
+                cv::Mat::zeros(3,1,CV_64F),
+                views[i].calibration_matrix,
+                views[i].distortion_coefficients,
+                projected);
+        }
 
         if(projected.size() != N) throw std::runtime_error("internal error");
 

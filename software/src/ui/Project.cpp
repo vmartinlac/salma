@@ -1142,7 +1142,7 @@ bool Project::describeReconstruction(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,frames WHERE projections.frame_id=frames.id AND frames.reconstruction_id=?");
+        q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?");
         q.addBindValue(id);
         ok = q.exec() && q.next();
 

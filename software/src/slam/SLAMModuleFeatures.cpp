@@ -53,17 +53,17 @@ void SLAMModuleFeatures::operator()()
 
     if( context()->configuration->features_debug )
     {
-        cv::Mat outimg;
+        for(int i=0; i<2; i++)
+        {
+            cv::Mat outimg;
 
-        cv::drawMatches(
-            frame->views[0].image,
-            frame->views[0].keypoints,
-            frame->views[1].image,
-            frame->views[1].keypoints,
-            std::vector<cv::DMatch>(),
-            outimg);
+            cv::drawKeypoints(
+                frame->views[i].image,
+                frame->views[i].keypoints,
+                outimg);
 
-        context()->debug->saveImage(frame->id, "FEATURES", outimg);
+            context()->debug->saveImage(frame->id, "FEATURES_view"+std::to_string(i), outimg);
+        }
     }
 
     std::cout << "      Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
@@ -72,59 +72,75 @@ void SLAMModuleFeatures::operator()()
 
 void SLAMModuleFeatures::processView(SLAMView& v)
 {
-    mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
+
+    /*
+    if( context()->configuration->features_uniformize )
+    {
+        cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create(2000, 0.01, 10);
+        gftt->detect(v.image, v.keypoints);
+        uniformize(v.keypoints);
+        mFeature2d->compute( v.image, v.keypoints, v.descriptors );
+    }
+    else
+    */
+    {
+        mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
+    }
+
     v.tracks.resize( v.keypoints.size() );
 }
 
-/*
-const int N = keypoints.size();
-
-const int M = 400;
-if( N <= M ) return;
-
-std::vector<int> selection(N);
-for(int i=0; i<N; i++)
+void SLAMModuleFeatures::uniformize(std::vector<cv::KeyPoint>& keypoints)
 {
-    selection[i] = i;
-}
+    const int N = keypoints.size();
 
-std::sort( selection.begin(), selection.end(), [&keypoints] (int i, int j) { return keypoints[i].response > keypoints[j].response; } );
+    const int M = context()->configuration->features_max_features;
 
-std::vector<double> radius(N);
-
-for(int i=0; i<N; i++)
-{
-    double value = std::numeric_limits<double>::max();
-
-    const double kappa = 0.9;
-
-    for(int j=0; j<i && keypoints[selection[i]].response < kappa*keypoints[selection[j]].response; j++)
+    if( N > M )
     {
-        value = std::min(value, cv::norm( keypoints[selection[i]].pt - keypoints[selection[j]].pt ));
+        std::vector<int> selection(N);
+        for(int i=0; i<N; i++)
+        {
+            selection[i] = i;
+        }
+
+        std::sort( selection.begin(), selection.end(), [&keypoints] (int i, int j) { return keypoints[i].response > keypoints[j].response; } );
+
+        std::vector<double> radius(N);
+
+        for(int i=0; i<N; i++)
+        {
+            double value = std::numeric_limits<double>::max();
+
+            const double kappa = 1.0;
+
+            for(int j=0; j<i && keypoints[selection[i]].response < kappa*keypoints[selection[j]].response; j++)
+            {
+                value = std::min(value, cv::norm( keypoints[selection[i]].pt - keypoints[selection[j]].pt ));
+            }
+
+            radius[selection[i]] = value;
+        }
+
+        std::vector<double> sorted_radii(N);
+        std::copy(radius.begin(), radius.end(), sorted_radii.begin());
+        std::sort(sorted_radii.begin(), sorted_radii.end());
+
+        std::vector<cv::KeyPoint> fkeypoints(M);
+
+        int k = 0;
+        for(int i=0; k < M && i<N; i++)
+        {
+            if( radius[selection[i]] >= sorted_radii[M] )
+            {
+                fkeypoints[k] = keypoints[selection[i]];
+                k++;
+            }
+        }
+
+        if(k != M) throw std::runtime_error("internal error");
+
+        fkeypoints.swap(keypoints);
     }
-
-    radius[selection[i]] = value;
 }
-
-std::vector<double> sorted_radii(N);
-std::copy(radius.begin(), radius.end(), sorted_radii.begin());
-std::sort(sorted_radii.begin(), sorted_radii.end());
-
-std::vector<cv::KeyPoint> fkeypoints(M);
-cv::Mat fdescriptors(M, descriptors.cols, descriptors.type());
-
-int k = 0;
-for(int i=0; k < M && i<N; i++)
-{
-    if( radius[i] >= sorted_radii[M] )
-    {
-        fkeypoints[k] = keypoints[i];
-        fdescriptors.row(k) = descriptors.row(i);
-        k++;
-    }
-}
-
-fkeypoints.swap(keypoints);
-descriptors = std::move(fdescriptors);
-*/
 
