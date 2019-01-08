@@ -43,7 +43,7 @@ bool SLAMEngine::initialize(
 
     if(ok)
     {
-        ok && mContext->debug->init();
+        ok = mContext->debug->init();
 
         for(int i=0; ok && i<mModules.size(); i++)
         {
