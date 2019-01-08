@@ -69,6 +69,11 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
         if( j >= 0 )
         {
             match_count++;
+
+            if(dbg)
+            {
+                dbg_matches.push_back( cv::DMatch(i, j, 1.0) );
+            }
         }
 
         const bool take =
@@ -94,11 +99,6 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
             current_view.tracks[j].mappoint = previous_view.tracks[i].mappoint;
 
             projection_count++;
-
-            if(dbg)
-            {
-                dbg_matches.push_back( cv::DMatch(i, j, 1.0) );
-            }
         }
     }
 

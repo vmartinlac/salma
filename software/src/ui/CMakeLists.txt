@@ -87,11 +87,6 @@ add_library(
     ViewerWidget.cpp
     ReconstructionInspectorDialog.h
     ReconstructionInspectorDialog.cpp
-
-    KFDemoDialog.h
-    KFDemoDialog.cpp
-    KFDemoParametersDialog.h
-    KFDemoParametersDialog.cpp
 )
 
 target_link_libraries(
@@ -101,7 +96,6 @@ target_link_libraries(
     salma_calibration
     salma_video
     salma_slam
-    salma_kfd
     salma_target
     Qt5::Widgets
     Qt5::Sql

@@ -73,17 +73,51 @@ void SLAMModuleFeatures::operator()()
 void SLAMModuleFeatures::processView(SLAMView& v)
 {
 
-    /*
-    if( context()->configuration->features_uniformize )
+    //if( context()->configuration->features_uniformize )
     {
-        cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create(2000, 0.01, 10);
-        gftt->detect(v.image, v.keypoints);
+        cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create(2000);
+        bool go_on = true;
+        cv::Mat level = v.image;
+        double scale = 1.0;
+        int octave = 0;
+
+        while(go_on)
+        {
+            auto proc = [octave, scale] (const cv::KeyPoint& kp)
+            {
+                cv::KeyPoint ret = kp;
+                ret.pt.x *= scale;
+                ret.pt.y *= scale;
+                ret.octave = octave;
+                return ret;
+            };
+
+            std::vector<cv::KeyPoint> keypoints;
+
+            gftt->detect(level, keypoints);
+
+            std::transform(keypoints.begin(), keypoints.end(), std::back_inserter(v.keypoints), proc);
+
+            scale *= context()->configuration->features_scale_factor;
+
+            octave++;
+
+            go_on = ( v.image.cols / scale > context()->configuration->features_min_width );
+
+            if(go_on)
+            {
+                cv::resize(v.image, level, cv::Size(), 1.0/scale, 1.0/scale);
+            }
+        }
+
         uniformize(v.keypoints);
+
         mFeature2d->compute( v.image, v.keypoints, v.descriptors );
     }
-    */
+    //
 
-    mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
+    mFeature2d->compute( v.image, v.keypoints, v.descriptors );
+    //mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
 
     v.tracks.resize( v.keypoints.size() );
 }

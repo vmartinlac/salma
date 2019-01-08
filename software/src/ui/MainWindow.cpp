@@ -21,7 +21,6 @@
 #include "RecordingPanel.h"
 #include "ReconstructionPanel.h"
 #include "AboutDialog.h"
-#include "KFDemoDialog.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -33,9 +32,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     QAction* aClear = menuProject->addAction("Clear");
     QAction* aClose = menuProject->addAction("Close");
     QAction* aQuit = menuProject->addAction("Quit");
-
-    QMenu* menuMisc = menuBar()->addMenu("Misc");
-    QAction* aKFDemo = menuMisc->addAction("KF demo");
 
     QMenu* menuHelp = menuBar()->addMenu("Help");
     QAction* aCameras = menuHelp->addAction("Available cameras");
@@ -52,7 +48,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(aQuit, SIGNAL(triggered()), QApplication::instance(), SLOT(quit()));
     connect(aClear, SIGNAL(triggered()), this, SLOT(clearProject()));
     connect(aCameras, SIGNAL(triggered()), this, SLOT(showAvailableCameras()));
-    connect(aKFDemo, SIGNAL(triggered()), this, SLOT(kfdemo()));
     connect(aAbout, SIGNAL(triggered()), this, SLOT(about()));
 
     //
@@ -86,15 +81,6 @@ void MainWindow::about()
 {
     AboutDialog* dlg = new AboutDialog(this);
     dlg->exec();
-    delete dlg;
-}
-
-void MainWindow::kfdemo()
-{
-    KFDemoDialog* dlg = new KFDemoDialog(mProject, this);
-
-    dlg->exec();
-
     delete dlg;
 }
 

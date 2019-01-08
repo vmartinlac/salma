@@ -22,7 +22,6 @@ protected slots:
     void closeProject();
     void showAvailableCameras();
     void clearProject();
-    void kfdemo();
     void about();
 
 protected:

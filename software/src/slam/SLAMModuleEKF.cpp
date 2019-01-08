@@ -40,6 +40,8 @@ void SLAMModuleEKF::operator()()
     {
         initializeState();
     }
+
+    mLastFrameTimestamp = frame->timestamp;
 }
 
 void SLAMModuleEKF::initializeState()
@@ -75,8 +77,6 @@ void SLAMModuleEKF::initializeState()
     mSigma.diagonal().segment<4>(3).fill(attitude_sdev*attitude_sdev);
     mSigma.diagonal().segment<3>(7).fill(linear_momentum_sdev*linear_momentum_sdev);
     mSigma.diagonal().segment<3>(10).fill(angular_momentum_sdev*angular_momentum_sdev);
-
-    mLastFrameTimestamp = frame->timestamp;
 }
 
 void SLAMModuleEKF::prepareLocalMap()
@@ -205,6 +205,46 @@ void SLAMModuleEKF::prepareLocalMap()
 
 void SLAMModuleEKF::ekfPrediction()
 {
+    Eigen::SparseMatrix<double> Q;
+    Eigen::SparseMatrix<double> J;
+
+    Eigen::VectorXd new_mu;
+    Eigen::MatrixXd new_sigma;
+
+    if( context()->reconstruction->frames.empty() ) throw std::runtime_error("internal error");
+
+    SLAMFramePtr frame = context()->reconstruction->frames.back();
+
+    const double dt = frame->timestamp - mLastFrameTimestamp;
+
+    const int num_landmarks = mLocalMap.size();
+
+    const int dim = 13 + 3*num_landmarks;
+
+    // set Q.
+    {
+        // TODO: get these constants from configuration.
+        const double sigma_v = dt*5.3; //dt*0.1;
+        const double sigma_w = dt*1.2;
+
+        Q.resize(dim, dim);
+        Q.setZero();
+        Q.reserve(6);
+        Q.insert(7,7) = sigma_v*sigma_v;
+        Q.insert(8,8) = sigma_v*sigma_v;
+        Q.insert(9,9) = sigma_v*sigma_v;
+        Q.insert(10,10) = sigma_w*sigma_w;
+        Q.insert(11,11) = sigma_w*sigma_w;
+        Q.insert(12,12) = sigma_w*sigma_w;
+        Q.makeCompressed();
+    }
+
+    compute_f(mMu, dt, new_mu, J);
+
+    new_sigma = J * (mSigma + Q) * J.transpose();
+
+    mMu.swap(new_mu);
+    mSigma.swap(new_sigma);
 }
 
 void SLAMModuleEKF::ekfUpdate()
@@ -245,5 +285,164 @@ void SLAMModuleEKF::exportResult()
             mLocalMap[i]->position_covariance = mSigma.block<3,3>(13+3*i, 13+3*i);
         }
     }
+}
+
+void SLAMModuleEKF::compute_f(
+    const Eigen::VectorXd& X,
+    double dt,
+    Eigen::VectorXd& f,
+    Eigen::SparseMatrix<double>& J)
+{
+    const int dim = X.size();
+
+    if( (dim - 13) % 3 != 0 ) throw std::runtime_error("internal error");
+
+    const int num_landmarks = (dim - 13)/3;
+
+    const double x1 = X(0);
+    const double x2 = X(1);
+    const double x3 = X(2);
+
+    const double a1 = X(3);
+    const double a2 = X(4);
+    const double a3 = X(5);
+    const double a0 = X(6);
+
+    const double v1 = X(7);
+    const double v2 = X(8);
+    const double v3 = X(9);
+
+    double w1 = X(10);
+    double w2 = X(11);
+    double w3 = X(12);
+
+    // TODO: handle small rotations in a better way.
+
+    double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
+    double axis1;
+    double axis2;
+    double axis3;
+    const double theta = 0.5*norm_w*dt;
+    const double cos_theta = std::cos(theta);
+    const double sin_theta = std::sin(theta);
+    double sin_theta_over_norm_w;
+
+    if( norm_w < 1.0e-10 )
+    {
+        norm_w = 0.0;
+        axis1 = 1.0;
+        axis2 = 0.0;
+        axis3 = 0.0;
+        sin_theta_over_norm_w = 0.0;
+    }
+    else
+    {
+        axis1 = w1/norm_w;
+        axis2 = w2/norm_w;
+        axis3 = w3/norm_w;
+        sin_theta_over_norm_w = sin_theta / norm_w;
+    }
+
+    const double r1 = sin_theta * axis1;
+    const double r2 = sin_theta * axis2;
+    const double r3 = sin_theta * axis3;
+    const double r0 = cos_theta;
+
+    // fill f.
+
+    f.resize(dim);
+
+    f.head<13>() <<
+        x1 + dt*v1,
+        x2 + dt*v2,
+        x3 + dt*v3,
+        a0*r1 + r0*a1 + (a2*r3 - a3*r2),
+        a0*r2 + r0*a2 + (a3*r1 - a1*r3),
+        a0*r3 + r0*a3 + (a1*r2 - a2*r1),
+        a0*r0 - a1*r1 - a2*r2 - a3*r3,
+        v1,
+        v2,
+        v3,
+        w1,
+        w2,
+        w3;
+
+    //f.segment<4>(3).normalize();
+
+    f.tail(dim-13) = X.tail(dim-13);
+
+    // fill J.
+
+    Eigen::SparseMatrix<double, Eigen::RowMajor> Jrm;
+
+    Jrm.resize(dim, dim);
+    Jrm.setZero();
+    Jrm.reserve(40 + 3*num_landmarks);
+
+    // position.
+
+    Jrm.insert(0,0) = 1.0;
+    Jrm.insert(0,7) = dt;
+    Jrm.insert(1,1) = 1.0;
+    Jrm.insert(1,8) = dt;
+    Jrm.insert(2,2) = 1.0;
+    Jrm.insert(2,9) = dt;
+
+    // attitude.
+
+    // Generated automatically by python script system2.py.
+    // BEGIN
+    Jrm.insert(3,3) = r0;
+    Jrm.insert(3,4) = -r1;
+    Jrm.insert(3,5) = -r2;
+    Jrm.insert(3,6) = -r3;
+    Jrm.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    Jrm.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    Jrm.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    Jrm.insert(4,3) = r1;
+    Jrm.insert(4,4) = r0;
+    Jrm.insert(4,5) = r3;
+    Jrm.insert(4,6) = -r2;
+    Jrm.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    Jrm.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
+    Jrm.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
+    Jrm.insert(5,3) = r2;
+    Jrm.insert(5,4) = -r3;
+    Jrm.insert(5,5) = r0;
+    Jrm.insert(5,6) = r1;
+    Jrm.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
+    Jrm.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
+    Jrm.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
+    Jrm.insert(6,3) = r3;
+    Jrm.insert(6,4) = r2;
+    Jrm.insert(6,5) = -r1;
+    Jrm.insert(6,6) = r0;
+    Jrm.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
+    Jrm.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
+    Jrm.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
+    // END
+
+    // linear velocity.
+
+    Jrm.insert(7, 7) = 1.0;
+    Jrm.insert(8, 8) = 1.0;
+    Jrm.insert(9, 9) = 1.0;
+
+    // angular velocity.
+
+    Jrm.insert(10, 10) = 1.0;
+    Jrm.insert(11, 11) = 1.0;
+    Jrm.insert(12, 12) = 1.0;
+
+    for(int i=0; i<num_landmarks; i++)
+    {
+        Jrm.insert(13+3*i+0, 13+3*i+0) = 1.0;
+        Jrm.insert(13+3*i+1, 13+3*i+1) = 1.0;
+        Jrm.insert(13+3*i+2, 13+3*i+2) = 1.0;
+    }
+
+    Jrm.makeCompressed();
+
+    J = Jrm;
 }
 

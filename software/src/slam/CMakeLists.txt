@@ -27,8 +27,8 @@ add_library(
     SLAMModuleStereoMatcher.h
     SLAMModuleTriangulation.cpp
     SLAMModuleTriangulation.h
-    SLAMModuleDenseReconstruction.cpp
-    SLAMModuleDenseReconstruction.h
+    #SLAMModuleDenseReconstruction.cpp
+    #SLAMModuleDenseReconstruction.h
     SLAMDebug.cpp
     SLAMDebug.h
 )
@@ -44,13 +44,13 @@ target_link_libraries(
     opencv_features2d
     opencv_calib3d
     opencv_video
-    opencv_cudastereo
-    opencv_cudaimgproc
+    #opencv_cudastereo
+    #opencv_cudaimgproc
     salma_video
     salma_mvpnp
     salma_calibration
     salma_buildinfo
-    salma_stereomatcher
+    #salma_stereomatcher
 )
 
 target_include_directories(salma_slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

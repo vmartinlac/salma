@@ -22,6 +22,12 @@ protected:
     void ekfUpdate();
     void exportResult();
 
+    static void compute_f(
+        const Eigen::VectorXd& X,
+        double dt,
+        Eigen::VectorXd& f,
+        Eigen::SparseMatrix<double>& J);
+
 protected:
 
     double mLastFrameTimestamp;
