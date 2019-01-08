@@ -15,6 +15,8 @@ SLAMConfiguration::SLAMConfiguration()
     temporalmatcher_check_lowe = true;
     temporalmatcher_lowe_ratio = 0.85;
     temporalmatcher_check_octave = false;
+    temporalmatcher_max_projected_mappoints_per_view = 300;
+    temporalmatcher_num_previous_frames = 5;
 
     alignment_debug = false;
     alignment_ransac_inlier_rate = 0.8;

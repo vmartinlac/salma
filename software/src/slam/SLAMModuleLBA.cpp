@@ -1,14 +1,14 @@
-#include "SLAMModuleLocalBundleAdjustment.h"
+#include "SLAMModuleLBA.h"
 
-SLAMModuleLocalBundleAdjustment::SLAMModuleLocalBundleAdjustment(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleLBA::SLAMModuleLBA(SLAMContextPtr con) : SLAMModule(con)
 {
 }
 
-SLAMModuleLocalBundleAdjustment::~SLAMModuleLocalBundleAdjustment()
+SLAMModuleLBA::~SLAMModuleLBA()
 {
 }
 
-bool SLAMModuleLocalBundleAdjustment::init()
+bool SLAMModuleLBA::init()
 {
     SLAMContextPtr con = context();
 
@@ -17,7 +17,7 @@ bool SLAMModuleLocalBundleAdjustment::init()
     return true;
 }
 
-void SLAMModuleLocalBundleAdjustment::operator()()
+void SLAMModuleLBA::operator()()
 {
     std::cout << "   LOCAL BUNDLE ADJUSTMENT" << std::endl;
 

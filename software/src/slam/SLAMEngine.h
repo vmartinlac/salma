@@ -25,12 +25,7 @@ public:
 protected:
 
     SLAMContextPtr mContext;
-    SLAMModulePtr mModuleFeatures;
-    SLAMModulePtr mModuleTemporalMatcher;
-    SLAMModulePtr mModuleAlignment;
-    SLAMModulePtr mModuleStereoMatcher;
-    SLAMModulePtr mModuleTriangulation;
-    SLAMModulePtr mModuleDenseReconstruction;
+    std::vector<SLAMModulePtr> mModules;
 };
 
 typedef std::shared_ptr<SLAMEngine> SLAMEnginePtr;

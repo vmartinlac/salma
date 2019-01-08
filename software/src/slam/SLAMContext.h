@@ -9,10 +9,13 @@ class SLAMContext
 {
 public:
 
+    SLAMContext();
+
     StereoRigCalibrationDataPtr calibration;
     SLAMConfigurationPtr configuration;
     SLAMReconstructionPtr reconstruction;
     SLAMDebugPtr debug;
+    int num_mappoints;
 };
 
 typedef std::shared_ptr<SLAMContext> SLAMContextPtr;

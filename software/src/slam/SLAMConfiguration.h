@@ -25,6 +25,8 @@ public:
     bool temporalmatcher_check_lowe;
     double temporalmatcher_lowe_ratio;
     bool temporalmatcher_check_octave;
+    int temporalmatcher_max_projected_mappoints_per_view;
+    int temporalmatcher_num_previous_frames;
 
     // alignment
 

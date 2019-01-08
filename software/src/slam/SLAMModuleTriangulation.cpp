@@ -19,7 +19,7 @@ bool SLAMModuleTriangulation::init()
     mRightCamera = con->calibration->cameras[1].calibration;
     mRig = con->calibration;
 
-    mEssentialMatrix = mRig->computeEssentialMatrix(0, 1);
+    mEssentialMatrix = mRig->computeEssentialMatrix(1, 0);
     mS << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0;
     mEssentialMatrixTilde = mS * mEssentialMatrix * mS.transpose();
 
@@ -215,7 +215,12 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
     if(ok)
     {
         ret.reset(new SLAMMapPoint());
+        ret->id = context()->num_mappoints;
         ret->position = frame->frame_to_world * result;
+
+        // TODO: initialize covariance.
+
+        context()->num_mappoints++;
     }
 
     return ret;
@@ -223,7 +228,6 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
 
 void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right )
 {
-/*
     // See "Triangulation Made Easy" from Peter Lindstrom, Lawrence Livermore National Laboratory.
 
     Eigen::Vector3d x_left_k = normalized_left;
@@ -251,6 +255,5 @@ void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_
         x_left_k = normalized_left - lambda * (mS.transpose() * n_left_k);
         x_right_k = normalized_right - lambda * (mS.transpose() * n_right_k);
     }
-*/
 }
 

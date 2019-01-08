@@ -17,13 +17,14 @@ class SLAMMapPoint
 {
 public:
 
-    SLAMMapPoint()
-    {
-        id = -1;
-    }
+    SLAMMapPoint();
 
     int id;
+
     Eigen::Vector3d position;
+    Eigen::Matrix3d position_covariance;
+
+    int last_seen_frame_id;
 };
 
 typedef std::shared_ptr<SLAMMapPoint> SLAMMapPointPtr;
@@ -50,13 +51,7 @@ class SLAMFrame
 {
 public:
 
-    SLAMFrame()
-    {
-        id = -1;
-        rank_in_recording = -1;
-        timestamp = 0.0;
-        aligned_wrt_previous_frame = false;
-    }
+    SLAMFrame();
 
     int id;
 
@@ -65,8 +60,11 @@ public:
 
     SLAMView views[2];
     std::vector< std::pair<int,int> > stereo_matches;
-    Sophus::SE3d frame_to_world;
+
     bool aligned_wrt_previous_frame;
+
+    Sophus::SE3d frame_to_world;
+    Eigen::Matrix<double, 13, 13> pose_covariance;
 };
 
 typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;

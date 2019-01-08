@@ -9,12 +9,14 @@ SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMContextPtr con) : SLAMM
 
 bool SLAMModuleTemporalMatcher::init()
 {
-    SLAMContextPtr con = context();
+    SLAMConfigurationPtr conf = context()->configuration;
 
-    mCheckSymmetry = true; //project->getParameterBoolean("temporal_matcher_check_symmetry", true);
-    mCheckLowe = true; //project->getParameterBoolean("temporal_matcher_check_lowe", true);
-    mLoweRatio = true; //project->getParameterReal("temporal_matcher_lowe_ratio", 0.85);
-    mCheckOctave = true; //project->getParameterBoolean("temporal_matcher_check_octave", false);
+    mCheckSymmetry = conf->temporalmatcher_check_symmetry;
+    mCheckLowe = conf->temporalmatcher_check_lowe;
+    mLoweRatio = conf->temporalmatcher_lowe_ratio;
+    mCheckOctave = conf->temporalmatcher_check_octave;
+    mNumPreviousFrames = conf->temporalmatcher_num_previous_frames;
+    mMaxProjectedMapPointsPerView = conf->temporalmatcher_max_projected_mappoints_per_view;
 
     return true;
 }
@@ -22,20 +24,32 @@ bool SLAMModuleTemporalMatcher::init()
 void SLAMModuleTemporalMatcher::operator()()
 {
     std::cout << "   TEMPORAL MATCHER" << std::endl;
+
     SLAMReconstructionPtr rec = context()->reconstruction;
 
-    const int N = rec->frames.size();
+    const int N = static_cast<int>(rec->frames.size());
 
-    // TODO multiple frames.
+    if( N == 0 ) throw std::runtime_error("internal error");
 
-    if( N >= 2 )
+    for(int i=0; i<2; i++)
     {
-        processView(rec->frames[N-2], rec->frames[N-1], 0);
-        processView(rec->frames[N-2], rec->frames[N-1], 1);
+        std::set<int> projected_mappoints_ids;
+        bool go_on = true;
+
+        for(int j=0; go_on && N-2-j >= 0 && j < mNumPreviousFrames; j++)
+        {
+            processView(rec->frames[N-2-j], rec->frames[N-1], i, projected_mappoints_ids);
+
+            go_on =
+                ( projected_mappoints_ids.size() < mMaxProjectedMapPointsPerView ) &&
+                ( rec->frames[N-2-j]->aligned_wrt_previous_frame );
+        }
+
+        std::cout << "      Total number of projections on VIEW_" << i << ": " << projected_mappoints_ids.size() << std::endl;
     }
 }
 
-void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view)
+void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view, std::set<int>& projected_mappoints_ids)
 {
     SLAMView& previous_view = prev_frame->views[view];
     SLAMView& current_view = curr_frame->views[view];
@@ -54,6 +68,17 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
 
         if( j >= 0 )
         {
+            match_count++;
+        }
+
+        const bool take =
+            ( j >= 0 ) &&
+            ( bool(current_view.tracks[j].mappoint) == false ) &&
+            ( bool(previous_view.tracks[i].mappoint) == true ) &&
+            ( projected_mappoints_ids.count( previous_view.tracks[i].mappoint->id ) == 0 );
+
+        if(take)
+        {
             /*
             if( current_view.tracks[j].anterior_match >= 0 )
             {
@@ -64,14 +89,11 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
             //current_view.tracks[j].previous_match = i;
             //previous_view.tracks[i].next_match = j;
 
+            projected_mappoints_ids.insert( previous_view.tracks[i].mappoint->id );
+
             current_view.tracks[j].mappoint = previous_view.tracks[i].mappoint;
 
-            if( current_view.tracks[j].mappoint )
-            {
-                projection_count++;
-            }
-
-            match_count++;
+            projection_count++;
 
             if(dbg)
             {
@@ -95,8 +117,8 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
         context()->debug->saveImage(curr_frame->id, "TEMPORALMATCHING_match", outimg);
     }
 
-    std::cout << "      Match count on view " << view << ": " << match_count << std::endl;
-    std::cout << "      Projection count on view " << view << ": " << projection_count << std::endl;
+    std::cout << "      Match count on FRAME_" << prev_frame->id << "/FRAME_" << curr_frame->id << "/VIEW_" << view << ": " << match_count << std::endl;
+    std::cout << "      Projection count on FRAME_" << prev_frame->id << "/FRAME_" << curr_frame->id << "/VIEW_" << view << ": " << projection_count << std::endl;
 }
 
 int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry)

@@ -21,3 +21,20 @@ void SLAMReconstruction::buildSegments()
     }
 }
 
+SLAMFrame::SLAMFrame()
+{
+    id = -1;
+    rank_in_recording = -1;
+    timestamp = 0.0;
+    aligned_wrt_previous_frame = false;
+    pose_covariance.setIdentity();
+}
+
+SLAMMapPoint::SLAMMapPoint()
+{
+    id = -1;
+    position.setZero();
+    position_covariance.setIdentity();
+    last_seen_frame_id = -1;
+}
+

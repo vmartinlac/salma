@@ -1,6 +1,8 @@
 #include "SLAMModuleFeatures.h"
 #include "SLAMModuleTemporalMatcher.h"
 #include "SLAMModuleAlignment.h"
+#include "SLAMModuleEKF.h"
+#include "SLAMModuleLBA.h"
 #include "SLAMModuleStereoMatcher.h"
 #include "SLAMModuleTriangulation.h"
 #include "SLAMModuleDenseReconstruction.h"
@@ -27,25 +29,26 @@ bool SLAMEngine::initialize(
         mContext->configuration = configuration;
         mContext->reconstruction.reset(new SLAMReconstruction());
         mContext->debug.reset(new SLAMDebug( mContext->configuration ));
+        mContext->num_mappoints = 0;
 
-        mModuleFeatures.reset(new SLAMModuleFeatures(mContext));
-        mModuleTemporalMatcher.reset(new SLAMModuleTemporalMatcher(mContext));
-        mModuleAlignment.reset(new SLAMModuleAlignment(mContext));
-        mModuleStereoMatcher.reset(new SLAMModuleStereoMatcher(mContext));
-        mModuleTriangulation.reset(new SLAMModuleTriangulation(mContext));
-        mModuleDenseReconstruction.reset(new SLAMModuleDenseReconstruction(mContext));
+        mModules.emplace_back(new SLAMModuleFeatures(mContext));
+        mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
+        mModules.emplace_back(new SLAMModuleAlignment(mContext));
+        //mModules.emplace_back(new SLAMModuleEKF(mContext));
+        //mModules.emplace_back(new SLAMModuleLBA(mContext));
+        mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
+        mModules.emplace_back(new SLAMModuleTriangulation(mContext));
+        //mModules.emplace_back(new SLAMModuleDenseReconstruction(mContext));
     }
 
     if(ok)
     {
-        ok = ok && mContext->debug->init();
+        ok && mContext->debug->init();
 
-        ok = ok && mModuleFeatures->init();
-        ok = ok && mModuleTemporalMatcher->init();
-        ok = ok && mModuleAlignment->init();
-        ok = ok && mModuleStereoMatcher->init();
-        ok = ok && mModuleTriangulation->init();
-        ok = ok && mModuleDenseReconstruction->init();
+        for(int i=0; ok && i<mModules.size(); i++)
+        {
+            ok = mModules[i]->init();
+        }
     }
 
     return ok;
@@ -69,12 +72,10 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
         std::cout << "PROCESSING FRAME " << curr_frame->id << std::endl;
 
-        (*mModuleFeatures)();
-        (*mModuleTemporalMatcher)();
-        (*mModuleAlignment)();
-        (*mModuleStereoMatcher)();
-        (*mModuleTriangulation)();
-        (*mModuleDenseReconstruction)();
+        for(SLAMModulePtr module : mModules)
+        {
+            (*module)();
+        }
     }
 
     // free old images.
@@ -91,24 +92,6 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
 bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
 {
-    // assign map point ids.
-
-    int num_mappoints = 0;
-    for( SLAMFramePtr& f : mContext->reconstruction->frames )
-    {
-        for(int i=0; i<2; i++)
-        {
-            for( SLAMTrack& t : f->views[i].tracks )
-            {
-                if(t.mappoint && t.mappoint->id < 0)
-                {
-                    t.mappoint->id = num_mappoints;
-                    num_mappoints++;
-                }
-            }
-        }
-    }
-
     // build segments.
 
     mContext->reconstruction->buildSegments();
@@ -118,12 +101,7 @@ bool SLAMEngine::finalize(SLAMReconstructionPtr& reconstruction)
     reconstruction = std::move(mContext->reconstruction);
 
     mContext.reset();
-    mModuleFeatures.reset();
-    mModuleTemporalMatcher.reset();
-    mModuleAlignment.reset();
-    mModuleStereoMatcher.reset();
-    mModuleTriangulation.reset();
-    mModuleDenseReconstruction.reset();
+    mModules.clear();
 
     return true;
 }

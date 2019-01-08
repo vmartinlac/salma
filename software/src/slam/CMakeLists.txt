@@ -19,8 +19,10 @@ add_library(
     SLAMModuleTemporalMatcher.h
     SLAMModuleAlignment.cpp
     SLAMModuleAlignment.h
-    SLAMModuleLocalBundleAdjustment.cpp
-    SLAMModuleLocalBundleAdjustment.h
+    SLAMModuleLBA.cpp
+    SLAMModuleLBA.h
+    SLAMModuleEKF.cpp
+    SLAMModuleEKF.h
     SLAMModuleStereoMatcher.cpp
     SLAMModuleStereoMatcher.h
     SLAMModuleTriangulation.cpp
