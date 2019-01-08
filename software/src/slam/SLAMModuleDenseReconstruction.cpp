@@ -1,4 +1,6 @@
+#include <fstream>
 #include <Eigen/Eigen>
+#include <opencv2/cudastereo.hpp>
 //#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
@@ -55,24 +57,6 @@ bool SLAMModuleDenseReconstruction::init()
             mRectification.cameras[i].map1 );
     }
 
-    /*
-    {
-        int ndisp = 0;
-        int iters = 0;
-        int levels = 0;
-
-        cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(
-            mCameras[0]->image_size.width,
-            mCameras[0]->image_size.height,
-            ndisp,
-            iters,
-            levels);
-
-        mSBP = cv::cuda::createStereoBeliefPropagation(ndisp, iters, levels);
-        //std::cout << ndisp << " " << iters << " " << levels << std::endl;
-    }
-    */
-
     return true;
 }
 
@@ -97,11 +81,28 @@ void SLAMModuleDenseReconstruction::operator()()
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_right", rectified_right);
     }
 
-    /*
+    //
+    cv::Ptr<cv::cuda::StereoBeliefPropagation> matcher;
+
+    {
+        int ndisp = 0;
+        int iters = 0;
+        int levels = 0;
+
+        cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(
+            mCameras[0]->image_size.width/8,
+            mCameras[0]->image_size.height/8,
+            ndisp,
+            iters,
+            levels);
+
+        matcher = cv::cuda::createStereoBeliefPropagation(ndisp, iters, levels);
+    }
+
     cv::Mat tmpl;
     cv::Mat tmpr;
-    cv::resize(rectified_left, tmpl, cv::Size(), 0.5, 0.5);
-    cv::resize(rectified_right, tmpr, cv::Size(), 0.5, 0.5);
+    cv::resize(rectified_left, tmpl, cv::Size(), 0.125, 0.125);
+    cv::resize(rectified_right, tmpr, cv::Size(), 0.125, 0.125);
     rectified_left = tmpl;
     rectified_right = tmpr;
 
@@ -113,17 +114,26 @@ void SLAMModuleDenseReconstruction::operator()()
 
     cv::cuda::GpuMat d_disparity;
 
-    mSBP->compute(d_rectified_left, d_rectified_right, d_disparity);
+    matcher->compute(d_rectified_left, d_rectified_right, d_disparity);
 
     cv::Mat disparity;
     d_disparity.download(disparity);
 
     if( context()->configuration->densereconstruction_debug )
     {
+        std::ofstream f("rien.csv");
+        for(int i=0; i<disparity.rows; i++)
+        {
+            for(int j=0; j<disparity.cols; j++)
+            {
+                f << disparity.at<int16_t>(i,j) << ' ';
+            }
+            f << std::endl;
+        }
+
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpdisparity", disparity);
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpleft", rectified_left);
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpright", rectified_right);
     }
-    */
 }
 

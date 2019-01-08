@@ -15,6 +15,14 @@ TargetScaleWidget::~TargetScaleWidget()
 
 double TargetScaleWidget::getScale(bool& ok)
 {
-    return text().toInt(&ok);
+    double ret = text().toDouble(&ok);
+
+    if(ok == false || ret <= 0.0)
+    {
+        ok = false;
+        ret =  1.0;
+    }
+
+    return ret;
 }
 

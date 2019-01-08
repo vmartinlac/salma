@@ -8,18 +8,12 @@ add_library(
 
     MainWindow.h
     MainWindow.cpp
-    VideoWidget.h
-    VideoWidget.cpp
-    StatsWidget.h
-    StatsWidget.cpp
     Model.h
     Model.cpp
 
     SyncIO.h
     SyncIO.cpp
 
-    CameraList.h
-    CameraList.cpp
     TargetScaleWidget.h
     TargetScaleWidget.cpp
     CameraCalibrationListWidget.h
@@ -30,15 +24,6 @@ add_library(
     RecordingListWidget.cpp
     FrameRateWidget.h
     FrameRateWidget.cpp
-
-    AboutDialog.h
-    AboutDialog.cpp
-
-    PathWidget.h
-    PathWidget.cpp
-
-    Port.h
-    Port.cpp
 
     Project.h
     Project.cpp
@@ -100,21 +85,24 @@ add_library(
 
     ViewerWidget.h
     ViewerWidget.cpp
-    ViewerWidgetBase.h
-    ViewerWidgetBase.cpp
     ReconstructionInspectorDialog.h
     ReconstructionInspectorDialog.cpp
+
+    KFDemoDialog.h
+    KFDemoDialog.cpp
+    KFDemoParametersDialog.h
+    KFDemoParametersDialog.cpp
 )
 
 target_link_libraries(
     salma_ui
     PUBLIC
-    salma_buildinfo
+    salma_uicommon
     salma_calibration
     salma_video
     salma_slam
+    salma_kfd
     salma_target
-    openscenegraph
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d

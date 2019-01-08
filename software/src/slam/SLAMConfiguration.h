@@ -17,7 +17,6 @@ public:
     int features_max_features;
     int features_patch_size;
     int features_fast_threshold;
-    //bool features_uniformize;
 
     // temporal matcher
 
@@ -32,6 +31,10 @@ public:
     bool alignment_debug;
     double alignment_ransac_inlier_rate;
     double alignment_ransac_inlier_threshold;
+
+    /*
+    bool localbundleadjustment_debug;
+    */
 
     // stereomatcher
 
