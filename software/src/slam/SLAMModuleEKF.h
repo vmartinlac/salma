@@ -17,6 +17,15 @@ public:
 
 protected:
 
+    struct VisiblePoint
+    {
+        int local_index;
+        int view;
+        int keypoint;
+    };
+
+protected:
+
     void initializeState();
     void prepareLocalMap();
     void ekfPrediction();
@@ -29,13 +38,25 @@ protected:
         Eigen::VectorXd& f,
         Eigen::SparseMatrix<double>& J);
 
-    Eigen::Vector4d quaternionProduct(const Eigen::Vector4d& P, const Eigen::Vector4d& Q, Eigen::Matrix<double, 4, 8>& J);
+    void compute_h(
+        const Eigen::VectorXd& X,
+        const std::vector<VisiblePoint>& visible_points,
+        Eigen::VectorXd& h,
+        Eigen::SparseMatrix<double>& J);
 
-    Eigen::Vector4d rotationVectorToQuaternion(const Eigen::Vector3d& v, Eigen::Matrix<double, 4, 3>& J);
+    Eigen::Vector4d quaternionProduct(
+        const Eigen::Vector4d& P,
+        const Eigen::Vector4d& Q,
+        Eigen::Matrix<double, 4, 8>& J);
+
+    Eigen::Vector4d rotationVectorToQuaternion(
+        const Eigen::Vector3d& v,
+        Eigen::Matrix<double, 4, 3>& J);
 
 protected:
 
     double mLastFrameTimestamp;
+    SLAMFramePtr mCurrentFrame;
     std::vector<SLAMMapPointPtr> mLocalMap;
     Eigen::VectorXd mMu;
     Eigen::MatrixXd mSigma;

@@ -2,6 +2,9 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <Eigen/Eigen>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/eigen.hpp>
 #include "SLAMModuleEKF.h"
 
 SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) : SLAMModule(con)
@@ -29,9 +32,9 @@ void SLAMModuleEKF::operator()()
 
     if( reconstr->frames.empty() ) throw std::runtime_error("internal error");
 
-    SLAMFramePtr frame = reconstr->frames.back();
+    mCurrentFrame = reconstr->frames.back();
 
-    if(frame->aligned_wrt_previous_frame)
+    if(mCurrentFrame->aligned_wrt_previous_frame)
     {
         prepareLocalMap();
         ekfPrediction();
@@ -43,26 +46,23 @@ void SLAMModuleEKF::operator()()
         initializeState();
     }
 
-    mLastFrameTimestamp = frame->timestamp;
+    mLastFrameTimestamp = mCurrentFrame->timestamp;
+    mCurrentFrame.reset();
 }
 
 void SLAMModuleEKF::initializeState()
 {
-    if( context()->reconstruction->frames.empty() ) throw std::runtime_error("internal error");
-
-    SLAMFramePtr frame = context()->reconstruction->frames.back();
-
     mLocalMap.clear();
 
     mMu.resize(13);
     mMu.setZero();
-    mMu(0) = frame->frame_to_world.translation().x();
-    mMu(1) = frame->frame_to_world.translation().y();
-    mMu(2) = frame->frame_to_world.translation().z();
-    mMu(3) = frame->frame_to_world.unit_quaternion().x();
-    mMu(4) = frame->frame_to_world.unit_quaternion().y();
-    mMu(5) = frame->frame_to_world.unit_quaternion().z();
-    mMu(6) = frame->frame_to_world.unit_quaternion().w();
+    mMu(0) = mCurrentFrame->frame_to_world.translation().x();
+    mMu(1) = mCurrentFrame->frame_to_world.translation().y();
+    mMu(2) = mCurrentFrame->frame_to_world.translation().z();
+    mMu(3) = mCurrentFrame->frame_to_world.unit_quaternion().x();
+    mMu(4) = mCurrentFrame->frame_to_world.unit_quaternion().y();
+    mMu(5) = mCurrentFrame->frame_to_world.unit_quaternion().z();
+    mMu(6) = mCurrentFrame->frame_to_world.unit_quaternion().w();
     mMu(7) = 0.0;
     mMu(8) = 0.0;
     mMu(9) = 0.0;
@@ -89,14 +89,6 @@ void SLAMModuleEKF::prepareLocalMap()
     Eigen::VectorXd new_mu;
     Eigen::MatrixXd new_sigma;
 
-    SLAMFramePtr frame;
-
-    // retrieve last frame.
-
-    if( context()->reconstruction->frames.empty() ) throw std::runtime_error("internal error");
-
-    frame = context()->reconstruction->frames.back();
-
     // create new local map with as many mappoints as possible.
 
     {
@@ -114,7 +106,7 @@ void SLAMModuleEKF::prepareLocalMap()
 
         for(int i=0; i<2; i++)
         {
-            for(SLAMTrack& t : frame->views[i].tracks)
+            for(SLAMTrack& t : mCurrentFrame->views[i].tracks)
             {
                 if( t.mappoint && new_local_map_content.count(t.mappoint->id) == 0 )
                 {
@@ -206,8 +198,8 @@ void SLAMModuleEKF::prepareLocalMap()
     mMu.swap(new_mu);
     mSigma.swap(new_sigma);
 
-    //
-    std::ofstream f("tmp"+std::to_string(frame->id)+".csv");
+    /*
+    std::ofstream f("tmp"+std::to_string(mCurrentFrame->id)+".csv");
     for(int i=0; i<mSigma.rows(); i++)
     {
         for(int j=0; j<mSigma.cols(); j++)
@@ -217,7 +209,7 @@ void SLAMModuleEKF::prepareLocalMap()
         f << std::endl;
     }
     f.close();
-    //
+    */
 }
 
 void SLAMModuleEKF::ekfPrediction()
@@ -251,11 +243,7 @@ void SLAMModuleEKF::ekfPrediction()
     Eigen::VectorXd new_mu;
     Eigen::MatrixXd new_sigma;
 
-    if( context()->reconstruction->frames.empty() ) throw std::runtime_error("internal error");
-
-    SLAMFramePtr frame = context()->reconstruction->frames.back();
-
-    const double dt = frame->timestamp - mLastFrameTimestamp;
+    const double dt = mCurrentFrame->timestamp - mLastFrameTimestamp;
 
     const int num_landmarks = mLocalMap.size();
 
@@ -282,8 +270,16 @@ void SLAMModuleEKF::ekfPrediction()
     compute_f(mMu, dt, new_mu, J);
 
     new_sigma = J * (mSigma + Q) * J.transpose();
+
     //const double symm_err = ( new_sigma - new_sigma.transpose() ).norm();
     //std::cout << "symm = " << symm_err << std::endl;
+
+    /*
+    std::cout << mMu.head<13>().transpose() << std::endl;
+    std::cout << new_mu.head<13>().transpose() << std::endl;
+    std::cout << mSigma.block<13,13>(0,0) << std::endl;
+    std::cout << new_sigma.block<13,13>(0,0) << std::endl;
+    */
 
     mMu.swap(new_mu);
     mSigma.swap(new_sigma);
@@ -291,6 +287,92 @@ void SLAMModuleEKF::ekfPrediction()
 
 void SLAMModuleEKF::ekfUpdate()
 {
+    std::vector<VisiblePoint> visible_points;
+    Eigen::VectorXd predicted_projections;
+    Eigen::VectorXd observed_projections;
+    Eigen::SparseMatrix<double> J;
+    Eigen::SparseMatrix<double> observation_noise;
+
+    // find visible points (mappoints which are in local map and have at least one projection in current frame).
+
+    {
+        std::map<int,int> local_map_inv;
+
+        for(int i=0; i<mLocalMap.size(); i++)
+        {
+            local_map_inv[mLocalMap[i]->id] = i;
+        }
+
+
+        for(int i=0; i<2; i++)
+        {
+            for(int j=0; j<mCurrentFrame->views[i].keypoints.size(); j++)
+            {
+                SLAMMapPointPtr mp = mCurrentFrame->views[i].tracks[j].mappoint;
+
+                if(mp)
+                {
+                    std::map<int,int>::iterator it = local_map_inv.find(mp->id);
+
+                    if(it != local_map_inv.end())
+                    {
+                        VisiblePoint vpt;
+                        vpt.local_index = it->second;
+                        vpt.view = i;
+                        vpt.keypoint = j;
+                        visible_points.push_back(vpt);
+                    }
+                }
+            }
+        }
+
+        // if we arrive to this point, it means that the frame was successfully aligned by MVPnP. So there must be some visible points.
+        if(visible_points.empty()) throw std::runtime_error("internal error");
+    }
+
+    // compute predicted and observed projections.
+
+    {
+        const int dim = 2*visible_points.size();
+
+        compute_h(mMu, visible_points, predicted_projections, J);
+
+        if(predicted_projections.size() != dim) throw std::runtime_error("internal error");
+
+        observation_noise.setZero();
+        observation_noise.resize(dim, dim);
+        observation_noise.reserve(dim);
+
+        observed_projections.resize(dim);
+
+        const double proj_sdev = 5.0;
+
+        for(int i=0; i<observed_projections.size(); i++)
+        {
+            observed_projections(2*i+0) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.x;
+            observed_projections(2*i+1) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.y;
+
+            observation_noise.insert(2*i+0, 2*i+0) = proj_sdev*proj_sdev;
+            observation_noise.insert(2*i+1, 2*i+1) = proj_sdev*proj_sdev;
+        }
+    }
+
+    // compute new belief.
+
+    {
+        const Eigen::VectorXd residuals = observed_projections - predicted_projections;
+
+        const Eigen::MatrixXd S = J * mSigma * J.transpose() + observation_noise;
+
+        Eigen::LDLT< Eigen::MatrixXd > solver;
+        solver.compute( S );
+
+        Eigen::VectorXd new_mu = mMu + mSigma * J.transpose() * solver.solve( residuals );
+        Eigen::MatrixXd new_sigma = mSigma - mSigma * J.transpose() * solver.solve( J * mSigma );
+
+        mMu.swap(new_mu);
+        mSigma.swap(new_sigma);
+    }
 }
 
 void SLAMModuleEKF::exportResult()
@@ -298,12 +380,6 @@ void SLAMModuleEKF::exportResult()
     // export frame pose.
 
     {
-        SLAMFramePtr frame;
-
-        if( context()->reconstruction->frames.empty() ) throw std::runtime_error("internal error");
-
-        frame = context()->reconstruction->frames.back();
-
         Eigen::Vector3d position;
         Eigen::Quaterniond attitude;
 
@@ -313,9 +389,9 @@ void SLAMModuleEKF::exportResult()
         attitude.z() = mMu(5);
         attitude.w() = mMu(6);
 
-        frame->frame_to_world.translation() = position;
-        frame->frame_to_world.setQuaternion(attitude);
-        frame->pose_covariance = mSigma.block<13,13>(0,0);
+        mCurrentFrame->frame_to_world.translation() = position;
+        mCurrentFrame->frame_to_world.setQuaternion(attitude);
+        mCurrentFrame->pose_covariance = mSigma.block<13,13>(0,0);
     }
 
     // export mappoints positions.
@@ -567,5 +643,87 @@ Eigen::Vector4d SLAMModuleEKF::rotationVectorToQuaternion(const Eigen::Vector3d&
     J( 3, 2 ) = -0.5*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
 
     return ret;
+}
+
+void SLAMModuleEKF::compute_h(
+    const Eigen::VectorXd& X,
+    const std::vector<VisiblePoint>& visible_points,
+    Eigen::VectorXd& h,
+    Eigen::SparseMatrix<double>& J)
+{
+    StereoRigCalibrationDataPtr calibration = context()->calibration;;
+    SLAMFramePtr frame = mCurrentFrame;
+
+    Sophus::SE3d world_to_camera[2];
+
+    const int dim = 2*visible_points.size();
+
+    h.resize(dim);
+
+    J.setZero();
+    J.resize(dim, 13 + mLocalMap.size());
+    J.reserve( 20 * visible_points.size() );
+
+    {
+        Eigen::Vector3d world_to_rig_t = X.segment<3>(0);
+
+        Eigen::Quaterniond world_to_rig_q;
+        world_to_rig_q.vec() = X.segment<3>(3);
+        world_to_rig_q.w() = X(6);
+
+        Sophus::SE3d world_to_rig(world_to_rig_q, world_to_rig_t);
+
+        for(int i=0; i<2; i++)
+        {
+            world_to_camera[i] = calibration->cameras[i].camera_to_rig.inverse() * world_to_rig;
+        }
+    }
+
+    for(int i=0; i<visible_points.size(); i++)
+    {
+        const VisiblePoint& vpt = visible_points[i];
+
+        SLAMMapPointPtr mpt = mLocalMap[vpt.local_index];
+        SLAMMapPointPtr mpt2 = frame->views[vpt.view].tracks[vpt.keypoint].mappoint;
+
+        if( bool(mpt) == false || bool(mpt2) == false || mpt->id != mpt2->id ) throw std::runtime_error("internal error");
+
+        const Eigen::Vector3d mappoint_in_camera_frame = world_to_camera[vpt.view] * mpt->position;
+
+        const std::vector<cv::Point3f> mappoint_in_camera_frame_cv{ cv::Point3f(mappoint_in_camera_frame.x(), mappoint_in_camera_frame.y(), mappoint_in_camera_frame.z()) };
+
+        std::vector<cv::Point2f> proj;
+        cv::Mat J_proj;
+
+        cv::projectPoints(
+            mappoint_in_camera_frame_cv,
+            cv::Mat::zeros(3, 1, CV_64F),
+            cv::Mat::zeros(3, 1, CV_64F),
+            calibration->cameras[vpt.view].calibration->calibration_matrix,
+            calibration->cameras[vpt.view].calibration->distortion_coefficients,
+            proj,
+            J_proj);
+
+        h(2*i+0) = proj.front().x;
+        h(2*i+1) = proj.front().y;
+
+        for(int j=0; j<2; j++)
+        {
+            /*
+            J.insert(2*i+j, 0) +=
+            J.insert(2*i+j, 1) +=
+            J.insert(2*i+j, 2) +=
+
+            J.insert(2*i+j, 3) +=
+            J.insert(2*i+j, 4) +=
+            J.insert(2*i+j, 5) +=
+            J.insert(2*i+j, 6) +=
+
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+0) +=
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+1) +=
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+2) +=
+            */
+        }
+    }
 }
 
