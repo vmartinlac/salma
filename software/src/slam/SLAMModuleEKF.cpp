@@ -1,4 +1,6 @@
 #include <set>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include "SLAMModuleEKF.h"
 
@@ -53,6 +55,7 @@ void SLAMModuleEKF::initializeState()
     mLocalMap.clear();
 
     mMu.resize(13);
+    mMu.setZero();
     mMu(0) = frame->frame_to_world.translation().x();
     mMu(1) = frame->frame_to_world.translation().y();
     mMu(2) = frame->frame_to_world.translation().z();
@@ -73,6 +76,7 @@ void SLAMModuleEKF::initializeState()
     const double angular_momentum_sdev = M_PI*0.4;
 
     mSigma.resize(13, 13);
+    mSigma.setZero();
     mSigma.diagonal().segment<3>(0).fill(position_sdev*position_sdev);
     mSigma.diagonal().segment<4>(3).fill(attitude_sdev*attitude_sdev);
     mSigma.diagonal().segment<3>(7).fill(linear_momentum_sdev*linear_momentum_sdev);
@@ -194,17 +198,53 @@ void SLAMModuleEKF::prepareLocalMap()
         }
 
         // assert that new_sigma is symmetric.
-        const double symm_err = ( new_sigma - new_sigma.transpose() ).norm();
-        std::cout << symm_err << std::endl;
+        //const double symm_err = ( new_sigma - new_sigma.transpose() ).norm();
+        //std::cout << symm_err << std::endl;
     }
 
     mLocalMap.swap(new_local_map);
     mMu.swap(new_mu);
     mSigma.swap(new_sigma);
+
+    //
+    std::ofstream f("tmp"+std::to_string(frame->id)+".csv");
+    for(int i=0; i<mSigma.rows(); i++)
+    {
+        for(int j=0; j<mSigma.cols(); j++)
+        {
+            f << mSigma(i,j) << ' ';
+        }
+        f << std::endl;
+    }
+    f.close();
+    //
 }
 
 void SLAMModuleEKF::ekfPrediction()
 {
+    /*
+    {
+
+    Eigen::VectorXd X(13);
+    X.segment<3>(0) << 0.0, 0.0, 0.0;
+    X.segment<4>(3) << 0.0, 0.0, 0.0, 1.0;
+    X.segment<3>(7) << 0.0, 0.0, 0.0;
+    X.segment<3>(10) << 0.0, 0.0, M_PI*0.5;
+
+    for(int i=0; i<6; i++)
+    {
+        Eigen::VectorXd f;
+        Eigen::SparseMatrix<double> J;
+
+        compute_f(X, 0.5, f, J);
+        std::cout << f.transpose() << std::endl;
+        X.swap(f);
+    }
+    exit(0);
+
+    }
+    */
+
     Eigen::SparseMatrix<double> Q;
     Eigen::SparseMatrix<double> J;
 
@@ -242,6 +282,8 @@ void SLAMModuleEKF::ekfPrediction()
     compute_f(mMu, dt, new_mu, J);
 
     new_sigma = J * (mSigma + Q) * J.transpose();
+    //const double symm_err = ( new_sigma - new_sigma.transpose() ).norm();
+    //std::cout << "symm = " << symm_err << std::endl;
 
     mMu.swap(new_mu);
     mSigma.swap(new_sigma);
@@ -299,76 +341,27 @@ void SLAMModuleEKF::compute_f(
 
     const int num_landmarks = (dim - 13)/3;
 
-    const double x1 = X(0);
-    const double x2 = X(1);
-    const double x3 = X(2);
+    const Eigen::Vector3d r = X.segment<3>(0);
+    const Eigen::Vector4d q = X.segment<4>(3);
+    const Eigen::Vector3d v = X.segment<3>(7);
+    const Eigen::Vector3d w = X.segment<3>(10);
 
-    const double a1 = X(3);
-    const double a2 = X(4);
-    const double a3 = X(5);
-    const double a0 = X(6);
+    Eigen::Matrix<double, 4, 3> Js;
+    const Eigen::Vector4d s = rotationVectorToQuaternion(w*dt, Js);
 
-    const double v1 = X(7);
-    const double v2 = X(8);
-    const double v3 = X(9);
+    Eigen::Matrix<double, 4, 8> Jt;
+    Eigen::Vector4d t = quaternionProduct(q, s, Jt);
 
-    double w1 = X(10);
-    double w2 = X(11);
-    double w3 = X(12);
-
-    // TODO: handle small rotations in a better way.
-
-    double norm_w = std::sqrt(w1*w1 + w2*w2 + w3*w3);
-    double axis1;
-    double axis2;
-    double axis3;
-    const double theta = 0.5*norm_w*dt;
-    const double cos_theta = std::cos(theta);
-    const double sin_theta = std::sin(theta);
-    double sin_theta_over_norm_w;
-
-    if( norm_w < 1.0e-10 )
-    {
-        norm_w = 0.0;
-        axis1 = 1.0;
-        axis2 = 0.0;
-        axis3 = 0.0;
-        sin_theta_over_norm_w = 0.0;
-    }
-    else
-    {
-        axis1 = w1/norm_w;
-        axis2 = w2/norm_w;
-        axis3 = w3/norm_w;
-        sin_theta_over_norm_w = sin_theta / norm_w;
-    }
-
-    const double r1 = sin_theta * axis1;
-    const double r2 = sin_theta * axis2;
-    const double r3 = sin_theta * axis3;
-    const double r0 = cos_theta;
+    const Eigen::Matrix4d Jq_wrt_q = Jt.leftCols<4>();
+    const Eigen::Matrix<double, 4, 3> Jq_wrt_w = Jt.rightCols<4>() * Js;
 
     // fill f.
 
     f.resize(dim);
-
-    f.head<13>() <<
-        x1 + dt*v1,
-        x2 + dt*v2,
-        x3 + dt*v3,
-        a0*r1 + r0*a1 + (a2*r3 - a3*r2),
-        a0*r2 + r0*a2 + (a3*r1 - a1*r3),
-        a0*r3 + r0*a3 + (a1*r2 - a2*r1),
-        a0*r0 - a1*r1 - a2*r2 - a3*r3,
-        v1,
-        v2,
-        v3,
-        w1,
-        w2,
-        w3;
-
-    //f.segment<4>(3).normalize();
-
+    f.segment<3>(0) = r + dt*v;
+    f.segment<4>(3) = t.normalized();
+    f.segment<3>(7) = v;
+    f.segment<3>(10) = w;
     f.tail(dim-13) = X.tail(dim-13);
 
     // fill J.
@@ -390,37 +383,37 @@ void SLAMModuleEKF::compute_f(
 
     // attitude.
 
-    // Generated automatically by python script system2.py.
-    // BEGIN
-    Jrm.insert(3,3) = r0;
-    Jrm.insert(3,4) = -r1;
-    Jrm.insert(3,5) = -r2;
-    Jrm.insert(3,6) = -r3;
-    Jrm.insert(3,10) = -0.5*a0*dt*r1 - 0.5*a1*dt*axis1*axis1*cos_theta + 1.0*a1*axis1*axis1*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis3*cos_theta + 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
-    Jrm.insert(3,11) = -0.5*a0*dt*r2 - 0.5*a1*dt*axis1*axis2*cos_theta + 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis2*cos_theta + 1.0*a2*axis2*axis2*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
-    Jrm.insert(3,12) = -0.5*a0*dt*r3 - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis2*axis3*cos_theta + 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis3*axis3*cos_theta + 1.0*a3*axis3*axis3*sin_theta_over_norm_w - a3*norm_w*sin_theta;
-    Jrm.insert(4,3) = r1;
-    Jrm.insert(4,4) = r0;
-    Jrm.insert(4,5) = r3;
-    Jrm.insert(4,6) = -r2;
-    Jrm.insert(4,10) = 0.5*a0*dt*axis1*axis1*cos_theta - 1.0*a0*axis1*axis1*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*r1 + 0.5*a2*dt*axis1*axis3*cos_theta - 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis1*axis2*cos_theta + 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
-    Jrm.insert(4,11) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*r2 + 0.5*a2*dt*axis2*axis3*cos_theta - 1.0*a2*axis2*axis3*sin_theta_over_norm_w - 0.5*a3*dt*axis2*axis2*cos_theta + 1.0*a3*axis2*axis2*sin_theta_over_norm_w - a3*norm_w*sin_theta;
-    Jrm.insert(4,12) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w - 0.5*a1*dt*r3 + 0.5*a2*dt*axis3*axis3*cos_theta - 1.0*a2*axis3*axis3*sin_theta_over_norm_w + a2*norm_w*sin_theta - 0.5*a3*dt*axis2*axis3*cos_theta + 1.0*a3*axis2*axis3*sin_theta_over_norm_w;
-    Jrm.insert(5,3) = r2;
-    Jrm.insert(5,4) = -r3;
-    Jrm.insert(5,5) = r0;
-    Jrm.insert(5,6) = r1;
-    Jrm.insert(5,10) = 0.5*a0*dt*axis1*axis2*cos_theta - 1.0*a0*axis1*axis2*sin_theta_over_norm_w - 0.5*a1*dt*axis1*axis3*cos_theta + 1.0*a1*axis1*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r1 + 0.5*a3*dt*axis1*axis1*cos_theta - 1.0*a3*axis1*axis1*sin_theta_over_norm_w + a3*norm_w*sin_theta;
-    Jrm.insert(5,11) = 0.5*a0*dt*axis2*axis2*cos_theta - 1.0*a0*axis2*axis2*sin_theta_over_norm_w + a0*norm_w*sin_theta - 0.5*a1*dt*axis2*axis3*cos_theta + 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*r2 + 0.5*a3*dt*axis1*axis2*cos_theta - 1.0*a3*axis1*axis2*sin_theta_over_norm_w;
-    Jrm.insert(5,12) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w - 0.5*a1*dt*axis3*axis3*cos_theta + 1.0*a1*axis3*axis3*sin_theta_over_norm_w - a1*norm_w*sin_theta - 0.5*a2*dt*r3 + 0.5*a3*dt*axis1*axis3*cos_theta - 1.0*a3*axis1*axis3*sin_theta_over_norm_w;
-    Jrm.insert(6,3) = r3;
-    Jrm.insert(6,4) = r2;
-    Jrm.insert(6,5) = -r1;
-    Jrm.insert(6,6) = r0;
-    Jrm.insert(6,10) = 0.5*a0*dt*axis1*axis3*cos_theta - 1.0*a0*axis1*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis1*axis2*cos_theta - 1.0*a1*axis1*axis2*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis1*cos_theta + 1.0*a2*axis1*axis1*sin_theta_over_norm_w - a2*norm_w*sin_theta - 0.5*a3*dt*r1;
-    Jrm.insert(6,11) = 0.5*a0*dt*axis2*axis3*cos_theta - 1.0*a0*axis2*axis3*sin_theta_over_norm_w + 0.5*a1*dt*axis2*axis2*cos_theta - 1.0*a1*axis2*axis2*sin_theta_over_norm_w + a1*norm_w*sin_theta - 0.5*a2*dt*axis1*axis2*cos_theta + 1.0*a2*axis1*axis2*sin_theta_over_norm_w - 0.5*a3*dt*r2;
-    Jrm.insert(6,12) = 0.5*a0*dt*axis3*axis3*cos_theta - 1.0*a0*axis3*axis3*sin_theta_over_norm_w + a0*norm_w*sin_theta + 0.5*a1*dt*axis2*axis3*cos_theta - 1.0*a1*axis2*axis3*sin_theta_over_norm_w - 0.5*a2*dt*axis1*axis3*cos_theta + 1.0*a2*axis1*axis3*sin_theta_over_norm_w - 0.5*a3*dt*r3;
-    // END
+    Jrm.insert(3, 3) = Jq_wrt_q(0,0);
+    Jrm.insert(3, 4) = Jq_wrt_q(0,1);
+    Jrm.insert(3, 5) = Jq_wrt_q(0,2);
+    Jrm.insert(3, 6) = Jq_wrt_q(0,3);
+    Jrm.insert(3, 10) = Jq_wrt_w(0,0);
+    Jrm.insert(3, 11) = Jq_wrt_w(0,1);
+    Jrm.insert(3, 12) = Jq_wrt_w(0,2);
+
+    Jrm.insert(4, 3) = Jq_wrt_q(1,0);
+    Jrm.insert(4, 4) = Jq_wrt_q(1,1);
+    Jrm.insert(4, 5) = Jq_wrt_q(1,2);
+    Jrm.insert(4, 6) = Jq_wrt_q(1,3);
+    Jrm.insert(4, 10) = Jq_wrt_w(1,0);
+    Jrm.insert(4, 11) = Jq_wrt_w(1,1);
+    Jrm.insert(4, 12) = Jq_wrt_w(1,2);
+
+    Jrm.insert(5, 3) = Jq_wrt_q(2,0);
+    Jrm.insert(5, 4) = Jq_wrt_q(2,1);
+    Jrm.insert(5, 5) = Jq_wrt_q(2,2);
+    Jrm.insert(5, 6) = Jq_wrt_q(2,3);
+    Jrm.insert(5, 10) = Jq_wrt_w(2,0);
+    Jrm.insert(5, 11) = Jq_wrt_w(2,1);
+    Jrm.insert(5, 12) = Jq_wrt_w(2,2);
+
+    Jrm.insert(6, 3) = Jq_wrt_q(3,0);
+    Jrm.insert(6, 4) = Jq_wrt_q(3,1);
+    Jrm.insert(6, 5) = Jq_wrt_q(3,2);
+    Jrm.insert(6, 6) = Jq_wrt_q(3,3);
+    Jrm.insert(6, 10) = Jq_wrt_w(3,0);
+    Jrm.insert(6, 11) = Jq_wrt_w(3,1);
+    Jrm.insert(6, 12) = Jq_wrt_w(3,2);
 
     // linear velocity.
 
@@ -444,5 +437,135 @@ void SLAMModuleEKF::compute_f(
     Jrm.makeCompressed();
 
     J = Jrm;
+}
+
+Eigen::Vector4d SLAMModuleEKF::quaternionProduct(const Eigen::Vector4d& P, const Eigen::Vector4d& Q, Eigen::Matrix<double, 4, 8>& J)
+{
+    const double pi = P(0);
+    const double pj = P(1);
+    const double pk = P(2);
+    const double pr = P(3);
+
+    const double qi = Q(0);
+    const double qj = Q(1);
+    const double qk = Q(2);
+    const double qr = Q(3);
+
+    const double ui = pr * qi + qr * pi + (pj*qk - pk*qj);
+    const double uj = pr * qj + qr * pj + (pk*qi - pi*qk);
+    const double uk = pr * qk + qr * pk + (pi*qj - pj*qi);
+    const double ur = pr*qr - pi*qi - pj*qj - pk*qk;
+
+    Eigen::Vector4d ret;
+
+    ret(0) = ui;
+    ret(1) = uj;
+    ret(2) = uk;
+    ret(3) = ur;
+
+    J( 0, 0 ) = qk;
+    J( 0, 1 ) = qj;
+    J( 0, 2 ) = -qi;
+    J( 0, 3 ) = qr;
+    J( 0, 4 ) = pk;
+    J( 0, 5 ) = -pj;
+    J( 0, 6 ) = pi;
+    J( 0, 7 ) = pr;
+    J( 1, 0 ) = -qj;
+    J( 1, 1 ) = qk;
+    J( 1, 2 ) = qr;
+    J( 1, 3 ) = qi;
+    J( 1, 4 ) = pj;
+    J( 1, 5 ) = pk;
+    J( 1, 6 ) = -pr;
+    J( 1, 7 ) = pi;
+    J( 2, 0 ) = qi;
+    J( 2, 1 ) = -qr;
+    J( 2, 2 ) = qk;
+    J( 2, 3 ) = qj;
+    J( 2, 4 ) = -pi;
+    J( 2, 5 ) = pr;
+    J( 2, 6 ) = pk;
+    J( 2, 7 ) = pj;
+    J( 3, 0 ) = -qr;
+    J( 3, 1 ) = -qi;
+    J( 3, 2 ) = -qj;
+    J( 3, 3 ) = qk;
+    J( 3, 4 ) = -pr;
+    J( 3, 5 ) = -pi;
+    J( 3, 6 ) = -pj;
+    J( 3, 7 ) = pk;
+
+    return ret;
+}
+
+Eigen::Vector4d SLAMModuleEKF::rotationVectorToQuaternion(const Eigen::Vector3d& v, Eigen::Matrix<double, 4, 3>& J)
+{
+    // TODO: optimize the evaluation of these sympy-generated formulae.
+
+    const double wx0 = v.x();
+    const double wy0 = v.y();
+    const double wz0 = v.z();
+
+    const double n0 = std::sqrt(wx0*wx0 + wy0*wy0 + wz0*wz0);
+
+    double wx = 0.0;
+    double wy = 0.0;
+    double wz = 0.0;
+
+    Eigen::Vector4d ret;
+
+    const double threshold = 5.0e-6;
+
+    if(n0 >= threshold)
+    {
+        wx = wx0;
+        wy = wy0;
+        wz = wz0;
+
+        ret(0) = wx*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+        ret(1) = wy*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+        ret(2) = wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+        ret(3) = cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    }
+    else
+    {
+        ret(0) = 0.0;
+        ret(1) = 0.0;
+        ret(2) = 0.0;
+        ret(3) = 1.0;
+
+        std::normal_distribution<double> normal;
+
+        double alpha = 0.0;
+
+        do
+        {
+            wx = normal(mEngine);
+            wy = normal(mEngine);
+            wz = normal(mEngine);
+            alpha = std::sqrt(wx*wx + wy*wy + wz*wz);
+        }
+        while(alpha < threshold);
+
+        wx *= threshold / alpha;
+        wy *= threshold / alpha;
+        wz *= threshold / alpha;
+    }
+
+    J( 0, 0 ) = -1.0*pow(wx, 2)*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*pow(wx, 2)*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 0, 1 ) = -1.0*wx*wy*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wx*wy*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 0, 2 ) = -1.0*wx*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wx*wz*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 1, 0 ) = -1.0*wx*wy*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wx*wy*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 1, 1 ) = -1.0*pow(wy, 2)*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*pow(wy, 2)*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 1, 2 ) = -1.0*wy*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wy*wz*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 2, 0 ) = -1.0*wx*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wx*wz*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 2, 1 ) = -1.0*wy*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*wy*wz*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 2, 2 ) = -1.0*pow(wz, 2)*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -1.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + 0.5*pow(wz, 2)*1.0/(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))*cos((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2))) + pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 3, 0 ) = -0.5*wx*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 3, 1 ) = -0.5*wy*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+    J( 3, 2 ) = -0.5*wz*pow(pow(wx, 2) + pow(wy, 2) + pow(wz, 2), -0.5)*sin((1.0/2.0)*sqrt(pow(wx, 2) + pow(wy, 2) + pow(wz, 2)));
+
+    return ret;
 }
 

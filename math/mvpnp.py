@@ -3,6 +3,8 @@
 import sympy
 import sympy.printing
 
+# Compute the jacobian of the map which associates a rotation matrix to a quaternion.
+
 qr, qi, qj, qk = sympy.symbols(('qr', 'qi', 'qj', 'qk'))
 
 s = sympy.Rational(1,1) / (qi*qi + qj*qj + qk*qk + qr*qr)

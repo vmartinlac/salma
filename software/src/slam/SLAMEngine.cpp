@@ -34,7 +34,7 @@ bool SLAMEngine::initialize(
         mModules.emplace_back(new SLAMModuleFeatures(mContext));
         mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
         mModules.emplace_back(new SLAMModuleAlignment(mContext));
-        //mModules.emplace_back(new SLAMModuleEKF(mContext));
+        mModules.emplace_back(new SLAMModuleEKF(mContext));
         //mModules.emplace_back(new SLAMModuleLBA(mContext));
         mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
         mModules.emplace_back(new SLAMModuleTriangulation(mContext));
