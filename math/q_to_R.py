@@ -31,3 +31,9 @@ for coeff in [R11, R12, R13, R21, R22, R23, R31, R32, R33]:
         j += 1
     i += 1
 
+
+i = 0
+for coeff in [R11, R12, R13, R21, R22, R23, R31, R32, R33]:
+    print("ret("+str(i)+") = " + sympy.printing.ccode(coeff) + ";")
+    i += 1
+

@@ -53,6 +53,10 @@ protected:
         const Eigen::Vector3d& v,
         Eigen::Matrix<double, 4, 3>& J);
 
+    void jacobianOfQuaternionToRotationMatrix(
+        const Eigen::Quaterniond& q,
+        Eigen::Matrix<double, 9, 4>& J);
+
 protected:
 
     double mLastFrameTimestamp;

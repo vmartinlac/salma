@@ -82,7 +82,7 @@ double MVPnP::SolverLM::computeErrorResidualsAndJacobianOfF( const Sophus::SE3d&
             const Eigen::Vector2d proj_ref{ v.projections[i].x, v.projections[i].y };
             const Eigen::Vector2d delta_proj = proj - proj_ref;
 
-            // The jacobian of the function (X_world) => (x_projected).
+            // The jacobian of the function (X_camera) => (x_projected).
             Eigen::Matrix<double, 2, 3> J1;
             cv::cv2eigen( jacobian(cv::Range(2*i+0, 2*i+2), cv::Range(3, 6)), J1 );
 

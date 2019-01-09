@@ -652,32 +652,40 @@ void SLAMModuleEKF::compute_h(
     Eigen::SparseMatrix<double>& J)
 {
     StereoRigCalibrationDataPtr calibration = context()->calibration;;
+
     SLAMFramePtr frame = mCurrentFrame;
+
+    const int dim = 2 * visible_points.size();
+
+    const Eigen::Vector3d rig_to_world_t = X.segment<3>(0);
+
+    const Eigen::Quaterniond rig_to_world_q( X(6), X(3), X(4), X(5) );
+
+    const Sophus::SE3d rig_to_world(rig_to_world_q, rig_to_world_t);
+
+    Eigen::Matrix3d rig_to_camera_R[2];
 
     Sophus::SE3d world_to_camera[2];
 
-    const int dim = 2*visible_points.size();
+    for(int i=0; i<2; i++)
+    {
+        rig_to_camera_R[i] = calibration->cameras[i].camera_to_rig.rotationMatrix().transpose();
+        world_to_camera[i] = calibration->cameras[i].camera_to_rig.inverse() * rig_to_world.inverse();
+    }
+
+    Eigen::Matrix<double, 9, 4> B;
+    jacobianOfQuaternionToRotationMatrix(rig_to_world_q.inverse(), B);
+
+    // jacobian of transposition of quaternion.
+    Eigen::Matrix4d C;
+    C.setZero();
+    C.diagonal() << -1.0, -1.0, -1.0, 1.0;
 
     h.resize(dim);
 
     J.setZero();
     J.resize(dim, 13 + mLocalMap.size());
     J.reserve( 20 * visible_points.size() );
-
-    {
-        Eigen::Vector3d world_to_rig_t = X.segment<3>(0);
-
-        Eigen::Quaterniond world_to_rig_q;
-        world_to_rig_q.vec() = X.segment<3>(3);
-        world_to_rig_q.w() = X(6);
-
-        Sophus::SE3d world_to_rig(world_to_rig_q, world_to_rig_t);
-
-        for(int i=0; i<2; i++)
-        {
-            world_to_camera[i] = calibration->cameras[i].camera_to_rig.inverse() * world_to_rig;
-        }
-    }
 
     for(int i=0; i<visible_points.size(); i++)
     {
@@ -693,7 +701,7 @@ void SLAMModuleEKF::compute_h(
         const std::vector<cv::Point3f> mappoint_in_camera_frame_cv{ cv::Point3f(mappoint_in_camera_frame.x(), mappoint_in_camera_frame.y(), mappoint_in_camera_frame.z()) };
 
         std::vector<cv::Point2f> proj;
-        cv::Mat J_proj;
+        cv::Mat J_proj_cv;
 
         cv::projectPoints(
             mappoint_in_camera_frame_cv,
@@ -702,28 +710,99 @@ void SLAMModuleEKF::compute_h(
             calibration->cameras[vpt.view].calibration->calibration_matrix,
             calibration->cameras[vpt.view].calibration->distortion_coefficients,
             proj,
-            J_proj);
+            J_proj_cv);
+
+        Eigen::Matrix<double, 2, 3> J_proj;
+        cv::cv2eigen( J_proj_cv(cv::Range::all(), cv::Range(3, 6)), J_proj );
+
+        Eigen::Matrix<double, 3, 9> A;
+        A.setZero();
+        A.block<1,3>(0,0) = mpt->position.transpose();
+        A.block<1,3>(1,3) = mpt->position.transpose();
+        A.block<1,3>(2,6) = mpt->position.transpose();
+
+        Eigen::Matrix<double, 2, 3> J_wrt_position = - J_proj * world_to_camera[vpt.view].rotationMatrix();
+
+        Eigen::Matrix<double, 2, 4> J_wrt_attitude = J_proj * rig_to_camera_R[vpt.view] * A * B * C;
+
+        Eigen::Matrix<double, 2, 3> J_wrt_mappoint = J_proj * world_to_camera[vpt.view].rotationMatrix();
 
         h(2*i+0) = proj.front().x;
         h(2*i+1) = proj.front().y;
 
         for(int j=0; j<2; j++)
         {
-            /*
-            J.insert(2*i+j, 0) +=
-            J.insert(2*i+j, 1) +=
-            J.insert(2*i+j, 2) +=
+            J.insert(2*i+j, 0) = J_wrt_position(j, 0);
+            J.insert(2*i+j, 1) = J_wrt_position(j, 1);
+            J.insert(2*i+j, 2) = J_wrt_position(j, 2);
 
-            J.insert(2*i+j, 3) +=
-            J.insert(2*i+j, 4) +=
-            J.insert(2*i+j, 5) +=
-            J.insert(2*i+j, 6) +=
+            J.insert(2*i+j, 3) = J_wrt_attitude(j, 0);
+            J.insert(2*i+j, 4) = J_wrt_attitude(j, 1);
+            J.insert(2*i+j, 5) = J_wrt_attitude(j, 2);
+            J.insert(2*i+j, 6) = J_wrt_attitude(j, 3);
 
-            J.insert(2*i+j, 13+3*visible_points[i].local_index+0) +=
-            J.insert(2*i+j, 13+3*visible_points[i].local_index+1) +=
-            J.insert(2*i+j, 13+3*visible_points[i].local_index+2) +=
-            */
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+0) = J_wrt_mappoint(j, 0);
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+1) = J_wrt_mappoint(j, 1);
+            J.insert(2*i+j, 13+3*visible_points[i].local_index+2) = J_wrt_mappoint(j, 2);
         }
     }
+}
+
+void SLAMModuleEKF::jacobianOfQuaternionToRotationMatrix( const Eigen::Quaterniond& q, Eigen::Matrix<double, 9, 4>& J )
+{
+    const double qi = q.x();
+    const double qj = q.y();
+    const double qk = q.z();
+    const double qr = q.w();
+
+    /*
+    Eigen::Matrix<double, 9, 1> ret;
+    ret(0) = -2*(pow(qj, 2) + pow(qk, 2))/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) + 1;
+    ret(1) = 2*(qi*qj - qk*qr)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(2) = 2*(qi*qk + qj*qr)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(3) = 2*(qi*qj + qk*qr)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(4) = -2*(pow(qi, 2) + pow(qk, 2))/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) + 1;
+    ret(5) = 2*(-qi*qr + qj*qk)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(6) = 2*(qi*qk - qj*qr)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(7) = 2*(qi*qr + qj*qk)/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    ret(8) = -2*(pow(qi, 2) + pow(qj, 2))/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) + 1;
+    */
+
+    J( 0, 0 ) = -2*qi*(-2*pow(qj, 2) - 2*pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 0, 1 ) = 4*qj*(pow(qj, 2) + pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 0, 2 ) = 4*qk*(pow(qj, 2) + pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 0, 3 ) = -2*qr*(-2*pow(qj, 2) - 2*pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 1, 0 ) = -4*qi*(qi*qj - qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 1, 1 ) = 2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qj*(qi*qj - qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 1, 2 ) = -4*qk*(qi*qj - qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 1, 3 ) = -2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(qi*qj - qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 2, 0 ) = -4*qi*(qi*qk + qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 2, 1 ) = -4*qj*(qi*qk + qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 2, 2 ) = 2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qk*(qi*qk + qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 2, 3 ) = 2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(qi*qk + qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 3, 0 ) = -4*qi*(qi*qj + qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 3, 1 ) = 2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qj*(qi*qj + qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 3, 2 ) = -4*qk*(qi*qj + qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 3, 3 ) = 2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(qi*qj + qk*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 4, 0 ) = 4*qi*(pow(qi, 2) + pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 4, 1 ) = -2*qj*(-2*pow(qi, 2) - 2*pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 4, 2 ) = 4*qk*(pow(qi, 2) + pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 4, 3 ) = -2*qr*(-2*pow(qi, 2) - 2*pow(qk, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 5, 0 ) = -4*qi*(-qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 5, 1 ) = -4*qj*(-qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 5, 2 ) = 2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qk*(-qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 5, 3 ) = -2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(-qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 6, 0 ) = -4*qi*(qi*qk - qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 6, 1 ) = -4*qj*(qi*qk - qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 6, 2 ) = 2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qk*(qi*qk - qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 6, 3 ) = -2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(qi*qk - qj*qr)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 7, 0 ) = -4*qi*(qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qr/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 7, 1 ) = -4*qj*(qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) + 2*qk/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 7, 2 ) = 2*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qk*(qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 7, 3 ) = 2*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2)) - 4*qr*(qi*qr + qj*qk)/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 8, 0 ) = 4*qi*(pow(qi, 2) + pow(qj, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qi/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 8, 1 ) = 4*qj*(pow(qi, 2) + pow(qj, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2) - 4*qj/(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2));
+    J( 8, 2 ) = -2*qk*(-2*pow(qi, 2) - 2*pow(qj, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
+    J( 8, 3 ) = -2*qr*(-2*pow(qi, 2) - 2*pow(qj, 2))/pow(pow(qi, 2) + pow(qj, 2) + pow(qk, 2) + pow(qr, 2), 2);
 }
 
