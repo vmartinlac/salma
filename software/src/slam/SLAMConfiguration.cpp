@@ -22,7 +22,17 @@ SLAMConfiguration::SLAMConfiguration()
     alignment_ransac_inlier_rate = 0.8;
     alignment_ransac_inlier_threshold = 8.0;
 
-    //localbundleadjustment_debug = false;
+    ekf_debug = true;
+    ekf_initial_position_sdev = 0.01;
+    ekf_initial_attitude_sdev = 0.01;
+    ekf_initial_linear_velocity_sdev = 20.0;
+    ekf_initial_angular_velocity_sdev = M_PI*0.3;
+    ekf_max_local_map_size = 200;
+    ekf_prediction_linear_acceleration_sdev = 10.3;
+    ekf_prediction_angular_acceleration_sdev = 2.0;
+    ekf_update_projection_sdev = 6.0;
+
+    //lba_debug = false;
 
     stereomatcher_debug = false;
     stereomatcher_check_octave = false;

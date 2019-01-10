@@ -27,14 +27,15 @@ SLAMFrame::SLAMFrame()
     rank_in_recording = -1;
     timestamp = 0.0;
     aligned_wrt_previous_frame = false;
-    pose_covariance.setIdentity();
+    pose_covariance.setZero();
+    pose_covariance.leftCols<3>().setIdentity();
 }
 
 SLAMMapPoint::SLAMMapPoint()
 {
     id = -1;
+    frame_id_of_last_position_update = -1;
     position.setZero();
     position_covariance.setIdentity();
-    last_seen_frame_id = -1;
 }
 

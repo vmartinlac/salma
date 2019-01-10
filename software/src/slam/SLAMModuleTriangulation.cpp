@@ -47,16 +47,25 @@ void SLAMModuleTriangulation::operator()()
 
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
-        // TODO: triangulate only on regions where there are no projections.
-
-        SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
-
-        if(world_point)
+        if( bool(frame->views[0].tracks[p.first].mappoint) == false || bool(frame->views[1].tracks[p.second].mappoint) == false )
         {
-            frame->views[0].tracks[p.first].mappoint = world_point;
-            frame->views[1].tracks[p.second].mappoint = world_point;
 
-            triangulation_count++;
+            SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
+
+            if(world_point)
+            {
+                if(bool(frame->views[0].tracks[p.first].mappoint) == false)
+                {
+                    frame->views[0].tracks[p.first].mappoint = world_point;
+                }
+
+                if(bool(frame->views[1].tracks[p.second].mappoint) == false)
+                {
+                    frame->views[1].tracks[p.second].mappoint = world_point;
+                }
+
+                triangulation_count++;
+            }
         }
     }
 
@@ -218,7 +227,10 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
         ret->id = context()->num_mappoints;
         ret->position = frame->frame_to_world * result;
 
-        // TODO: initialize covariance.
+        ret->position_covariance.setZero();
+        ret->position_covariance.leftCols<3>().diagonal().fill(4.0); // TODO: initialize covariance correctly.
+
+        ret->frame_id_of_last_position_update = frame->id;
 
         context()->num_mappoints++;
     }

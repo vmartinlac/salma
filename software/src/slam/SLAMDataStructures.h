@@ -21,10 +21,10 @@ public:
 
     int id;
 
-    Eigen::Vector3d position;
-    Eigen::Matrix3d position_covariance;
+    int frame_id_of_last_position_update;
 
-    int last_seen_frame_id;
+    Eigen::Vector3d position;
+    Eigen::Matrix<double, 3, 10> position_covariance; // covariance of (mappoint_position) wrt (mappoint_position, camera_position, camera_attitude).
 };
 
 typedef std::shared_ptr<SLAMMapPoint> SLAMMapPointPtr;

@@ -59,6 +59,7 @@ protected:
 
 protected:
 
+    int mLastFrameId;
     double mLastFrameTimestamp;
     SLAMFramePtr mCurrentFrame;
     std::vector<SLAMMapPointPtr> mLocalMap;

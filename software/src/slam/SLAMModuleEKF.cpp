@@ -9,6 +9,8 @@
 
 SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) : SLAMModule(con)
 {
+    mLastFrameId = -1;
+    mLastFrameTimestamp = 0.0;
 }
 
 SLAMModuleEKF::~SLAMModuleEKF()
@@ -46,6 +48,39 @@ void SLAMModuleEKF::operator()()
         initializeState();
     }
 
+    std::cout << "      Local map size: " << mLocalMap.size() << std::endl;
+
+    std::cout << "      Position-x: " << mMu(0) << std::endl;
+    std::cout << "      Position-y: " << mMu(1) << std::endl;
+    std::cout << "      Position-z: " << mMu(2) << std::endl;
+    std::cout << "      Position-x sdev: " << std::sqrt(mSigma(0,0)) << std::endl;
+    std::cout << "      Position-y sdev: " << std::sqrt(mSigma(1,1)) << std::endl;
+    std::cout << "      Position-z sdev: " << std::sqrt(mSigma(2,2)) << std::endl;
+
+    std::cout << "      Attitude-x: " << mMu(3) << std::endl;
+    std::cout << "      Attitude-y: " << mMu(4) << std::endl;
+    std::cout << "      Attitude-z: " << mMu(5) << std::endl;
+    std::cout << "      Attitude-w: " << mMu(6) << std::endl;
+    std::cout << "      Attitude-x sdev: " << std::sqrt(mSigma(3,3)) << std::endl;
+    std::cout << "      Attitude-y sdev: " << std::sqrt(mSigma(4,4)) << std::endl;
+    std::cout << "      Attitude-z sdev: " << std::sqrt(mSigma(5,5)) << std::endl;
+    std::cout << "      Attitude-w sdev: " << std::sqrt(mSigma(6,6)) << std::endl;
+
+    std::cout << "      Linear-velocity-x: " << mMu(7) << std::endl;
+    std::cout << "      Linear-velocity-y: " << mMu(8) << std::endl;
+    std::cout << "      Linear-velocity-z: " << mMu(9) << std::endl;
+    std::cout << "      Linear-velocity-x sdev: " << std::sqrt(mSigma(7,7)) << std::endl;
+    std::cout << "      Linear-velocity-y sdev: " << std::sqrt(mSigma(8,8)) << std::endl;
+    std::cout << "      Linear-velocity-z sdev: " << std::sqrt(mSigma(9,9)) << std::endl;
+
+    std::cout << "      Angular-velocity-x: " << mMu(10) << std::endl;
+    std::cout << "      Angular-velocity-y: " << mMu(11) << std::endl;
+    std::cout << "      Angular-velocity-z: " << mMu(12) << std::endl;
+    std::cout << "      Angular-velocity-x sdev: " << std::sqrt(mSigma(10,10)) << std::endl;
+    std::cout << "      Angular-velocity-y sdev: " << std::sqrt(mSigma(11,11)) << std::endl;
+    std::cout << "      Angular-velocity-z sdev: " << std::sqrt(mSigma(12,12)) << std::endl;
+
+    mLastFrameId = mCurrentFrame->id;
     mLastFrameTimestamp = mCurrentFrame->timestamp;
     mCurrentFrame.reset();
 }
@@ -70,10 +105,10 @@ void SLAMModuleEKF::initializeState()
     mMu(11) = 0.0;
     mMu(12) = 0.0;
 
-    const double position_sdev = 0.1;
-    const double attitude_sdev = 0.1;
-    const double linear_momentum_sdev = 20.0;
-    const double angular_momentum_sdev = M_PI*0.4;
+    const double position_sdev = context()->configuration->ekf_initial_position_sdev;
+    const double attitude_sdev = context()->configuration->ekf_initial_attitude_sdev;
+    const double linear_momentum_sdev = context()->configuration->ekf_initial_linear_velocity_sdev;
+    const double angular_momentum_sdev = context()->configuration->ekf_initial_angular_velocity_sdev;
 
     mSigma.resize(13, 13);
     mSigma.setZero();
@@ -108,7 +143,7 @@ void SLAMModuleEKF::prepareLocalMap()
         {
             for(SLAMTrack& t : mCurrentFrame->views[i].tracks)
             {
-                if( t.mappoint && new_local_map_content.count(t.mappoint->id) == 0 )
+                if( t.mappoint && t.mappoint->frame_id_of_last_position_update == mLastFrameId && new_local_map_content.count(t.mappoint->id) == 0 )
                 {
                     new_local_map.push_back(t.mappoint);
                     new_local_map_content.insert(t.mappoint->id);
@@ -119,13 +154,13 @@ void SLAMModuleEKF::prepareLocalMap()
 
     // if there are too many points in local map, remove some.
 
-    const int max_local_map_size = 340; // TODO: put this in config file.
+    const int max_local_map_size = context()->configuration->ekf_max_local_map_size;
 
     if( new_local_map.size() > max_local_map_size )
     {
         auto comp = [] (SLAMMapPointPtr P1, SLAMMapPointPtr P2)
         {
-            return (P1->last_seen_frame_id > P2->last_seen_frame_id);
+            return (P1->frame_id_of_last_position_update > P2->frame_id_of_last_position_update); // TODO: find another criteria to select which keypoints we take into local map.
         };
 
         std::sort(new_local_map.begin(), new_local_map.end(), comp);
@@ -163,11 +198,20 @@ void SLAMModuleEKF::prepareLocalMap()
             
             if(it == prev_local_map_inv.end())
             {
-                new_mu.segment<3>(13 + i*3) = new_local_map[i]->position;
-                //new_sigma.block<3,3>(13 + i*3, 13 + i*3) = new_local_map[i]->position_covariance;
-                new_sigma.block<3,3>(13 + i*3, 13 + i*3) = Eigen::Matrix3d::Identity() * (3.0*3.0); // TODO !
+                if( new_local_map[i]->frame_id_of_last_position_update == mLastFrameId )
+                {
+                    new_mu.segment<3>(13 + i*3) = new_local_map[i]->position;
 
-                // TODO: covariance between camera pose and mappoint position.
+                    new_sigma.block<3,3>(13 + i*3, 13 + i*3) = new_local_map[i]->position_covariance.block<3,3>(0,0); // covariance of mappoint_position wrt mappoint_position.
+                    new_sigma.block<3,3>(13 + i*3, 0) = new_local_map[i]->position_covariance.block<3,3>(0,3); // covariance of mappoint_position wrt camera position.
+                    new_sigma.block<3,4>(13 + i*3, 3) = new_local_map[i]->position_covariance.block<3,4>(0,6); // covariance of mappoint_position wrt camera attitude
+                    new_sigma.block<3,3>(0, 13 + i*3) = new_local_map[i]->position_covariance.block<3,3>(0,3).transpose(); // covariance of mappoint_position wrt camera position.
+                    new_sigma.block<4,3>(3, 13 + i*3) = new_local_map[i]->position_covariance.block<3,4>(0,6).transpose(); // covariance of mappoint_position wrt camera attitude
+                }
+                else
+                {
+                    throw std::runtime_error("internal error");
+                }
             }
             else
             {
@@ -251,9 +295,8 @@ void SLAMModuleEKF::ekfPrediction()
 
     // set Q.
     {
-        // TODO: get these constants from configuration.
-        const double sigma_v = dt*5.3; //dt*0.1;
-        const double sigma_w = dt*1.2;
+        const double sigma_v = dt * context()->configuration->ekf_prediction_linear_acceleration_sdev;
+        const double sigma_w = dt * context()->configuration->ekf_prediction_angular_acceleration_sdev;
 
         Q.resize(dim, dim);
         Q.setZero();
@@ -288,10 +331,6 @@ void SLAMModuleEKF::ekfPrediction()
 void SLAMModuleEKF::ekfUpdate()
 {
     std::vector<VisiblePoint> visible_points;
-    Eigen::VectorXd predicted_projections;
-    Eigen::VectorXd observed_projections;
-    Eigen::SparseMatrix<double> J;
-    Eigen::SparseMatrix<double> observation_noise;
 
     // find visible points (mappoints which are in local map and have at least one projection in current frame).
 
@@ -325,53 +364,62 @@ void SLAMModuleEKF::ekfUpdate()
                 }
             }
         }
-
-        // if we arrive to this point, it means that the frame was successfully aligned by MVPnP. So there must be some visible points.
-        if(visible_points.empty()) throw std::runtime_error("internal error");
     }
 
-    // compute predicted and observed projections.
 
+    if(visible_points.empty())
     {
-        const int dim = 2*visible_points.size();
+        std::cout << "      NO EKF UPDATE BECAUSE!" << std::endl;
+    }
+    else
+    {
+        Eigen::VectorXd predicted_projections;
+        Eigen::VectorXd observed_projections;
+        Eigen::SparseMatrix<double> J;
+        Eigen::SparseMatrix<double> observation_noise;
 
-        compute_h(mMu, visible_points, predicted_projections, J);
-
-        if(predicted_projections.size() != dim) throw std::runtime_error("internal error");
-
-        observation_noise.setZero();
-        observation_noise.resize(dim, dim);
-        observation_noise.reserve(dim);
-
-        observed_projections.resize(dim);
-
-        const double proj_sdev = 5.0;
-
-        for(int i=0; i<observed_projections.size(); i++)
+        // compute predicted and observed projections.
         {
-            observed_projections(2*i+0) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.x;
-            observed_projections(2*i+1) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.y;
+            const int dim = 2*visible_points.size();
 
-            observation_noise.insert(2*i+0, 2*i+0) = proj_sdev*proj_sdev;
-            observation_noise.insert(2*i+1, 2*i+1) = proj_sdev*proj_sdev;
+            compute_h(mMu, visible_points, predicted_projections, J);
+
+            if(predicted_projections.size() != dim) throw std::runtime_error("internal error");
+
+            observation_noise.setZero();
+            observation_noise.resize(dim, dim);
+            observation_noise.reserve(dim);
+
+            observed_projections.resize(dim);
+
+            const double proj_sdev = context()->configuration->ekf_update_projection_sdev;
+
+            for(int i=0; i<visible_points.size(); i++)
+            {
+                observed_projections(2*i+0) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.x;
+                observed_projections(2*i+1) = mCurrentFrame->views[visible_points[i].view].keypoints[visible_points[i].keypoint].pt.y;
+
+                observation_noise.insert(2*i+0, 2*i+0) = proj_sdev*proj_sdev;
+                observation_noise.insert(2*i+1, 2*i+1) = proj_sdev*proj_sdev;
+            }
         }
-    }
 
-    // compute new belief.
+        // compute new belief.
 
-    {
-        const Eigen::VectorXd residuals = observed_projections - predicted_projections;
+        {
+            const Eigen::VectorXd residuals = observed_projections - predicted_projections;
 
-        const Eigen::MatrixXd S = J * mSigma * J.transpose() + observation_noise;
+            const Eigen::MatrixXd S = J * mSigma * J.transpose() + observation_noise;
 
-        Eigen::LDLT< Eigen::MatrixXd > solver;
-        solver.compute( S );
+            Eigen::LDLT< Eigen::MatrixXd > solver;
+            solver.compute( S );
 
-        Eigen::VectorXd new_mu = mMu + mSigma * J.transpose() * solver.solve( residuals );
-        Eigen::MatrixXd new_sigma = mSigma - mSigma * J.transpose() * solver.solve( J * mSigma );
+            Eigen::VectorXd new_mu = mMu + mSigma * J.transpose() * solver.solve( residuals );
+            Eigen::MatrixXd new_sigma = mSigma - mSigma * J.transpose() * solver.solve( J * mSigma );
 
-        mMu.swap(new_mu);
-        mSigma.swap(new_sigma);
+            mMu.swap(new_mu);
+            mSigma.swap(new_sigma);
+        }
     }
 }
 
@@ -400,7 +448,12 @@ void SLAMModuleEKF::exportResult()
         for(int i=0; i<mLocalMap.size(); i++)
         {
             mLocalMap[i]->position = mMu.segment<3>(13+3*i);
-            mLocalMap[i]->position_covariance = mSigma.block<3,3>(13+3*i, 13+3*i);
+
+            mLocalMap[i]->position_covariance.block<3,3>(0,0) = mSigma.block<3,3>(13+3*i, 13+3*i); // covariance of mappoint_position wrt mappoint_position.
+            mLocalMap[i]->position_covariance.block<3,3>(0,3) = mSigma.block<3,3>(13+3*i, 0); // covariance of mappoint_position wrt camera position.
+            mLocalMap[i]->position_covariance.block<3,4>(0,6) = mSigma.block<3,4>(13+3*i, 3); // covariance of mappoint_position wrt camera attitude
+
+            mLocalMap[i]->frame_id_of_last_position_update = mCurrentFrame->id;
         }
     }
 }
@@ -684,7 +737,7 @@ void SLAMModuleEKF::compute_h(
     h.resize(dim);
 
     J.setZero();
-    J.resize(dim, 13 + mLocalMap.size());
+    J.resize(dim, 13 + 3 * mLocalMap.size());
     J.reserve( 20 * visible_points.size() );
 
     for(int i=0; i<visible_points.size(); i++)

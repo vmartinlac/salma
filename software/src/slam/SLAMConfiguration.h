@@ -34,8 +34,22 @@ public:
     double alignment_ransac_inlier_rate;
     double alignment_ransac_inlier_threshold;
 
+    // ekf (extended kalman filter)
+
+    bool ekf_debug;
+    double ekf_initial_position_sdev;
+    double ekf_initial_attitude_sdev;
+    double ekf_initial_linear_velocity_sdev;
+    double ekf_initial_angular_velocity_sdev;
+    int ekf_max_local_map_size;
+    double ekf_prediction_linear_acceleration_sdev;
+    double ekf_prediction_angular_acceleration_sdev;
+    double ekf_update_projection_sdev;
+
+    // lba (local bundle adjustment)
+
     /*
-    bool localbundleadjustment_debug;
+    bool lba_debug;
     */
 
     // stereomatcher
