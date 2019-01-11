@@ -13,11 +13,11 @@ bool SLAMModuleFeatures::init()
 {
     SLAMContextPtr con = context();
 
-    const double scale_factor = con->configuration->features_scale_factor;
-    const int min_width = con->configuration->features_min_width;
-    const int max_features = con->configuration->features_max_features;
-    const int patch_size = con->configuration->features_patch_size;
-    const int fast_threshold = con->configuration->features_fast_threshold;
+    const double scale_factor = con->configuration->features.scale_factor;
+    const int min_width = con->configuration->features.min_width;
+    const int max_features = con->configuration->features.max_features;
+    const int patch_size = con->configuration->features.patch_size;
+    const int fast_threshold = con->configuration->features.fast_threshold;
 
     const int reference_image_width = con->calibration->cameras[0].calibration->image_size.width;
 
@@ -51,7 +51,7 @@ void SLAMModuleFeatures::operator()()
         processView(frame->views[i]);
     }
 
-    if( context()->configuration->features_debug )
+    if( context()->configuration->features.debug )
     {
         for(int i=0; i<2; i++)
         {
@@ -73,7 +73,7 @@ void SLAMModuleFeatures::operator()()
 void SLAMModuleFeatures::processView(SLAMView& v)
 {
 
-    //if( context()->configuration->features_uniformize )
+    //if( context()->configuration->features.uniformize )
     {
         cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create(2000);
         bool go_on = true;
@@ -98,11 +98,11 @@ void SLAMModuleFeatures::processView(SLAMView& v)
 
             std::transform(keypoints.begin(), keypoints.end(), std::back_inserter(v.keypoints), proc);
 
-            scale *= context()->configuration->features_scale_factor;
+            scale *= context()->configuration->features.scale_factor;
 
             octave++;
 
-            go_on = ( v.image.cols / scale > context()->configuration->features_min_width );
+            go_on = ( v.image.cols / scale > context()->configuration->features.min_width );
 
             if(go_on)
             {
@@ -126,7 +126,7 @@ void SLAMModuleFeatures::uniformize(std::vector<cv::KeyPoint>& keypoints)
 {
     const int N = keypoints.size();
 
-    const int M = context()->configuration->features_max_features;
+    const int M = context()->configuration->features.max_features;
 
     if( N > M )
     {

@@ -11,12 +11,12 @@ bool SLAMModuleTemporalMatcher::init()
 {
     SLAMConfigurationPtr conf = context()->configuration;
 
-    mCheckSymmetry = conf->temporalmatcher_check_symmetry;
-    mCheckLowe = conf->temporalmatcher_check_lowe;
-    mLoweRatio = conf->temporalmatcher_lowe_ratio;
-    mCheckOctave = conf->temporalmatcher_check_octave;
-    mNumPreviousFrames = conf->temporalmatcher_num_previous_frames;
-    mMaxProjectedMapPointsPerView = conf->temporalmatcher_max_projected_mappoints_per_view;
+    mCheckSymmetry = conf->temporal_matcher.check_symmetry;
+    mCheckLowe = conf->temporal_matcher.check_lowe;
+    mLoweRatio = conf->temporal_matcher.lowe_ratio;
+    mCheckOctave = conf->temporal_matcher.check_octave;
+    mNumPreviousFrames = conf->temporal_matcher.num_previous_frames;
+    mMaxProjectedMapPointsPerView = conf->temporal_matcher.max_projected_mappoints_per_view;
 
     return true;
 }
@@ -54,7 +54,7 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
     SLAMView& previous_view = prev_frame->views[view];
     SLAMView& current_view = curr_frame->views[view];
 
-    const bool dbg = context()->configuration->temporalmatcher_debug;
+    const bool dbg = context()->configuration->temporal_matcher.debug;
     std::vector<cv::DMatch> dbg_matches;
 
     int match_count = 0;

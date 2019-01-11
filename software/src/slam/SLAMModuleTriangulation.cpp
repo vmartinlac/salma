@@ -24,13 +24,13 @@ bool SLAMModuleTriangulation::init()
     mS << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0;
     mEssentialMatrixTilde = mS * mEssentialMatrix * mS.transpose();
 
-    mMinDistanceToCamera = con->configuration->triangulation_min_distance_to_camera;
-    mMinAngleBetweenRays = con->configuration->triangulation_min_angle_between_rays;
-    mCheckPerpendicularLength = con->configuration->triangulation_check_perpendicular_length;
-    mPerpendicularMaxLength = con->configuration->triangulation_perpendicular_max_length;
-    mMaxReprojectionError = con->configuration->triangulation_max_reprojection_error;
-    mInitialLifeTime = con->configuration->triangulation_track_lifetime;
-    mUseLindstrom = con->configuration->triangulation_use_lindstrom;
+    mMinDistanceToCamera = con->configuration->triangulation.min_distance_to_camera;
+    mMinAngleBetweenRays = con->configuration->triangulation.min_angle_between_rays;
+    mCheckPerpendicularLength = con->configuration->triangulation.check_perpendicular_length;
+    mPerpendicularMaxLength = con->configuration->triangulation.perpendicular_max_length;
+    mMaxReprojectionError = con->configuration->triangulation.max_reprojection_error;
+    mInitialLifeTime = con->configuration->triangulation.track_lifetime;
+    mUseLindstrom = con->configuration->triangulation.use_lindstrom;
 
     return true;
 }

@@ -17,8 +17,8 @@ bool SLAMModuleAlignment::init()
     SLAMContextPtr con = context();
 
     mSolver.reset(new MVPnP::SolverRANSACLM());
-    mSolver->setInlierRate( con->configuration->alignment_ransac_inlier_rate );
-    mSolver->setInlierThreshold( con->configuration->alignment_ransac_inlier_threshold );
+    mSolver->setInlierRate( con->configuration->alignment.ransac_inlier_rate );
+    mSolver->setInlierThreshold( con->configuration->alignment.ransac_inlier_threshold );
 
     return true;
 }

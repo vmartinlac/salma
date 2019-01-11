@@ -18,15 +18,15 @@ bool SLAMModuleStereoMatcher::init()
 {
     SLAMContextPtr con = context();
 
-    mCheckOctave = con->configuration->stereomatcher_check_octave;
+    mCheckOctave = con->configuration->stereo_matcher.check_octave;
 
-    mCheckSymmetry = con->configuration->stereomatcher_check_symmetry;
+    mCheckSymmetry = con->configuration->stereo_matcher.check_symmetry;
 
-    mCheckLowe = con->configuration->stereomatcher_check_lowe;
-    mLoweRatio = con->configuration->stereomatcher_lowe_ratio;
+    mCheckLowe = con->configuration->stereo_matcher.check_lowe;
+    mLoweRatio = con->configuration->stereo_matcher.lowe_ratio;
 
-    mCheckEpipolar = con->configuration->stereomatcher_check_epipolar;
-    mEpipolarThreshold = con->configuration->stereomatcher_epipolar_threshold;
+    mCheckEpipolar = con->configuration->stereo_matcher.check_epipolar;
+    mEpipolarThreshold = con->configuration->stereo_matcher.epipolar_threshold;
 
     mCameraCalibration[0] = con->calibration->cameras[0].calibration;
     mCameraCalibration[1] = con->calibration->cameras[1].calibration;
@@ -238,7 +238,7 @@ void SLAMModuleStereoMatcher::operator()()
     mUndistortedPoints[0].clear();
     mUndistortedPoints[1].clear();
 
-    if( context()->configuration->stereomatcher_debug )
+    if( context()->configuration->stereo_matcher.debug )
     {
         std::vector<cv::DMatch> matches2(matches.size());
 

@@ -20,10 +20,6 @@ SLAMModuleEKF::~SLAMModuleEKF()
 
 bool SLAMModuleEKF::init()
 {
-    SLAMContextPtr con = context();
-
-    //const double scale_factor = con->configuration->features_scale_factor;
-
     return true;
 }
 
@@ -107,10 +103,10 @@ void SLAMModuleEKF::initializeState()
     mMu(11) = 0.0;
     mMu(12) = 0.0;
 
-    const double position_sdev = context()->configuration->ekf_initial_position_sdev;
-    const double attitude_sdev = context()->configuration->ekf_initial_attitude_sdev;
-    const double linear_momentum_sdev = context()->configuration->ekf_initial_linear_velocity_sdev;
-    const double angular_momentum_sdev = context()->configuration->ekf_initial_angular_velocity_sdev;
+    const double position_sdev = context()->configuration->ekf.initial_position_sdev;
+    const double attitude_sdev = context()->configuration->ekf.initial_attitude_sdev;
+    const double linear_momentum_sdev = context()->configuration->ekf.initial_linear_velocity_sdev;
+    const double angular_momentum_sdev = context()->configuration->ekf.initial_angular_velocity_sdev;
 
     mSigma.resize(13, 13);
     mSigma.setZero();
@@ -156,7 +152,7 @@ void SLAMModuleEKF::prepareLocalMap()
 
     // if there are too many points in local map, remove some.
 
-    const int max_local_map_size = context()->configuration->ekf_max_local_map_size;
+    const int max_local_map_size = context()->configuration->ekf.max_local_map_size;
 
     if( new_local_map.size() > max_local_map_size )
     {
@@ -297,8 +293,8 @@ void SLAMModuleEKF::ekfPrediction()
 
     // set Q.
     {
-        const double sigma_v = dt * context()->configuration->ekf_prediction_linear_acceleration_sdev;
-        const double sigma_w = dt * context()->configuration->ekf_prediction_angular_acceleration_sdev;
+        const double sigma_v = dt * context()->configuration->ekf.prediction_linear_acceleration_sdev;
+        const double sigma_w = dt * context()->configuration->ekf.prediction_angular_acceleration_sdev;
 
         Q.resize(dim, dim);
         Q.setZero();
@@ -396,7 +392,7 @@ void SLAMModuleEKF::ekfUpdate()
 
             observed_projections.resize(dim);
 
-            const double proj_sdev = context()->configuration->ekf_update_projection_sdev;
+            const double proj_sdev = context()->configuration->ekf.update_projection_sdev;
 
             for(int i=0; i<visible_points.size(); i++)
             {

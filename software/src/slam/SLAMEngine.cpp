@@ -81,7 +81,7 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
     // free old images.
 
     {
-        const int k = ( mContext->configuration->temporalmatcher_debug) ? mContext->configuration->temporalmatcher_num_previous_frames : 0;
+        const int k = ( mContext->configuration->temporal_matcher.debug) ? mContext->configuration->temporal_matcher.num_previous_frames : 0;
         if( mContext->reconstruction->frames.size() >= 2 + k )
         {
             const int i = int( mContext->reconstruction->frames.size() ) - 2 - k;

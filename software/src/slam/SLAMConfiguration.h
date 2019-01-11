@@ -2,6 +2,100 @@
 
 #include <memory>
 
+struct SLAMConfigurationFeatures
+{
+    SLAMConfigurationFeatures();
+
+    bool debug;
+    double scale_factor;
+    int min_width;
+    int max_features;
+    int patch_size;
+    int fast_threshold;
+};
+
+struct SLAMConfigurationTemporalMatcher
+{
+    SLAMConfigurationTemporalMatcher();
+
+    bool debug;
+    bool check_symmetry;
+    bool check_lowe;
+    double lowe_ratio;
+    bool check_octave;
+    int max_projected_mappoints_per_view;
+    int num_previous_frames;
+};
+
+struct SLAMConfigurationAlignment
+{
+    SLAMConfigurationAlignment();
+
+    bool debug;
+    double ransac_inlier_rate;
+    double ransac_inlier_threshold;
+};
+
+struct SLAMConfigurationEKF
+{
+    SLAMConfigurationEKF();
+
+    bool debug;
+    double initial_position_sdev;
+    double initial_attitude_sdev;
+    double initial_linear_velocity_sdev;
+    double initial_angular_velocity_sdev;
+    int max_local_map_size;
+    double prediction_linear_acceleration_sdev;
+    double prediction_angular_acceleration_sdev;
+    double update_projection_sdev;
+};
+
+/*
+struct SLAMConfigurationLBA
+{
+    SLAMConfigurationLBA();
+
+    bool debug;
+};
+*/
+
+struct SLAMConfigurationStereoMatcher
+{
+    SLAMConfigurationStereoMatcher();
+
+    bool debug;
+    bool check_octave;
+    bool check_symmetry;
+    bool check_lowe;
+    double lowe_ratio;
+    bool check_epipolar;
+    double epipolar_threshold;
+};
+
+struct SLAMConfigurationTriangulation
+{
+    SLAMConfigurationTriangulation();
+
+    bool debug;
+    double min_angle_between_rays;
+    bool check_perpendicular_length;
+    double perpendicular_max_length;
+    double max_reprojection_error;
+    int track_lifetime;
+    bool use_lindstrom;
+    double min_distance_to_camera;
+};
+
+/*
+struct SLAMConfigurationDenseReconstruction
+{
+    SLAMConfigurationDenseReconstruction();
+
+    bool debug;
+};
+*/
+
 class SLAMConfiguration
 {
 public:
@@ -9,73 +103,14 @@ public:
     SLAMConfiguration();
     ~SLAMConfiguration();
 
-    // features
-
-    bool features_debug;
-    double features_scale_factor;
-    int features_min_width;
-    int features_max_features;
-    int features_patch_size;
-    int features_fast_threshold;
-
-    // temporal matcher
-
-    bool temporalmatcher_debug;
-    bool temporalmatcher_check_symmetry;
-    bool temporalmatcher_check_lowe;
-    double temporalmatcher_lowe_ratio;
-    bool temporalmatcher_check_octave;
-    int temporalmatcher_max_projected_mappoints_per_view;
-    int temporalmatcher_num_previous_frames;
-
-    // alignment
-
-    bool alignment_debug;
-    double alignment_ransac_inlier_rate;
-    double alignment_ransac_inlier_threshold;
-
-    // ekf (extended kalman filter)
-
-    bool ekf_debug;
-    double ekf_initial_position_sdev;
-    double ekf_initial_attitude_sdev;
-    double ekf_initial_linear_velocity_sdev;
-    double ekf_initial_angular_velocity_sdev;
-    int ekf_max_local_map_size;
-    double ekf_prediction_linear_acceleration_sdev;
-    double ekf_prediction_angular_acceleration_sdev;
-    double ekf_update_projection_sdev;
-
-    // lba (local bundle adjustment)
-
-    /*
-    bool lba_debug;
-    */
-
-    // stereomatcher
-
-    bool stereomatcher_debug;
-    bool stereomatcher_check_octave;
-    bool stereomatcher_check_symmetry;
-    bool stereomatcher_check_lowe;
-    double stereomatcher_lowe_ratio;
-    bool stereomatcher_check_epipolar;
-    double stereomatcher_epipolar_threshold;
-
-    // triangulation.
-
-    bool triangulation_debug;
-    double triangulation_min_angle_between_rays;
-    bool triangulation_check_perpendicular_length;
-    double triangulation_perpendicular_max_length;
-    double triangulation_max_reprojection_error;
-    int triangulation_track_lifetime;
-    bool triangulation_use_lindstrom;
-    double triangulation_min_distance_to_camera;
-
-    // dense reconstruction.
-
-    bool densereconstruction_debug;
+    SLAMConfigurationFeatures features;
+    SLAMConfigurationTemporalMatcher temporal_matcher;
+    SLAMConfigurationAlignment alignment;
+    SLAMConfigurationEKF ekf;
+    //SLAMConfigurationLBA lba;
+    SLAMConfigurationStereoMatcher stereo_matcher;
+    SLAMConfigurationTriangulation triangulation;
+    //SLAMConfigurationDenseReconstruction dense_reconstruction;
 };
 
 typedef std::shared_ptr<SLAMConfiguration> SLAMConfigurationPtr;
