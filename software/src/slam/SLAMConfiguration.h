@@ -71,6 +71,7 @@ public:
     double triangulation_max_reprojection_error;
     int triangulation_track_lifetime;
     bool triangulation_use_lindstrom;
+    double triangulation_min_distance_to_camera;
 
     // dense reconstruction.
 

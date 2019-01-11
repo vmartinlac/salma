@@ -64,7 +64,7 @@ public:
     bool aligned_wrt_previous_frame;
 
     Sophus::SE3d frame_to_world;
-    Eigen::Matrix<double, 13, 13> pose_covariance;
+    Eigen::Matrix<double, 7, 7> pose_covariance;
 };
 
 typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;

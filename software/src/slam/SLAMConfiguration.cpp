@@ -29,7 +29,7 @@ SLAMConfiguration::SLAMConfiguration()
     ekf_initial_angular_velocity_sdev = M_PI*0.3;
     ekf_max_local_map_size = 200;
     ekf_prediction_linear_acceleration_sdev = 10.3;
-    ekf_prediction_angular_acceleration_sdev = 2.0;
+    ekf_prediction_angular_acceleration_sdev = 2.2;
     ekf_update_projection_sdev = 6.0;
 
     //lba_debug = false;
@@ -48,6 +48,7 @@ SLAMConfiguration::SLAMConfiguration()
     triangulation_perpendicular_max_length = 0.0;
     triangulation_max_reprojection_error = 15.0;
     triangulation_use_lindstrom = true;
+    triangulation_min_distance_to_camera = 1.0;
 
     densereconstruction_debug = false;
 }

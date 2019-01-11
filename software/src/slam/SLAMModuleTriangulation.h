@@ -20,6 +20,10 @@ protected:
 
     void correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right );
 
+    void computePositionCovariance(SLAMFramePtr frame, const Eigen::Vector3d& normalized_left, const Eigen::Vector3d& normalized_right, Eigen::Matrix<double, 3, 10>& cov);
+
+    static void computeJacobianOfTriangulation(const Eigen::Vector3d& O1, const Eigen::Vector3d& D1, const Eigen::Vector3d& O2, const Eigen::Vector3d& D2, Eigen::Matrix<double, 3, 12>& J);
+
 protected:
 
     Eigen::Matrix3d mEssentialMatrix;
@@ -33,6 +37,7 @@ protected:
     double mPerpendicularMaxLength;
     bool mCheckPerpendicularLength;
     double mMaxReprojectionError;
+    double mMinDistanceToCamera;
     int mInitialLifeTime;
     bool mUseLindstrom;
 };

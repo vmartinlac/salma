@@ -6,7 +6,7 @@ MVPnP::SolverRANSACLM::SolverRANSACLM()
     mInlierThreshold = 6.0;
     mInlierRate = 0.8;
     mSuccessProbability = 0.995;
-    mMinimumNumberOfObservations = 15; // minimum number of observations to retrieve models' parameters.
+    mMinimumNumberOfObservations = 10; // minimum number of observations to retrieve models' parameters.
 }
 
 MVPnP::SolverRANSACLM::~SolverRANSACLM()

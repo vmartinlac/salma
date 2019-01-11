@@ -31,6 +31,8 @@ add_library(
     #SLAMModuleDenseReconstruction.h
     SLAMDebug.cpp
     SLAMDebug.h
+    SLAMMath.cpp
+    SLAMMath.h
 )
 
 target_link_libraries(

@@ -194,7 +194,7 @@ bool MVPnP::SolverLM::run( const std::vector<View>& views, Sophus::SE3d& rig_to_
             mState.totalNumberOfPoints += v.points.size();
         }
 
-        ret = ( mState.totalNumberOfPoints > 10 );
+        ret = ( mState.totalNumberOfPoints > 8 );
     }
 
     if( ret )

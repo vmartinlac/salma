@@ -6,6 +6,7 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
 #include "SLAMModuleEKF.h"
+#include "SLAMMath.h"
 
 SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) : SLAMModule(con)
 {
@@ -41,12 +42,13 @@ void SLAMModuleEKF::operator()()
         prepareLocalMap();
         ekfPrediction();
         ekfUpdate();
-        exportResult();
     }
     else
     {
         initializeState();
     }
+
+    exportResult();
 
     std::cout << "      Local map size: " << mLocalMap.size() << std::endl;
 
@@ -314,6 +316,8 @@ void SLAMModuleEKF::ekfPrediction()
 
     new_sigma = J * (mSigma + Q) * J.transpose();
 
+    new_mu.segment<4>(3).normalize(); // normalize attitude.
+
     //const double symm_err = ( new_sigma - new_sigma.transpose() ).norm();
     //std::cout << "symm = " << symm_err << std::endl;
 
@@ -417,6 +421,8 @@ void SLAMModuleEKF::ekfUpdate()
             Eigen::VectorXd new_mu = mMu + mSigma * J.transpose() * solver.solve( residuals );
             Eigen::MatrixXd new_sigma = mSigma - mSigma * J.transpose() * solver.solve( J * mSigma );
 
+            new_mu.segment<4>(3).normalize(); // normalize attitude.
+
             mMu.swap(new_mu);
             mSigma.swap(new_sigma);
         }
@@ -428,18 +434,11 @@ void SLAMModuleEKF::exportResult()
     // export frame pose.
 
     {
-        Eigen::Vector3d position;
-        Eigen::Quaterniond attitude;
+        mCurrentFrame->frame_to_world.translation() = mMu.segment<3>(0);
 
-        position = mMu.segment<3>(0);
-        attitude.x() = mMu(3);
-        attitude.y() = mMu(4);
-        attitude.z() = mMu(5);
-        attitude.w() = mMu(6);
+        mCurrentFrame->frame_to_world.setQuaternion(SLAMMath::convert(mMu.segment<4>(3)));
 
-        mCurrentFrame->frame_to_world.translation() = position;
-        mCurrentFrame->frame_to_world.setQuaternion(attitude);
-        mCurrentFrame->pose_covariance = mSigma.block<13,13>(0,0);
+        mCurrentFrame->pose_covariance = mSigma.block<7,7>(0,0);
     }
 
     // export mappoints positions.
@@ -479,7 +478,8 @@ void SLAMModuleEKF::compute_f(
     const Eigen::Vector4d s = rotationVectorToQuaternion(w*dt, Js);
 
     Eigen::Matrix<double, 4, 8> Jt;
-    Eigen::Vector4d t = quaternionProduct(q, s, Jt);
+    Eigen::Vector4d t;
+    SLAMMath::computeQuaternionQuaternionProduct(q, s, &t, &Jt);
 
     const Eigen::Matrix4d Jq_wrt_q = Jt.leftCols<4>();
     const Eigen::Matrix<double, 4, 3> Jq_wrt_w = Jt.rightCols<4>() * Js;
@@ -566,66 +566,6 @@ void SLAMModuleEKF::compute_f(
     Jrm.makeCompressed();
 
     J = Jrm;
-}
-
-Eigen::Vector4d SLAMModuleEKF::quaternionProduct(const Eigen::Vector4d& P, const Eigen::Vector4d& Q, Eigen::Matrix<double, 4, 8>& J)
-{
-    const double pi = P(0);
-    const double pj = P(1);
-    const double pk = P(2);
-    const double pr = P(3);
-
-    const double qi = Q(0);
-    const double qj = Q(1);
-    const double qk = Q(2);
-    const double qr = Q(3);
-
-    const double ui = pr * qi + qr * pi + (pj*qk - pk*qj);
-    const double uj = pr * qj + qr * pj + (pk*qi - pi*qk);
-    const double uk = pr * qk + qr * pk + (pi*qj - pj*qi);
-    const double ur = pr*qr - pi*qi - pj*qj - pk*qk;
-
-    Eigen::Vector4d ret;
-
-    ret(0) = ui;
-    ret(1) = uj;
-    ret(2) = uk;
-    ret(3) = ur;
-
-    J( 0, 0 ) = qk;
-    J( 0, 1 ) = qj;
-    J( 0, 2 ) = -qi;
-    J( 0, 3 ) = qr;
-    J( 0, 4 ) = pk;
-    J( 0, 5 ) = -pj;
-    J( 0, 6 ) = pi;
-    J( 0, 7 ) = pr;
-    J( 1, 0 ) = -qj;
-    J( 1, 1 ) = qk;
-    J( 1, 2 ) = qr;
-    J( 1, 3 ) = qi;
-    J( 1, 4 ) = pj;
-    J( 1, 5 ) = pk;
-    J( 1, 6 ) = -pr;
-    J( 1, 7 ) = pi;
-    J( 2, 0 ) = qi;
-    J( 2, 1 ) = -qr;
-    J( 2, 2 ) = qk;
-    J( 2, 3 ) = qj;
-    J( 2, 4 ) = -pi;
-    J( 2, 5 ) = pr;
-    J( 2, 6 ) = pk;
-    J( 2, 7 ) = pj;
-    J( 3, 0 ) = -qr;
-    J( 3, 1 ) = -qi;
-    J( 3, 2 ) = -qj;
-    J( 3, 3 ) = qk;
-    J( 3, 4 ) = -pr;
-    J( 3, 5 ) = -pi;
-    J( 3, 6 ) = -pj;
-    J( 3, 7 ) = pk;
-
-    return ret;
 }
 
 Eigen::Vector4d SLAMModuleEKF::rotationVectorToQuaternion(const Eigen::Vector3d& v, Eigen::Matrix<double, 4, 3>& J)

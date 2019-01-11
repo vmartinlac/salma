@@ -44,11 +44,6 @@ protected:
         Eigen::VectorXd& h,
         Eigen::SparseMatrix<double>& J);
 
-    Eigen::Vector4d quaternionProduct(
-        const Eigen::Vector4d& P,
-        const Eigen::Vector4d& Q,
-        Eigen::Matrix<double, 4, 8>& J);
-
     Eigen::Vector4d rotationVectorToQuaternion(
         const Eigen::Vector3d& v,
         Eigen::Matrix<double, 4, 3>& J);
