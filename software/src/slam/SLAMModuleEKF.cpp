@@ -1,4 +1,5 @@
 #include <set>
+#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -158,7 +159,8 @@ void SLAMModuleEKF::prepareLocalMap()
     {
         auto comp = [] (SLAMMapPointPtr P1, SLAMMapPointPtr P2)
         {
-            return (P1->frame_id_of_last_position_update > P2->frame_id_of_last_position_update); // TODO: find another criteria to select which keypoints we take into local map.
+            // TODO: is this criteria appropriate?
+            return (P1->frame_id_of_creation < P2->frame_id_of_creation);
         };
 
         std::sort(new_local_map.begin(), new_local_map.end(), comp);
@@ -241,16 +243,20 @@ void SLAMModuleEKF::prepareLocalMap()
     mSigma.swap(new_sigma);
 
     /*
-    std::ofstream f("tmp"+std::to_string(mCurrentFrame->id)+".csv");
+    std::ofstream f("tmp"+std::to_string(mCurrentFrame->id)+".csv", std::ofstream::app);
+    f << "mu " << mCurrentFrame->id << std::endl;
+    f << mMu << std::endl;
+    f << "sigma " << mCurrentFrame->id << std::endl;
     for(int i=0; i<mSigma.rows(); i++)
     {
         for(int j=0; j<mSigma.cols(); j++)
         {
-            f << mSigma(i,j) << ' ';
+            f << std::setfill('0') << std::setw(12) << mSigma(i,j) << ' ';
         }
         f << std::endl;
     }
     f.close();
+    if(mCurrentFrame->id >= 3) exit(0);
     */
 }
 

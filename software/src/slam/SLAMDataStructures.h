@@ -21,6 +21,7 @@ public:
 
     int id;
 
+    int frame_id_of_creation;
     int frame_id_of_last_position_update;
 
     Eigen::Vector3d position;

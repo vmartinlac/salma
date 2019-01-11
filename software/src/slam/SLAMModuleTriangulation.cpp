@@ -233,6 +233,8 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
 
         computePositionCovariance(frame, normalized_left, normalized_right, ret->position_covariance);
 
+        ret->frame_id_of_creation = frame->id;
+
         ret->frame_id_of_last_position_update = frame->id;
 
         context()->num_mappoints++;

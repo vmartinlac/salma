@@ -36,7 +36,7 @@ OperationDialog::OperationDialog(Project* proj, OperationPtr op, QWidget* parent
         mActionStop->setEnabled(false);
 
         mActionStart->setShortcut(QKeySequence("F5"));
-        mActionStop->setShortcut(QKeySequence("Maj+F5"));
+        mActionStop->setShortcut(QKeySequence("F6"));
     }
 
     // set up central widgets.

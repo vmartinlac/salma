@@ -33,6 +33,7 @@ SLAMFrame::SLAMFrame()
 SLAMMapPoint::SLAMMapPoint()
 {
     id = -1;
+    frame_id_of_creation = -1;
     frame_id_of_last_position_update = -1;
     position.setZero();
     position_covariance.setIdentity();
