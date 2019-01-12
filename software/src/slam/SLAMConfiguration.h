@@ -2,6 +2,12 @@
 
 #include <memory>
 
+enum SLAMPipeline
+{
+    SLAM_PIPELINE_EKF,
+    SLAM_PIPELINE_LBA,
+};
+
 struct SLAMConfigurationFeatures
 {
     SLAMConfigurationFeatures();
@@ -51,14 +57,12 @@ struct SLAMConfigurationEKF
     double update_projection_sdev;
 };
 
-/*
 struct SLAMConfigurationLBA
 {
     SLAMConfigurationLBA();
 
     bool debug;
 };
-*/
 
 struct SLAMConfigurationStereoMatcher
 {
@@ -89,14 +93,12 @@ struct SLAMConfigurationTriangulation
     double sigma_proj_right;
 };
 
-/*
 struct SLAMConfigurationDenseReconstruction
 {
     SLAMConfigurationDenseReconstruction();
 
     bool debug;
 };
-*/
 
 class SLAMConfiguration
 {
@@ -105,14 +107,17 @@ public:
     SLAMConfiguration();
     ~SLAMConfiguration();
 
+    bool debug;
+    SLAMPipeline pipeline;
+
     SLAMConfigurationFeatures features;
     SLAMConfigurationTemporalMatcher temporal_matcher;
     SLAMConfigurationAlignment alignment;
     SLAMConfigurationEKF ekf;
-    //SLAMConfigurationLBA lba;
+    SLAMConfigurationLBA lba;
     SLAMConfigurationStereoMatcher stereo_matcher;
     SLAMConfigurationTriangulation triangulation;
-    //SLAMConfigurationDenseReconstruction dense_reconstruction;
+    SLAMConfigurationDenseReconstruction dense_reconstruction;
 };
 
 typedef std::shared_ptr<SLAMConfiguration> SLAMConfigurationPtr;

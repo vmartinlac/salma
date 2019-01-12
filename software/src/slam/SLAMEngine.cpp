@@ -34,8 +34,17 @@ bool SLAMEngine::initialize(
         mModules.emplace_back(new SLAMModuleFeatures(mContext));
         mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
         mModules.emplace_back(new SLAMModuleAlignment(mContext));
-        mModules.emplace_back(new SLAMModuleEKF(mContext));
-        //mModules.emplace_back(new SLAMModuleLBA(mContext));
+        switch(configuration->pipeline)
+        {
+        case SLAM_PIPELINE_EKF:
+            mModules.emplace_back(new SLAMModuleEKF(mContext));
+            break;
+        case SLAM_PIPELINE_LBA:
+            mModules.emplace_back(new SLAMModuleLBA(mContext));
+            break;
+        default:
+            throw std::runtime_error("incorrect pipeline");
+        }
         mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
         mModules.emplace_back(new SLAMModuleTriangulation(mContext));
         //mModules.emplace_back(new SLAMModuleDenseReconstruction(mContext));

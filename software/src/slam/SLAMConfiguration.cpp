@@ -3,6 +3,8 @@
 
 SLAMConfiguration::SLAMConfiguration()
 {
+    debug = true;
+    pipeline = SLAM_PIPELINE_EKF;
 }
 
 SLAMConfiguration::~SLAMConfiguration()
@@ -50,12 +52,10 @@ SLAMConfigurationEKF::SLAMConfigurationEKF()
     update_projection_sdev = 6.0;
 }
 
-/*
 SLAMConfigurationLBA::SLAMConfigurationLBA()
 {
     debug = false;
 }
-*/
 
 SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()
 {
@@ -81,10 +81,8 @@ SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()
     sigma_proj_right = 0.5;
 }
 
-/*
 SLAMConfigurationDenseReconstruction::SLAMConfigurationDenseReconstruction()
 {
     debug = false;
 }
-*/
 

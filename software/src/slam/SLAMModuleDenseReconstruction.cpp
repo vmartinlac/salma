@@ -1,6 +1,6 @@
 #include <fstream>
 #include <Eigen/Eigen>
-#include <opencv2/cudastereo.hpp>
+//#include <opencv2/cudastereo.hpp>
 //#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
@@ -19,6 +19,7 @@ SLAMModuleDenseReconstruction::~SLAMModuleDenseReconstruction()
 
 bool SLAMModuleDenseReconstruction::init()
 {
+    /*
     SLAMContextPtr con = context();
 
     mCameras[0] = con->calibration->cameras[0].calibration;
@@ -56,12 +57,14 @@ bool SLAMModuleDenseReconstruction::init()
             mRectification.cameras[i].map0,
             mRectification.cameras[i].map1 );
     }
+    */
 
     return true;
 }
 
 void SLAMModuleDenseReconstruction::operator()()
 {
+    /*
     std::cout << "   DENSE RECONSTRUCTION" << std::endl;
 
     SLAMReconstructionPtr reconstr = context()->reconstruction;
@@ -121,19 +124,10 @@ void SLAMModuleDenseReconstruction::operator()()
 
     if( context()->configuration->densereconstruction_debug )
     {
-        std::ofstream f("rien.csv");
-        for(int i=0; i<disparity.rows; i++)
-        {
-            for(int j=0; j<disparity.cols; j++)
-            {
-                f << disparity.at<int16_t>(i,j) << ' ';
-            }
-            f << std::endl;
-        }
-
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpdisparity", disparity);
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpleft", rectified_left);
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpright", rectified_right);
     }
+    */
 }
 

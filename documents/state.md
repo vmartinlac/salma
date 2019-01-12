@@ -33,9 +33,6 @@ Estimate covariance of triangulated point wrt to covariance of rig pose.
 TO DO
 =====
 
-First milestone
----------------
-
 Local Bundle Adjustment
 Improve the robustness
     Test/check functions
@@ -44,11 +41,10 @@ Improve the robustness
 UI improvements
     Let the user remove calibration, recording or reconstruction from the UI
     let the user see available cameras
-
-Second milestone
-----------------
-
+    let the user set configuration from the UI
 Dense reconstruction
+Improve debug output
+    For each reconstruction, generate a set of html pages
 
 Study of regimes of failures
 ============================

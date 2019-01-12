@@ -27,8 +27,8 @@ add_library(
     SLAMModuleStereoMatcher.h
     SLAMModuleTriangulation.cpp
     SLAMModuleTriangulation.h
-    #SLAMModuleDenseReconstruction.cpp
-    #SLAMModuleDenseReconstruction.h
+    SLAMModuleDenseReconstruction.cpp
+    SLAMModuleDenseReconstruction.h
     SLAMDebug.cpp
     SLAMDebug.h
     SLAMMath.cpp
@@ -38,7 +38,7 @@ add_library(
 target_link_libraries(
     salma_slam
     PUBLIC
-    #Threads::Threads
+    g2o::core
     Qt5::Core
     Qt5::Widgets
     Eigen3::Eigen
@@ -48,6 +48,7 @@ target_link_libraries(
     opencv_video
     #opencv_cudastereo
     #opencv_cudaimgproc
+    #Threads::Threads
     salma_video
     salma_mvpnp
     salma_calibration
