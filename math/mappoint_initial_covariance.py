@@ -1,5 +1,17 @@
 import sympy
 
+def make_camera_matrix(prefix):
+    fx = sympy.symbols(prefix+'_fx')
+    fy = sympy.symbols(prefix+'_fy')
+    cx = sympy.symbols(prefix+'_cx')
+    cy = sympy.symbols(prefix+'_cy')
+    return (fx, 0, cx, 0, fy, cy, 0, 0, 1)
+
+def make_vector2d(prefix):
+    vx = sympy.symbols(prefix+'_x')
+    vy = sympy.symbols(prefix+'_y')
+    return (vx, vy)
+
 def make_vector(prefix):
     vx = sympy.symbols(prefix+'_x')
     vy = sympy.symbols(prefix+'_y')
@@ -25,8 +37,15 @@ def make_matrix(prefix):
     M33 = sympy.symbols(prefix+'_33')
     return (M11, M12, M13, M21, M22, M23, M31, M32, M33)
 
+def invert_camera_matrix(cam):
+    fx = cam[0]
+    fy = cam[4]
+    cx = cam[2]
+    cy = cam[5]
+    return (1/fx, 0, -cx/fx, 0, 1/fy, -cy/fy, 0, 0, 1)
+
 def q2r(q):
-    qr, qi, qj, qk = q
+    qi, qj, qk, qr = q
 
     s = sympy.Rational(1,1) / (qi*qi + qj*qj + qk*qk + qr*qr)
 
@@ -44,6 +63,12 @@ def q2r(q):
 
     return (R11, R12, R13, R21, R22, R23, R31, R32, R33)
 
+def add_vectors(a,b):
+    return (
+        a[0]+b[0],
+        a[1]+b[1],
+        a[2]+b[2])
+
 def multiply_matrix_vector(a,v):
     vx, vy, vz = v
 
@@ -58,54 +83,87 @@ def scalar_product(u,v):
     ux, uy, uz = u
     return vx*ux + vy*uy + vz*uz
 
-#XL = make_vector("xleft")
-#XR = make_vector("xright")
+def print_function_and_jacobian(outvars, invars, result_name, jacobian_name):
 
-leftcam2world_t = make_vector('O1')
-#leftcam2world_q = make_quaternion('leftcam2world_q')
-rightcam2world_t = make_vector('O2')
-#rightcam2world_q = make_quaternion('rightcam2world_q')
+    i=0
+    for outv in outvars:
+        print(result_name + "(" + str(i) + ") = " + sympy.printing.ccode(outv) + ";")
+        i += 1
 
-#leftcam2world_r = make_matrix("leftcam2world_r") #q2r(leftcam2world_q)
-#rightcam2world_r = make_matrix("rightcam2world_r") #q2r(rightcam2world_q)
+    i=0
+    for outv in outvars:
+        j = 0
+        for inv in invars:
+            txt = sympy.printing.ccode( outv.diff(inv) )
+            print(jacobian_name + "(" + str(i) + ", " + str(j) + ") = " + txt + ";")
+            j += 1
+        i += 1
 
-#left_dir = multiply_matrix_vector(leftcam2world_r, XL)
-#right_dir = multiply_matrix_vector(rightcam2world_r, XR)
+def rigid_transform_demo():
+    q = make_quaternion("q")
+    t = make_vector("t")
+    v = make_vector("v")
+    r = q2r(q)
 
-left_dir = make_vector("D1")
-right_dir = make_vector("D2")
+    u = add_vectors( multiply_matrix_vector(q2r(q), v), t)
+    print_function_and_jacobian((*u, *t, *q), (*v, *t, *q), "res", "J")
 
-A11 = scalar_product(left_dir, left_dir)
-A12 = scalar_product(left_dir, right_dir)
-A22 = scalar_product(right_dir, right_dir)
+def compute_direction_demo():
 
-det = A11*A22 - A12*A12
+    P1 = make_vector2d("P1")
+    P2 = make_vector2d("P2")
 
-B11 = A11/det
-B12 = -A12/det
-B22 = A22/det
+    R1 = make_matrix("R1")
+    R2 = make_matrix("R2")
 
-delta = ( rightcam2world_t[0] - leftcam2world_t[0], rightcam2world_t[1] - leftcam2world_t[1], rightcam2world_t[2] - leftcam2world_t[2] )
+    K1 = make_camera_matrix("K1")
+    K2 = make_camera_matrix("K2")
 
-C1 = scalar_product(left_dir, delta)
-C2 = scalar_product(right_dir, delta)
+    invK1 = invert_camera_matrix(K1)
+    invK2 = invert_camera_matrix(K2)
 
-alpha1 = B11 * C1 + B12 * C2
-alpha2 = B12 * C1 + B22 * C2
+    A1 = multiply_matrix_vector(invK1, (*P1, 1))
+    A2 = multiply_matrix_vector(invK2, (*P2, 1))
 
-P_x = ( (leftcam2world_t[0] + alpha1 * left_dir[0]) + (rightcam2world_t[0] - alpha2 * right_dir[0]) ) / 2
-P_y = ( (leftcam2world_t[1] + alpha1 * left_dir[1]) + (rightcam2world_t[1] - alpha2 * right_dir[1]) ) / 2
-P_z = ( (leftcam2world_t[2] + alpha1 * left_dir[2]) + (rightcam2world_t[2] - alpha2 * right_dir[2]) ) / 2
+    D1 = multiply_matrix_vector(R1, A1)
+    D2 = multiply_matrix_vector(R2, A2)
 
-outvars = (P_x, P_y, P_z)
-invars = (*left_dir, *leftcam2world_t, *right_dir, *rightcam2world_t)
-i = 0
-for outv in outvars:
-    j = 0
-    for inv in invars:
-        txt = sympy.printing.ccode( outv.diff(inv) )
-        print("J("+str(i)+", "+str(j)+") = " + txt + ";")
-        j += 1
-    print()
-    i += 1
+    print_function_and_jacobian( (*D1, *D2), (*P1, *P2), "res1", "J1")
+
+def triangulation_demo():
+
+    O1 = make_vector('O1')
+    O2 = make_vector('O2')
+
+    D1 = make_vector("D1")
+    D2 = make_vector("D2")
+
+    A11 = scalar_product(D1, D1)
+    A12 = scalar_product(D1, D2)
+    A22 = scalar_product(D2, D2)
+
+    det = A11*A22 - A12*A12
+
+    B11 = A11/det
+    B12 = -A12/det
+    B22 = A22/det
+
+    delta = ( O2[0] - O1[0], O2[1] - O1[1], O2[2] - O1[2] )
+
+    C1 = scalar_product(D1, delta)
+    C2 = scalar_product(D2, delta)
+
+    alpha1 = B11 * C1 + B12 * C2
+    alpha2 = B12 * C1 + B22 * C2
+
+    P_x = ( (O1[0] + alpha1 * D1[0]) + (O2[0] - alpha2 * D2[0]) ) / 2
+    P_y = ( (O1[1] + alpha1 * D1[1]) + (O2[1] - alpha2 * D2[1]) ) / 2
+    P_z = ( (O1[2] + alpha1 * D1[2]) + (O2[2] - alpha2 * D2[2]) ) / 2
+
+    outvars = (P_x, P_y, P_z)
+    invars = (*D1, *D2)
+    print_function_and_jacobian(outvars, invars, "res2", "J2")
+
+compute_direction_demo()
+triangulation_demo()
 

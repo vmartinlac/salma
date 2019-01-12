@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Eigen>
+#include <sophus/se3.hpp>
 
 class SLAMMath
 {
@@ -26,5 +27,19 @@ public:
         const Eigen::Vector4d& p,
         Eigen::Vector4d* result,
         Eigen::Matrix<double, 4, 8>* J);
+
+    static void rigidTransform(
+        const Sophus::SE3d& mu_transform,
+        const Eigen::Matrix<double, 7, 7>& sigma_transform,
+        const Eigen::Vector3d& mu_point,
+        const Eigen::Matrix3d& sigma_point,
+        Eigen::Vector3d& mu_transformed,
+        Eigen::Matrix<double, 3, 10>& sigma_transformed);
+
+    static void rigidTransform(
+        const Sophus::SE3d& transform,
+        const Eigen::Vector3d& point,
+        Eigen::Vector3d& result,
+        Eigen::Matrix<double, 10, 10>& J); // jacobian of (input_vector, translation, quaternion) -> (output_vector, translation, quaternion).
 };
 

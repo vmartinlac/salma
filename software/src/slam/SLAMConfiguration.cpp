@@ -77,6 +77,8 @@ SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()
     max_reprojection_error = 15.0;
     use_lindstrom = true;
     min_distance_to_camera = 1.0;
+    sigma_proj_left = 0.5;
+    sigma_proj_right = 0.5;
 }
 
 /*

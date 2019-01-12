@@ -85,6 +85,8 @@ struct SLAMConfigurationTriangulation
     int track_lifetime;
     bool use_lindstrom;
     double min_distance_to_camera;
+    double sigma_proj_left;
+    double sigma_proj_right;
 };
 
 /*

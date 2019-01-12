@@ -139,3 +139,166 @@ void SLAMMath::computeQuaternionQuaternionProduct(
     }
 }
 
+void SLAMMath::rigidTransform(
+    const Sophus::SE3d& mu_transform,
+    const Eigen::Matrix<double, 7, 7>& sigma_transform,
+    const Eigen::Vector3d& mu_point,
+    const Eigen::Matrix3d& sigma_point,
+    Eigen::Vector3d& mu_transformed,
+    Eigen::Matrix<double, 3, 10>& sigma_transformed)
+{
+    Eigen::Matrix<double, 10, 10> J;
+    rigidTransform(
+        mu_transform,
+        mu_point,
+        mu_transformed,
+        J);
+
+    Eigen::Matrix<double, 10, 10> sigma_input;
+    sigma_input.setZero();
+    sigma_input.block<3,3>(0,0) = sigma_point;
+    sigma_input.block<7,7>(3,3) = sigma_transform;
+
+    const Eigen::Matrix<double, 10, 10> sigma_output = J * sigma_input * J.transpose();
+    //std::cout << sigma_input << std::endl;
+    //std::cout << sigma_output << std::endl;
+
+    //std::cout << "AAA " << (mu_transformed - mu_transform * mu_point).norm() << std::endl;
+    sigma_transformed = sigma_output.topRows<3>();
+}
+
+void SLAMMath::rigidTransform(
+    const Sophus::SE3d& transform,
+    const Eigen::Vector3d& point,
+    Eigen::Vector3d& result,
+    Eigen::Matrix<double, 10, 10>& J)
+{
+    const double v_x = point.x();
+    const double v_y = point.y();
+    const double v_z = point.z();
+
+    const double t_x = transform.translation().x();
+    const double t_y = transform.translation().y();
+    const double t_z = transform.translation().z();
+
+    const double q_x = transform.unit_quaternion().vec().x();
+    const double q_y = transform.unit_quaternion().vec().y();
+    const double q_z = transform.unit_quaternion().vec().z();
+    const double q_w = transform.unit_quaternion().w();
+
+    result(0) = t_x + v_x*(-2*(pow(q_y, 2) + pow(q_z, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1) + 2*v_y*(-q_w*q_z + q_x*q_y)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*v_z*(q_w*q_y + q_x*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    result(1) = t_y + 2*v_x*(q_w*q_z + q_x*q_y)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + v_y*(-2*(pow(q_x, 2) + pow(q_z, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1) + 2*v_z*(-q_w*q_x + q_y*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    result(2) = t_z + 2*v_x*(-q_w*q_y + q_x*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*v_y*(q_w*q_x + q_y*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + v_z*(-2*(pow(q_x, 2) + pow(q_y, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1);
+
+    /*
+    result(3) = t_x;
+    result(4) = t_y;
+    result(5) = t_z;
+    result(6) = q_x;
+    result(7) = q_y;
+    result(8) = q_z;
+    result(9) = q_w;
+    */
+
+    J(0, 0) = -2*(pow(q_y, 2) + pow(q_z, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1;
+    J(0, 1) = 2*(-q_w*q_z + q_x*q_y)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(0, 2) = 2*(q_w*q_y + q_x*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(0, 3) = 1;
+    J(0, 4) = 0;
+    J(0, 5) = 0;
+    J(0, 6) = -2*q_x*v_x*(-2*pow(q_y, 2) - 2*pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x*v_y*(-q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x*v_z*(q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_y*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_z*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(0, 7) = 2*q_w*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_x*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_y*v_y*(-q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_y*v_z*(q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + v_x*(4*q_y*(pow(q_y, 2) + pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(0, 8) = -2*q_w*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_x*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_z*v_y*(-q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_z*v_z*(q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + v_x*(4*q_z*(pow(q_y, 2) + pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(0, 9) = -2*q_w*v_x*(-2*pow(q_y, 2) - 2*pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_w*v_y*(-q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_w*v_z*(q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_y*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 2*q_z*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(1, 0) = 2*(q_w*q_z + q_x*q_y)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(1, 1) = -2*(pow(q_x, 2) + pow(q_z, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1;
+    J(1, 2) = 2*(-q_w*q_x + q_y*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(1, 3) = 0;
+    J(1, 4) = 1;
+    J(1, 5) = 0;
+    J(1, 6) = -2*q_w*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_x*v_x*(q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x*v_z*(-q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_y*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + v_y*(4*q_x*(pow(q_x, 2) + pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(1, 7) = 2*q_x*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_y*v_x*(q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 2*q_y*v_y*(-2*pow(q_x, 2) - 2*pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_y*v_z*(-q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_z*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(1, 8) = 2*q_w*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_y*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_z*v_x*(q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_z*v_z*(-q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + v_y*(4*q_z*(pow(q_x, 2) + pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(1, 9) = -4*q_w*v_x*(q_w*q_z + q_x*q_y)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 2*q_w*v_y*(-2*pow(q_x, 2) - 2*pow(q_z, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_w*v_z*(-q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 2*q_x*v_z/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_z*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(2, 0) = 2*(-q_w*q_y + q_x*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(2, 1) = 2*(q_w*q_x + q_y*q_z)/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(2, 2) = -2*(pow(q_x, 2) + pow(q_y, 2))/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 1;
+    J(2, 3) = 0;
+    J(2, 4) = 0;
+    J(2, 5) = 1;
+    J(2, 6) = 2*q_w*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_x*v_x*(-q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x*v_y*(q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_z*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + v_z*(4*q_x*(pow(q_x, 2) + pow(q_y, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(2, 7) = -2*q_w*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_y*v_x*(-q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_y*v_y*(q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_z*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + v_z*(4*q_y*(pow(q_x, 2) + pow(q_y, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)));
+    J(2, 8) = 2*q_x*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) + 2*q_y*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 4*q_z*v_x*(-q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_z*v_y*(q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 2*q_z*v_z*(-2*pow(q_x, 2) - 2*pow(q_y, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2);
+    J(2, 9) = -4*q_w*v_x*(-q_w*q_y + q_x*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 4*q_w*v_y*(q_w*q_x + q_y*q_z)/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) - 2*q_w*v_z*(-2*pow(q_x, 2) - 2*pow(q_y, 2))/pow(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2), 2) + 2*q_x*v_y/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2)) - 2*q_y*v_x/(pow(q_w, 2) + pow(q_x, 2) + pow(q_y, 2) + pow(q_z, 2));
+    J(3, 0) = 0;
+    J(3, 1) = 0;
+    J(3, 2) = 0;
+    J(3, 3) = 1;
+    J(3, 4) = 0;
+    J(3, 5) = 0;
+    J(3, 6) = 0;
+    J(3, 7) = 0;
+    J(3, 8) = 0;
+    J(3, 9) = 0;
+    J(4, 0) = 0;
+    J(4, 1) = 0;
+    J(4, 2) = 0;
+    J(4, 3) = 0;
+    J(4, 4) = 1;
+    J(4, 5) = 0;
+    J(4, 6) = 0;
+    J(4, 7) = 0;
+    J(4, 8) = 0;
+    J(4, 9) = 0;
+    J(5, 0) = 0;
+    J(5, 1) = 0;
+    J(5, 2) = 0;
+    J(5, 3) = 0;
+    J(5, 4) = 0;
+    J(5, 5) = 1;
+    J(5, 6) = 0;
+    J(5, 7) = 0;
+    J(5, 8) = 0;
+    J(5, 9) = 0;
+    J(6, 0) = 0;
+    J(6, 1) = 0;
+    J(6, 2) = 0;
+    J(6, 3) = 0;
+    J(6, 4) = 0;
+    J(6, 5) = 0;
+    J(6, 6) = 1;
+    J(6, 7) = 0;
+    J(6, 8) = 0;
+    J(6, 9) = 0;
+    J(7, 0) = 0;
+    J(7, 1) = 0;
+    J(7, 2) = 0;
+    J(7, 3) = 0;
+    J(7, 4) = 0;
+    J(7, 5) = 0;
+    J(7, 6) = 0;
+    J(7, 7) = 1;
+    J(7, 8) = 0;
+    J(7, 9) = 0;
+    J(8, 0) = 0;
+    J(8, 1) = 0;
+    J(8, 2) = 0;
+    J(8, 3) = 0;
+    J(8, 4) = 0;
+    J(8, 5) = 0;
+    J(8, 6) = 0;
+    J(8, 7) = 0;
+    J(8, 8) = 1;
+    J(8, 9) = 0;
+    J(9, 0) = 0;
+    J(9, 1) = 0;
+    J(9, 2) = 0;
+    J(9, 3) = 0;
+    J(9, 4) = 0;
+    J(9, 5) = 0;
+    J(9, 6) = 0;
+    J(9, 7) = 0;
+    J(9, 8) = 0;
+    J(9, 9) = 1;
+}
+

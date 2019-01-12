@@ -1,11 +1,12 @@
+
 add_executable(
-    testmvpnp
+    testslam
     main.cpp
 )
 
 target_link_libraries(
-    testmvpnp
+    testslam
     PUBLIC
-    salma_mvpnp
+    salma_slam
 )
 
