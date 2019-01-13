@@ -62,6 +62,7 @@ struct SLAMConfigurationLBA
     SLAMConfigurationLBA();
 
     bool debug;
+    int num_previous_frames;
 };
 
 struct SLAMConfigurationStereoMatcher

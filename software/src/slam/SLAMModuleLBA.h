@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "StereoRigCalibrationData.h"
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
@@ -13,5 +14,10 @@ public:
 
     bool init() override;
     void operator()() override;
+
+protected:
+
+    int mNumPreviousFrames;
+    StereoRigCalibrationDataPtr mRig;
 };
 

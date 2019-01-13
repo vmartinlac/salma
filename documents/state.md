@@ -35,6 +35,7 @@ TO DO
 
 Local Bundle Adjustment
 Improve the robustness
+    Write specifications?
     Test/check functions
     Find and understand failure regimes
     Correct failures
@@ -45,6 +46,12 @@ UI improvements
 Dense reconstruction
 Improve debug output
     For each reconstruction, generate a set of html pages
+
+Move EKF data (localmap, mu, sigma) into SLAMFrame.
+
+Open questions
+==============
+Implement keyframe selection?
 
 Study of regimes of failures
 ============================
@@ -57,15 +64,4 @@ Which components to test
 - computation of f and its jacobian
 - computation of h and its jacobian
 
-Notes
-=====
-
-Interrogation local map
------------------------
-
-Maintenir la local map en dehors du module EKF?
-
-Le module temporal matcher matches seulement des points de la local map.
-Le module EKF diminue la local map si besoin.
-Le module triangulation aggrandit la local map.
 

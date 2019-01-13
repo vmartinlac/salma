@@ -33,12 +33,16 @@ add_library(
     SLAMDebug.h
     SLAMMath.cpp
     SLAMMath.h
+    EdgeProjectP2R.cpp
+    EdgeProjectP2R.h
 )
 
 target_link_libraries(
     salma_slam
     PUBLIC
     g2o::core
+    g2o::types_sba
+    g2o::solver_eigen
     Qt5::Core
     Qt5::Widgets
     Eigen3::Eigen

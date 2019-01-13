@@ -55,6 +55,7 @@ SLAMConfigurationEKF::SLAMConfigurationEKF()
 SLAMConfigurationLBA::SLAMConfigurationLBA()
 {
     debug = false;
+    num_previous_frames = 12;
 }
 
 SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()
