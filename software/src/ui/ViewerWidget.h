@@ -21,6 +21,7 @@ public slots:
     void showRigs(bool);
     void showTrajectory(bool);
     void showSegment(int i);
+    void setLighting(bool);
 
 protected:
 

@@ -45,6 +45,7 @@ public:
     bool isCameraMutable(int id, bool& mut);
     bool describeCamera(int id, QString& descr);
     bool renameCamera(int id, const QString& new_name);
+    bool removeCamera(int id);
 
     bool saveRig(StereoRigCalibrationDataPtr rig, int& id);
     bool loadRig(int id, StereoRigCalibrationDataPtr& rig);
@@ -52,6 +53,7 @@ public:
     bool isRigMutable(int id, bool& mut);
     bool describeRig(int id, QString& descr);
     bool renameRig(int id, const QString& new_name);
+    bool removeRig(int id);
 
     bool saveRecording(RecordingHeaderPtr rec, int& id);
     bool loadRecording(int id, RecordingHeaderPtr& rec);
@@ -59,6 +61,7 @@ public:
     bool isRecordingMutable(int id, bool& mut);
     bool describeRecording(int id, QString& descr);
     bool renameRecording(int id, const QString& new_name);
+    bool removeRecording(int id);
     bool createRecordingDirectory(QDir& dir);
 
     bool saveReconstruction(SLAMReconstructionPtr rec, int& id);
@@ -67,6 +70,7 @@ public:
     bool isReconstructionMutable(int id, bool& mut);
     bool describeReconstruction(int id, QString& descr);
     bool renameReconstruction(int id, const QString& new_name);
+    bool removeReconstruction(int id);
 
 protected:
 

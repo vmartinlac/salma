@@ -172,7 +172,47 @@ void RecordingPanel::onRenameRecording()
 
 void RecordingPanel::onDeleteRecording()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    bool is_mutable = false;
+    int recording_id = -1;
+    bool ok = true;
+
+    if(ok)
+    {
+        recording_id = mProject->recordingModel()->indexToId(mView->currentIndex());
+        ok = (recording_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->isRecordingMutable(recording_id, is_mutable);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Error while checking whether the recording is referenced!");
+        }
+    }
+
+    if(ok)
+    {
+        if(is_mutable)
+        {
+            const auto ret = QMessageBox::question(this, "Confirmation", "Do you really want to delete selected recording?", QMessageBox::Yes|QMessageBox::No);
+
+            if(ret == QMessageBox::Yes)
+            {
+                const bool removal_status = mProject->removeRecording(recording_id);
+
+                if(removal_status == false)
+                {
+                    QMessageBox::critical(this, "Error", "Could not remove selected recording!");
+                }
+            }
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error", "This recording is referenced by another item and cannot be deleted!");
+        }
+    }
 }
 
 void RecordingPanel::onSelect(const QModelIndex& ind)

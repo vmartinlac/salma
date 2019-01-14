@@ -51,6 +51,8 @@ Move EKF data (localmap, mu, sigma) into SLAMFrame.
 
 Move math into some common module (common at least to mvpnp and slam).
 
+Do not expose transaction/commit/rollback in Project class. Do it internally (notably in removeCamera, removeRig, removeRecording and removeReconstruction).
+
 Open questions
 ==============
 

@@ -90,7 +90,8 @@ void SLAMModuleLBA::operator()()
             }
         }
 
-        // if there are too many mappoints, remove some.
+        // if there are too many mappoints, remove some randomly.
+        // TODO: is this a good strategy?
 
         const int max_mappoints = context()->configuration->lba.max_mappoints;
 

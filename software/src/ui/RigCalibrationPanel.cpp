@@ -110,7 +110,47 @@ void RigCalibrationPanel::onRename()
 
 void RigCalibrationPanel::onDelete()
 {
-    QMessageBox::critical(this, "Error", "Not implemented!");
+    bool is_mutable = false;
+    int rig_id = -1;
+    bool ok = true;
+
+    if(ok)
+    {
+        rig_id = mProject->rigCalibrationModel()->indexToId(mView->currentIndex());
+        ok = (rig_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->isRigMutable(rig_id, is_mutable);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Error while checking whether the rig is referenced!");
+        }
+    }
+
+    if(ok)
+    {
+        if(is_mutable)
+        {
+            const auto ret = QMessageBox::question(this, "Confirmation", "Do you really want to delete selected rig?", QMessageBox::Yes|QMessageBox::No);
+
+            if(ret == QMessageBox::Yes)
+            {
+                const bool removal_status = mProject->removeRig(rig_id);
+
+                if(removal_status == false)
+                {
+                    QMessageBox::critical(this, "Error", "Could not remove selected rig!");
+                }
+            }
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error", "This rig is referenced by another item and cannot be deleted!");
+        }
+    }
 }
 
 void RigCalibrationPanel::onSelect(const QModelIndex& ind)

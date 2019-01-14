@@ -6,6 +6,7 @@ Dependencies
 * g2o (bundle adjustment)
 * nanoflann (knn search)
 * OpenCV (general purpose computer vision)
+* OpenMP (shared-memory parallelism)
 * openscenegraph (3d visualization)
 * Qt5 (user interfaces)
 * Sophus (representation of geometric transformations)

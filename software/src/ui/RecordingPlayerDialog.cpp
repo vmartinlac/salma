@@ -18,18 +18,22 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
     QToolBar* tb = new QToolBar();
     tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
+    QAction* aClose = tb->addAction("Close");
+    tb->addSeparator();
     QAction* aFirst = tb->addAction("First frame");
     QAction* aPrevious = tb->addAction("Previous frame");
     QAction* aPlay = tb->addAction("Play");
     QAction* aNext = tb->addAction("Next frame");
     QAction* aLast = tb->addAction("Last frame");
 
+    connect(aClose, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aFirst, SIGNAL(triggered()), this, SLOT(onFirst()));
     connect(aPrevious, SIGNAL(triggered()), this, SLOT(onPrevious()));
     connect(aPlay, SIGNAL(toggled(bool)), this, SLOT(onPlay(bool)));
     connect(aNext, SIGNAL(triggered()), this, SLOT(onNext()));
     connect(aLast, SIGNAL(triggered()), this, SLOT(onLast()));
 
+    aClose->setIcon(QIcon::fromTheme("window-close"));
     aFirst->setIcon(QIcon::fromTheme("media-skip-backward"));
     aPrevious->setIcon(QIcon::fromTheme("media-seek-backward"));
     aPlay->setIcon(QIcon::fromTheme("media-playback-start"));

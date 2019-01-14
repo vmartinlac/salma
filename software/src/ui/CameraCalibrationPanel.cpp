@@ -108,7 +108,47 @@ void CameraCalibrationPanel::onRename()
 
 void CameraCalibrationPanel::onDelete()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    bool is_mutable = false;
+    int camera_id = -1;
+    bool ok = true;
+
+    if(ok)
+    {
+        camera_id = mProject->cameraCalibrationModel()->indexToId(mView->currentIndex());
+        ok = (camera_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->isCameraMutable(camera_id, is_mutable);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Error while checking whether the camera is referenced!");
+        }
+    }
+
+    if(ok)
+    {
+        if(is_mutable)
+        {
+            const auto ret = QMessageBox::question(this, "Confirmation", "Do you really want to delete selected camera?", QMessageBox::Yes|QMessageBox::No);
+
+            if(ret == QMessageBox::Yes)
+            {
+                const bool removal_status = mProject->removeCamera(camera_id);
+
+                if(removal_status == false)
+                {
+                    QMessageBox::critical(this, "Error", "Could not remove selected camera!");
+                }
+            }
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error", "This camera is referenced by another item and cannot be deleted!");
+        }
+    }
 }
 
 void CameraCalibrationPanel::onSelect(const QModelIndex& ind)

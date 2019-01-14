@@ -143,7 +143,47 @@ void ReconstructionPanel::onRename()
 
 void ReconstructionPanel::onDelete()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    bool is_mutable = false;
+    int reconstruction_id = -1;
+    bool ok = true;
+
+    if(ok)
+    {
+        reconstruction_id = mProject->reconstructionModel()->indexToId(mView->currentIndex());
+        ok = (reconstruction_id >= 0);
+    }
+
+    if(ok)
+    {
+        ok = mProject->isReconstructionMutable(reconstruction_id, is_mutable);
+
+        if(ok == false)
+        {
+            QMessageBox::critical(this, "Error", "Error while checking whether the reconstruction is referenced!");
+        }
+    }
+
+    if(ok)
+    {
+        if(is_mutable)
+        {
+            const auto ret = QMessageBox::question(this, "Confirmation", "Do you really want to delete selected reconstruction?", QMessageBox::Yes|QMessageBox::No);
+
+            if(ret == QMessageBox::Yes)
+            {
+                const bool removal_status = mProject->removeReconstruction(reconstruction_id);
+
+                if(removal_status == false)
+                {
+                    QMessageBox::critical(this, "Error", "Could not remove selected reconstruction!");
+                }
+            }
+        }
+        else
+        {
+            QMessageBox::critical(this, "Error", "This reconstruction is referenced by another item and cannot be deleted!");
+        }
+    }
 }
 
 void ReconstructionPanel::onSelect(const QModelIndex& ind)

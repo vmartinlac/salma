@@ -15,6 +15,21 @@ ViewerWidget::ViewerWidget( SLAMReconstructionPtr reconstr, QWidget* parent ) : 
     mCurrentSegment = -1;
 }
 
+void ViewerWidget::setLighting(bool val)
+{
+    if( mSegmentSwitch )
+    {
+        if(val)
+        {
+            mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON);
+        }
+        else
+        {
+            mSegmentSwitch->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        }
+    }
+}
+
 void ViewerWidget::showSegment(int i)
 {
     if( 0 <= i && i < mReconstruction->segments.size())

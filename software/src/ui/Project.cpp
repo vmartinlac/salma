@@ -465,6 +465,51 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
     return ok;
 }
 
+bool Project::isCameraMutable(int id, bool& ismutable)
+{
+    bool ok = true;
+
+    ismutable = true;
+
+    // check that there is such camera in the databse.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM camera_parameters WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+    }
+
+    // check whether some rig is referencing the camera.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(DISTINCT rig_parameters.id) FROM rig_parameters, rig_cameras WHERE rig_cameras.rig_id=rig_parameters.id AND rig_cameras.camera_id=?");
+        q.addBindValue(id);
+
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            ismutable = (q.value(0).toInt() == 0);
+        }
+    }
+
+    if(ok == false)
+    {
+        ismutable = false;
+    }
+
+    return ok;
+}
+
+bool Project::removeCamera(int id)
+{
+    return false;
+}
+
 // POSE
 
 bool Project::savePose(const Sophus::SE3d& pose, int& id)
@@ -738,6 +783,52 @@ bool Project::renameRig(int id, const QString& new_name)
     return ok;
 }
 
+bool Project::removeRig(int id)
+{
+    // TODO
+    return false;
+}
+
+bool Project::isRigMutable(int id, bool& ismutable)
+{
+    bool ok = true;
+
+    ismutable = true;
+
+    // check that there is such rig in the databse.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM rig_parameters WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+    }
+
+    // check whether some reconstruction is referencing the rig.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE rig_id=?");
+        q.addBindValue(id);
+
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            ismutable = (q.value(0).toInt() == 0);
+        }
+    }
+
+    if(ok == false)
+    {
+        ismutable = false;
+    }
+
+    return ok;
+}
+
 bool Project::listRigs(RigCalibrationList& list)
 {
     bool ok = isOpen();
@@ -902,9 +993,49 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     return ok;
 }
 
-bool Project::isRecordingMutable(int id, bool& mut)
+bool Project::removeRecording(int id)
 {
-    return false; // TODO
+    return false;
+}
+
+bool Project::isRecordingMutable(int id, bool& ismutable)
+{
+    bool ok = true;
+
+    ismutable = true;
+
+    // check that there is such recording in the databse.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM recordings WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+    }
+
+    // check whether some reconstruction is referencing the recording.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE recording_id=?");
+        q.addBindValue(id);
+
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            ismutable = (q.value(0).toInt() == 0);
+        }
+    }
+
+    if(ok == false)
+    {
+        ismutable = false;
+    }
+
+    return ok;
 }
 
 bool Project::describeRecording(int id, QString& descr)
@@ -1215,6 +1346,40 @@ bool Project::renameReconstruction(int id, const QString& new_name)
     reconstructionModelChanged();
 
     return ok;
+}
+
+bool Project::isReconstructionMutable(int id, bool& ismutable)
+{
+    bool ok = true;
+
+    ismutable = true;
+
+    // check that there is such reconstruction in the databse.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT id FROM reconstructions WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+    }
+
+    if(ok)
+    {
+        ismutable = true;
+    }
+
+    if(ok == false)
+    {
+        ismutable = false;
+    }
+
+    return ok;
+}
+
+bool Project::removeReconstruction(int id)
+{
+    return false;
 }
 
 bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)

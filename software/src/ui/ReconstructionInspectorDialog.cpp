@@ -26,6 +26,7 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     QAction* aDensePoints = tb->addAction("DensePoints");
     QAction* aRigs = tb->addAction("Rigs");
     QAction* aTrajectory = tb->addAction("Trajectory");
+    QAction* aLight = tb->addAction("Light");
     tb->addSeparator();
     QAction* aExport = tb->addAction("Export");
     QAction* aHome = tb->addAction("Home");
@@ -34,11 +35,13 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     aDensePoints->setCheckable(true);
     aRigs->setCheckable(true);
     aTrajectory->setCheckable(true);
+    aLight->setCheckable(true);
 
     aMapPoints->setChecked(true);
     aDensePoints->setChecked(true);
     aRigs->setChecked(true);
     aTrajectory->setChecked(true);
+    aLight->setChecked(true);
 
     connect(aClose, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aTrajectory, SIGNAL(toggled(bool)), mViewer, SLOT(showTrajectory(bool)));
@@ -48,6 +51,7 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
     connect(aExport, SIGNAL(triggered()), this, SLOT(onExport()));
     connect(mSegmentsWidget, SIGNAL(currentIndexChanged(int)), this, SLOT(onSelectSegment()));
     connect(aHome, SIGNAL(triggered()), mViewer, SLOT(home()));
+    connect(aLight, SIGNAL(toggled(bool)), mViewer, SLOT(setLighting(bool)));
 
     /*
     mInformation = new QLabel();
