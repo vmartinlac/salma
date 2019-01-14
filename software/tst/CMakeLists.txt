@@ -1,3 +1,4 @@
 add_subdirectory(testmvpnp)
-add_subdirectory(testslam)
+add_subdirectory(testtriangulation)
+add_subdirectory(testlba)
 

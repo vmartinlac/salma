@@ -4,7 +4,7 @@
 SLAMConfiguration::SLAMConfiguration()
 {
     debug = true;
-    pipeline = SLAM_PIPELINE_EKF;
+    pipeline = SLAM_PIPELINE_LBA;
 }
 
 SLAMConfiguration::~SLAMConfiguration()
@@ -56,6 +56,7 @@ SLAMConfigurationLBA::SLAMConfigurationLBA()
 {
     debug = false;
     num_previous_frames = 12;
+    sigma_projection = 2.0;
 }
 
 SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()

@@ -126,7 +126,8 @@ void EdgeProjectP2R::linearizeOplus()
     _error.y() = _measurement.y - projected.front().y;
     */
 
-    _jacobianOplusXi = J_proj * R_world_to_camera;
-    //_jacobianOplusXj = ;
+    _jacobianOplusXi = -J_proj * R_world_to_camera;
+
+    _jacobianOplusXj.setZero();
 }
 

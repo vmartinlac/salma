@@ -1,11 +1,11 @@
 
 add_executable(
-    testslam
+    testlba
     main.cpp
 )
 
 target_link_libraries(
-    testslam
+    testlba
     PUBLIC
     salma_slam
 )

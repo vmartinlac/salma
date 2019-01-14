@@ -17,8 +17,10 @@ bool SLAMModuleLBA::init()
 {
     SLAMContextPtr con = context();
 
-    mNumPreviousFrames = con->configuration->lba.num_previous_frames;
     mRig = con->calibration;
+
+    mNumPreviousFrames = con->configuration->lba.num_previous_frames;
+    mSigmaProjection = con->configuration->lba.sigma_projection;
 
     return true;
 }
@@ -41,9 +43,17 @@ void SLAMModuleLBA::operator()()
 
     if(go_on)
     {
-        const int N = static_cast<int>(reconstr->frames.size());
-        const int first = std::max(N-mNumPreviousFrames, 0);
-        std::copy(reconstr->frames.begin()+first, reconstr->frames.end(), std::back_inserter(frames));
+        int i = static_cast<int>( reconstr->frames.size() ) - 1;
+        bool take_next = true;
+
+        while( i >= 0 && frames.size() < mNumPreviousFrames && take_next )
+        {
+            SLAMFramePtr f = reconstr->frames[i];
+            take_next = f->aligned_wrt_previous_frame;
+            i--;
+            frames.push_back(f);
+        }
+
         go_on = (frames.empty() == false);
     }
 
@@ -157,8 +167,7 @@ void SLAMModuleLBA::operator()()
 
                         if(it != mappoint_id_to_local_id.end())
                         {
-                            Eigen::Matrix2d information;
-                            information.setIdentity();
+                            const Eigen::Matrix2d information = (1.0/(mSigmaProjection*mSigmaProjection)) * Eigen::Matrix2d::Identity();
 
                             EdgeProjectP2R* e = new EdgeProjectP2R();
 

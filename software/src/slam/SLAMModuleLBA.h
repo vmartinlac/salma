@@ -18,6 +18,7 @@ public:
 protected:
 
     int mNumPreviousFrames;
+    double mSigmaProjection;
     StereoRigCalibrationDataPtr mRig;
 };
 
