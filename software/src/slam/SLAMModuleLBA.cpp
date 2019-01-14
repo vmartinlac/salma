@@ -19,9 +19,6 @@ bool SLAMModuleLBA::init()
 
     mRig = con->calibration;
 
-    mNumPreviousFrames = con->configuration->lba.num_previous_frames;
-    mSigmaProjection = con->configuration->lba.sigma_projection;
-
     return true;
 }
 
@@ -43,16 +40,20 @@ void SLAMModuleLBA::operator()()
 
     if(go_on)
     {
+        const int max_previous_frames = context()->configuration->lba.max_previous_frames;
+
         int i = static_cast<int>( reconstr->frames.size() ) - 1;
         bool take_next = true;
 
-        while( i >= 0 && frames.size() < mNumPreviousFrames && take_next )
+        while( i >= 0 && frames.size() < max_previous_frames && take_next )
         {
             SLAMFramePtr f = reconstr->frames[i];
             take_next = f->aligned_wrt_previous_frame;
             i--;
             frames.push_back(f);
         }
+
+        std::reverse(frames.begin(), frames.end());
 
         go_on = (frames.empty() == false);
     }
@@ -87,6 +88,21 @@ void SLAMModuleLBA::operator()()
                     }
                 }
             }
+        }
+
+        // if there are too many mappoints, remove some.
+
+        const int max_mappoints = context()->configuration->lba.max_mappoints;
+
+        while(mappoints.size() > max_mappoints)
+        {
+            std::uniform_int_distribution<int> unif(0, mappoints.size()-1);
+
+            const int todel = unif(mEngine);
+
+            mappoints[todel].swap(mappoints.back());
+
+            mappoints.pop_back();
         }
 
         go_on = (mappoints.empty() == false);
@@ -167,7 +183,9 @@ void SLAMModuleLBA::operator()()
 
                         if(it != mappoint_id_to_local_id.end())
                         {
-                            const Eigen::Matrix2d information = (1.0/(mSigmaProjection*mSigmaProjection)) * Eigen::Matrix2d::Identity();
+                            const double sigma_projection = context()->configuration->lba.sigma_projection;
+
+                            const Eigen::Matrix2d information = (1.0/(sigma_projection*sigma_projection)) * Eigen::Matrix2d::Identity();
 
                             EdgeProjectP2R* e = new EdgeProjectP2R();
 
@@ -192,6 +210,9 @@ void SLAMModuleLBA::operator()()
 
     if(go_on)
     {
+        std::cout << "      Num frames: " << frames.size() << std::endl;
+        std::cout << "      Num mappoints: " << mappoints.size() << std::endl;
+
         g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>* linear_solver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
 
         g2o::BlockSolver_6_3* block_solver = new g2o::BlockSolver_6_3(std::unique_ptr< g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType> >(linear_solver));
@@ -200,9 +221,11 @@ void SLAMModuleLBA::operator()()
 
         optimizer.setAlgorithm(solver);
 
-        optimizer.setVerbose(true);
+        optimizer.setVerbose( context()->configuration->lba.verbose );
+
         optimizer.initializeOptimization();
-        optimizer.optimize(20);
+
+        optimizer.optimize( context()->configuration->lba.max_steps );
     }
 
     // retrieve result.

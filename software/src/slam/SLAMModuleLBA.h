@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <random>
 #include "StereoRigCalibrationData.h"
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
@@ -17,8 +18,7 @@ public:
 
 protected:
 
-    int mNumPreviousFrames;
-    double mSigmaProjection;
+    std::default_random_engine mEngine;
     StereoRigCalibrationDataPtr mRig;
 };
 

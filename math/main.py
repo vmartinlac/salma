@@ -44,6 +44,25 @@ def invert_camera_matrix(cam):
     cy = cam[5]
     return (1/fx, 0, -cx/fx, 0, 1/fy, -cy/fy, 0, 0, 1)
 
+def w2q(w):
+    wx, wy, wz = w
+
+    n = (wx**2 + wy**2 + wz**2)**0.5
+
+    costheta = sympy.cos(n/2)
+    sintheta = sympy.sin(n/2)
+
+    ax = wx/n
+    ay = wy/n
+    az = wz/n
+
+    qx = sintheta*ax
+    qy = sintheta*ay
+    qz = sintheta*az
+    qw = costheta
+
+    return qx, qy, qz, qw
+
 def q2r(q):
     qi, qj, qk, qr = q
 
@@ -77,6 +96,18 @@ def multiply_matrix_vector(a,v):
     uz = a[6]*vx + a[7]*vy + a[8]*vz
 
     return (ux, uy, uz)
+
+def multiply_quaternion_quaternion(p, q):
+
+    pi, pj, pk, pr = p
+    qi, qj, qk, qr = q
+
+    ui = pr * qi + qr * pi + (pj*qk - pk*qj)
+    uj = pr * qj + qr * pj + (pk*qi - pi*qk)
+    uk = pr * qk + qr * pk + (pi*qj - pj*qi)
+    ur = pr*qr - pi*qi - pj*qj - pk*qk
+
+    return (ui, uj, uk, ur)
 
 def scalar_product(u,v):
     vx, vy, vz = v
@@ -164,6 +195,17 @@ def triangulation_demo():
     invars = (*D1, *D2)
     print_function_and_jacobian(outvars, invars, "res2", "J2")
 
-compute_direction_demo()
-triangulation_demo()
+def q2r_demo():
+    q = make_quaternion("q")
+    r = q2r(q)
+    print_function_and_jacobian( r, q, "res", "J" )
+
+def w2q_demo():
+    w = make_vector("w")
+    q = w2q(w)
+    print_function_and_jacobian( q, w, "res", "J")
+
+#compute_direction_demo()
+#triangulation_demo()
+q2r_demo()
 

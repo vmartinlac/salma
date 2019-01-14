@@ -1,6 +1,7 @@
 #include <Eigen/Eigen>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
+#include "SLAMMath.h"
 #include "EdgeProjectP2R.h"
 
 EdgeProjectP2R::EdgeProjectP2R()
@@ -117,17 +118,26 @@ void EdgeProjectP2R::linearizeOplus()
     Eigen::Matrix<double, 2, 3> J_proj;
     cv::cv2eigen(J(cv::Range::all(), cv::Range(3,6)), J_proj);
 
-    const Eigen::Matrix3d R_world_to_camera =
-        mRigCalibration->cameras[mView].camera_to_rig.rotationMatrix().transpose() *
-        world_to_rig.rotation().toRotationMatrix();
+    Eigen::Matrix<double, 3, 9> W;
+    W.setZero();
+    W.block<1,3>(0,0) = in_world_frame.transpose();
+    W.block<1,3>(1,3) = in_world_frame.transpose();
+    W.block<1,3>(2,6) = in_world_frame.transpose();
 
-    /*
-    _error.x() = _measurement.x - projected.front().x;
-    _error.y() = _measurement.y - projected.front().y;
-    */
+    Eigen::Matrix<double, 9, 4> J_r;
+    SLAMMath::computeJacobianOfQuaternionToRotationMatrix(world_to_rig.rotation(), J_r);
 
+    const Eigen::Matrix3d R_rig_to_camera = mRigCalibration->cameras[mView].camera_to_rig.rotationMatrix().transpose();
+
+    const Eigen::Matrix3d R_world_to_camera = R_rig_to_camera * world_to_rig.rotation().toRotationMatrix();
+
+    // jacobian or error wrt mappoint position.
     _jacobianOplusXi = -J_proj * R_world_to_camera;
 
-    _jacobianOplusXj.setZero();
+    // jacobian of error wrt world_to_rig_q.
+    _jacobianOplusXj.leftCols<3>() = -J_proj * R_rig_to_camera * W * J_r.leftCols<3>();
+
+    // jacobian of error wrt world_to_rig_t.
+    _jacobianOplusXj.rightCols<3>() = -J_proj * R_rig_to_camera;
 }
 

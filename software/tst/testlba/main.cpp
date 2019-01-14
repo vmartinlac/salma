@@ -9,6 +9,10 @@
 
 int main(int num_args, char** args)
 {
+    const double sigma_mappoint = 0.1;
+    const double sigma_pose_t = 0.1;
+    const double sigma_pose_theta = M_PI*0.13;
+
     std::default_random_engine rng;
 
     // create camera and rig calibration.
@@ -35,6 +39,8 @@ int main(int num_args, char** args)
     con->calibration = rig;
     con->reconstruction.reset(new SLAMReconstruction());
     con->debug.reset(new SLAMDebug(con->configuration));
+
+    con->configuration->lba.verbose = true;
 
     // create mappoints.
 
@@ -69,8 +75,10 @@ int main(int num_args, char** args)
 
     // create frames.
 
+    std::vector<Sophus::SE3d> frame_to_world_ref;
+
     {
-        const int N_frames = 4;
+        const int N_frames = 5;
 
         for(int i=0; i<N_frames; i++)
         {
@@ -84,6 +92,8 @@ int main(int num_args, char** args)
             frame->timestamp = double(i)*1.0/30.0;
             frame->aligned_wrt_previous_frame = (i > 0);
             frame->frame_to_world = Sophus::SE3d( Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d(0.0, 0.0, z) );
+
+            frame_to_world_ref.push_back(frame->frame_to_world);
 
             for(SLAMMapPointPtr mp : mappoints)
             {
@@ -121,13 +131,53 @@ int main(int num_args, char** args)
     {
         std::normal_distribution<double> normal;
 
-        const double sigma = 0.1;
-
         for(SLAMMapPointPtr mp : mappoints)
         {
-            mp->position.x() += sigma * normal(rng);
-            mp->position.y() += sigma * normal(rng);
-            mp->position.z() += sigma * normal(rng);
+            mp->position.x() += sigma_mappoint * normal(rng);
+            mp->position.y() += sigma_mappoint * normal(rng);
+            mp->position.z() += sigma_mappoint * normal(rng);
+        }
+    }
+
+    // add noise to frame positions.
+
+    {
+        std::normal_distribution<double> normal;
+
+        bool first = true;
+
+        for(SLAMFramePtr f : con->reconstruction->frames)
+        {
+            Eigen::Vector3d axis;
+
+            do
+            {
+                axis.x() = normal(rng);
+                axis.y() = normal(rng);
+                axis.z() = normal(rng);
+            }
+            while(axis.norm() < 1.0e-5);
+
+            axis.normalize();
+
+            const double theta = sigma_pose_theta * normal(rng);
+
+            const Eigen::Matrix3d R = Eigen::Quaterniond(Eigen::AngleAxisd(theta, axis)).toRotationMatrix();
+
+            if(first)
+            {
+                first = false;
+            }
+            else
+            {
+                f->frame_to_world.translation().x() += sigma_pose_t * normal(rng);
+                f->frame_to_world.translation().y() += sigma_pose_t * normal(rng);
+                f->frame_to_world.translation().z() += sigma_pose_t * normal(rng);
+
+                const Eigen::Matrix3d new_attitude = f->frame_to_world.rotationMatrix() * R;
+
+                f->frame_to_world.setQuaternion(Eigen::Quaterniond(new_attitude));
+            }
         }
     }
 
@@ -143,7 +193,16 @@ int main(int num_args, char** args)
     for(int i=0; i<mappoints.size(); i++)
     {
         const Eigen::Vector3d err = mappoints[i]->position - mappoints_refpos[i];
-        std::cout << err.transpose() << std::endl;
+        std::cout << "[MAPPOINT " << mappoints[i]->id << "] " << err.transpose() << std::endl;
+    }
+
+    for(int i=0; i<con->reconstruction->frames.size(); i++)
+    {
+        SLAMFramePtr f = con->reconstruction->frames[i];
+        const Sophus::SE3d ref = frame_to_world_ref[i];
+        const Sophus::SE3d opt = f->frame_to_world;
+        std::cout << "[FRAME_t " << f->id << "] " << ( opt.translation() - ref.translation() ).transpose() << std::endl;
+        std::cout << "[FRAME_q " << f->id << "] " << ( opt.unit_quaternion().coeffs() - ref.unit_quaternion().coeffs() ).transpose() << std::endl;
     }
 
     return 0;

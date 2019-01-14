@@ -55,8 +55,11 @@ SLAMConfigurationEKF::SLAMConfigurationEKF()
 SLAMConfigurationLBA::SLAMConfigurationLBA()
 {
     debug = false;
-    num_previous_frames = 12;
+    max_previous_frames = 10;
+    max_mappoints = 400;
     sigma_projection = 2.0;
+    verbose = false;
+    max_steps = 20;
 }
 
 SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()

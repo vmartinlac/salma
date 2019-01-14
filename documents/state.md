@@ -49,9 +49,14 @@ Improve debug output
 
 Move EKF data (localmap, mu, sigma) into SLAMFrame.
 
+Move math into some common module (common at least to mvpnp and slam).
+
 Open questions
 ==============
+
 Implement keyframe selection?
+
+Why is framerate so low? What is limiting it?
 
 Study of regimes of failures
 ============================

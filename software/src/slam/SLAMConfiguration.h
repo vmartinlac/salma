@@ -62,7 +62,10 @@ struct SLAMConfigurationLBA
     SLAMConfigurationLBA();
 
     bool debug;
-    int num_previous_frames;
+    bool verbose;
+    int max_steps;
+    int max_previous_frames;
+    int max_mappoints;
     double sigma_projection;
 };
 

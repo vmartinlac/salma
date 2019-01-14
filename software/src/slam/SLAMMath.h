@@ -41,5 +41,9 @@ public:
         const Eigen::Vector3d& point,
         Eigen::Vector3d& result,
         Eigen::Matrix<double, 10, 10>& J); // jacobian of (input_vector, translation, quaternion) -> (output_vector, translation, quaternion).
+
+    static void computeJacobianOfQuaternionToRotationMatrix(
+        const Eigen::Quaterniond& q,
+        Eigen::Matrix<double, 9, 4>& J);
 };
 
