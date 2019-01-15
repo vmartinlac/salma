@@ -1,4 +1,5 @@
 #include <QSqlQuery>
+#include <QSqlError>
 #include <QFileInfo>
 #include "Project.h"
 #include "CameraCalibrationData.h"
@@ -507,7 +508,62 @@ bool Project::isCameraMutable(int id, bool& ismutable)
 
 bool Project::removeCamera(int id)
 {
-    return false;
+    bool ok = true;
+    bool has_transaction = false;
+
+    // check whether the camera can be removed or not.
+
+    if(ok)
+    {
+        bool ismutable;
+        ok = ( isCameraMutable(id, ismutable) && ismutable );
+    }
+
+    // create transaction.
+
+    if(ok)
+    {
+        mDB.transaction();
+        has_transaction = true;
+    }
+
+    // delete distortion coefficients.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM distortion_coefficients WHERE camera_id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete camera.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM camera_parameters WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // commit or rollback transaction.
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
+
+    cameraCalibrationModelChanged();
+
+    return ok;
 }
 
 // POSE
@@ -785,8 +841,72 @@ bool Project::renameRig(int id, const QString& new_name)
 
 bool Project::removeRig(int id)
 {
-    // TODO
-    return false;
+    bool ok = true;
+    bool has_transaction = false;
+
+    // check whether the rig can be removed or not.
+
+    if(ok)
+    {
+        bool ismutable;
+        ok = ( isRigMutable(id, ismutable) && ismutable );
+    }
+
+    // create transaction.
+
+    if(ok)
+    {
+        mDB.transaction();
+        has_transaction = true;
+    }
+
+    // delete rig camera poses.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM poses WHERE id IN (SELECT camera_to_rig FROM rig_cameras WHERE rig_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete rig cameras.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM rig_cameras WHERE rig_id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete rig.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM rig_parameters WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // commit or rollback transaction.
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
+
+    rigCalibrationModelChanged();
+
+    return ok;
 }
 
 bool Project::isRigMutable(int id, bool& ismutable)
@@ -995,7 +1115,102 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
 
 bool Project::removeRecording(int id)
 {
-    return false;
+    QString recording_directory_name;
+    bool ok = true;
+    bool has_transaction = false;
+
+    // check whether the recording can be removed or not.
+
+    if(ok)
+    {
+        bool ismutable;
+        ok = ( isRecordingMutable(id, ismutable) && ismutable );
+    }
+
+    // load name of the directory containing the frames.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT directory FROM recordings WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            recording_directory_name = q.value(0).toString();
+            ok = ( recording_directory_name.isEmpty() == false );
+        }
+    }
+
+    // create transaction.
+
+    if(ok)
+    {
+        mDB.transaction();
+        has_transaction = true;
+    }
+
+    // delete recording views.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM recording_views WHERE frame_id IN (SELECT id FROM recording_frames WHERE recording_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete recording frames.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM recording_frames WHERE recording_id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete recording.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM recordings WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // commit or rollback transaction.
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
+
+    // delete files.
+
+    if(ok)
+    {
+        QDir dir = mDir;
+
+        if(dir.cd(recording_directory_name) && dir != mDir)
+        {
+            // TODO: we do not check return value. Failure to remove files will not be reported to the user.
+            dir.removeRecursively();
+        }
+    }
+
+    recordingModelChanged();
+
+    return ok;
 }
 
 bool Project::isRecordingMutable(int id, bool& ismutable)
@@ -1379,7 +1594,122 @@ bool Project::isReconstructionMutable(int id, bool& ismutable)
 
 bool Project::removeReconstruction(int id)
 {
-    return false;
+    bool ok = true;
+    bool has_transaction = false;
+
+    // check whether the reconstruction can be removed or not.
+
+    if(ok)
+    {
+        bool ismutable;
+        ok = ( isReconstructionMutable(id, ismutable) && ismutable );
+    }
+
+    // create transaction.
+
+    if(ok)
+    {
+        mDB.transaction();
+        has_transaction = true;
+    }
+
+    // delete mappoints.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM mappoints WHERE id IN (SELECT projections.mappoint_id FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete densepoints.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM densepoints WHERE frame_id IN (SELECT id FROM frames WHERE reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete projections.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM projections WHERE id IN (SELECT projections.id FROM projections, keypoints, frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete descriptors
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM descriptors WHERE keypoint_id IN (SELECT keypoints.id FROM keypoints, frames WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete keypoints
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM keypoints WHERE frame_id IN (SELECT id FROM frames WHERE reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete frame poses.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM poses WHERE id IN (SELECT rig_to_world FROM frames WHERE reconstruction_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete frames
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM frames WHERE reconstruction_id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete reconstruction
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM reconstructions WHERE id=?");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // commit or rollback transaction.
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
+
+    reconstructionModelChanged();
+
+    return ok;
 }
 
 bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
