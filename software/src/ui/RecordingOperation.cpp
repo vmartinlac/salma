@@ -245,21 +245,7 @@ void RecordingOperation::uiafter(QWidget* parent, Project* project)
 
             if(ok)
             {
-                ok = project->transaction();
-            }
-
-            if(ok)
-            {
                 ok = project->saveRecording(mResult, recording_id);
-            }
-
-            if(ok)
-            {
-                ok = project->commit();
-            }
-            else
-            {
-                project->rollback();
             }
 
             if(ok)

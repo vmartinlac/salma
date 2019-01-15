@@ -99,21 +99,7 @@ void MainWindow::clearProject()
         
         if(ok)
         {
-            ok = mProject->transaction();
-        }
-
-        if(ok)
-        {
             ok = mProject->clear();
-        }
-
-        if(ok)
-        {
-            ok = mProject->commit();
-        }
-        else
-        {
-            mProject->rollback();
         }
 
         if(ok == false)

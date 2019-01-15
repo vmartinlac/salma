@@ -155,27 +155,55 @@ bool Project::open(const QString& path)
 
 bool Project::clear()
 {
-    mDB.exec("DELETE FROM `poses`");
-    mDB.exec("DELETE FROM `camera_parameters`");
-    mDB.exec("DELETE FROM `distortion_coefficients`");
-    mDB.exec("DELETE FROM `rig_parameters`");
-    mDB.exec("DELETE FROM `rig_cameras`");
-    mDB.exec("DELETE FROM `recordings`");
-    mDB.exec("DELETE FROM `recording_frames`");
-    mDB.exec("DELETE FROM `recording_views`");
-    mDB.exec("DELETE FROM `reconstructions`");
-    mDB.exec("DELETE FROM `settings`");
-    mDB.exec("DELETE FROM `frames`");
-    mDB.exec("DELETE FROM `views`");
-    mDB.exec("DELETE FROM `mappoints`");
-    mDB.exec("DELETE FROM `keypoints`");
-    mDB.exec("DELETE FROM `descriptors`");
-    mDB.exec("DELETE FROM `projections`");
-    mDB.exec("DELETE FROM `densepoints`");
+    bool has_transaction = false;
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        ok = ok && q.exec("DELETE FROM `poses`");
+        ok = ok && q.exec("DELETE FROM `camera_parameters`");
+        ok = ok && q.exec("DELETE FROM `distortion_coefficients`");
+        ok = ok && q.exec("DELETE FROM `rig_parameters`");
+        ok = ok && q.exec("DELETE FROM `rig_cameras`");
+        ok = ok && q.exec("DELETE FROM `recordings`");
+        ok = ok && q.exec("DELETE FROM `recording_frames`");
+        ok = ok && q.exec("DELETE FROM `recording_views`");
+        ok = ok && q.exec("DELETE FROM `reconstructions`");
+        ok = ok && q.exec("DELETE FROM `settings`");
+        ok = ok && q.exec("DELETE FROM `frames`");
+        ok = ok && q.exec("DELETE FROM `views`");
+        ok = ok && q.exec("DELETE FROM `mappoints`");
+        ok = ok && q.exec("DELETE FROM `keypoints`");
+        ok = ok && q.exec("DELETE FROM `descriptors`");
+        ok = ok && q.exec("DELETE FROM `projections`");
+        ok = ok && q.exec("DELETE FROM `densepoints`");
+    }
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
+        }
+    }
 
     changed();
 
-    return true;
+    return ok;
 }
 
 bool Project::isOpen()
@@ -189,21 +217,6 @@ void Project::close()
     mDB.close();
 
     changed();
-}
-
-bool Project::transaction()
-{
-    return mDB.transaction();
-}
-
-bool Project::commit()
-{
-    return mDB.commit();
-}
-
-bool Project::rollback()
-{
-    return mDB.rollback();
 }
 
 CameraCalibrationModel* Project::cameraCalibrationModel()
@@ -230,11 +243,21 @@ ReconstructionModel* Project::reconstructionModel()
 
 bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 {
+    bool has_transaction = false;
     bool ok = isOpen();
 
     if(ok)
     {
         ok = (camera->id < 0);
+    }
+
+    if(ok)
+    {
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     if(ok)
@@ -271,6 +294,18 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
             q.addBindValue(dist.at<double>(0, j));
 
             ok = q.exec();
+        }
+    }
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
         }
     }
 
@@ -523,8 +558,11 @@ bool Project::removeCamera(int id)
 
     if(ok)
     {
-        mDB.transaction();
-        has_transaction = true;
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     // delete distortion coefficients.
@@ -640,11 +678,21 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
 
 bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
 {
+    bool has_transaction = false;
     bool ok = true;
 
     if(ok)
     {
         ok = (rig->id < 0);
+    }
+
+    if(ok)
+    {
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     if(ok)
@@ -681,6 +729,18 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
             q.addBindValue(rig->cameras[i].calibration->id);
 
             ok = q.exec();
+        }
+    }
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
         }
     }
 
@@ -856,8 +916,11 @@ bool Project::removeRig(int id)
 
     if(ok)
     {
-        mDB.transaction();
-        has_transaction = true;
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     // delete rig camera poses.
@@ -985,11 +1048,21 @@ bool Project::listRigs(RigCalibrationList& list)
 
 bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 {
+    bool has_transaction = false;
     bool ok = true;
 
     if(ok)
     {
         ok = ( rec->id < 0 && rec->frames.size() == rec->num_frames && rec->views.size() == rec->num_frames*rec->num_views && rec->num_frames > 0 );
+    }
+
+    if(ok)
+    {
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     if(ok)
@@ -1032,6 +1105,18 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
                     ok = q.exec();
                 }
             }
+        }
+    }
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
         }
     }
 
@@ -1147,8 +1232,11 @@ bool Project::removeRecording(int id)
 
     if(ok)
     {
-        mDB.transaction();
-        has_transaction = true;
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     // delete recording views.
@@ -1609,8 +1697,11 @@ bool Project::removeReconstruction(int id)
 
     if(ok)
     {
-        mDB.transaction();
-        has_transaction = true;
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     // delete mappoints.
@@ -1714,6 +1805,7 @@ bool Project::removeReconstruction(int id)
 
 bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 {
+    bool has_transaction = false;
     bool ok = isOpen();
 
     mMapPointToDB.clear();
@@ -1721,6 +1813,15 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
     if(ok)
     {
         ok = ( rec->id < 0 && rec->recording->id >= 0 && rec->rig->id >= 0 );
+    }
+
+    if(ok)
+    {
+        ok = mDB.transaction();
+        if(ok)
+        {
+            has_transaction = true;
+        }
     }
 
     if(ok)
@@ -1745,6 +1846,18 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
         {
             int frame_id = -1;
             ok = saveFrame(rec->frames[i], i, id, frame_id);
+        }
+    }
+
+    if(has_transaction)
+    {
+        if(ok)
+        {
+            mDB.commit();
+        }
+        else
+        {
+            mDB.rollback();
         }
     }
 

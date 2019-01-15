@@ -35,10 +35,6 @@ public:
     RecordingModel* recordingModel();
     ReconstructionModel* reconstructionModel();
 
-    bool transaction();
-    bool commit();
-    bool rollback();
-
     bool saveCamera(CameraCalibrationDataPtr camera, int& id);
     bool loadCamera(int id, CameraCalibrationDataPtr& data);
     bool listCameras(CameraCalibrationList& list);

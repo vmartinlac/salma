@@ -378,21 +378,7 @@ void RigCalibrationOperation::uiafter(QWidget* parent, Project* proj)
 
         if(ok)
         {
-            ok = proj->transaction();
-        }
-
-        if(ok)
-        {
             ok = proj->saveRig(mResult, rig_id);
-        }
-
-        if(ok)
-        {
-            ok = proj->commit();
-        }
-        else
-        {
-            proj->rollback();
         }
 
         if(ok)

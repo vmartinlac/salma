@@ -292,21 +292,7 @@ void CameraCalibrationOperation::uiafter(QWidget* parent, Project* project)
 
         if(ok)
         {
-            ok = project->transaction();
-        }
-
-        if(ok)
-        {
             ok = project->saveCamera(mResult, camera_id);
-        }
-
-        if(ok)
-        {
-            ok = project->commit();
-        }
-        else
-        {
-            project->rollback();
         }
 
         if(ok)

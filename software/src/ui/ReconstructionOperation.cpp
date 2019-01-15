@@ -134,26 +134,12 @@ void ReconstructionOperation::uiafter(QWidget* parent, Project* project)
 
         if(ok)
         {
-            ok = project->transaction();
-        }
-
-        if(ok)
-        {
             mReconstruction->id = -1;
             mReconstruction->name = mReconstructionName;
             mReconstruction->recording = mRecordingHeader;
             mReconstruction->rig = mCalibration;
 
             ok = project->saveReconstruction(mReconstruction, reconstruction_id);
-        }
-
-        if(ok)
-        {
-            ok = project->commit();
-        }
-        else
-        {
-            project->rollback();
         }
 
         if(ok)
