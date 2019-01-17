@@ -53,6 +53,8 @@ In LBA, ensure that older mappoints are harder to move than newer ones.
 
 Create some garbage collector module.
 
+Add color to mappoints?
+
 Choosing a good lens
 ====================
 

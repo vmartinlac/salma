@@ -340,8 +340,8 @@ bool Project::describeCamera(int id, QString& descr)
         s << "<h3>Metadata</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-        s << "<tr><th>name</th><td>" << camera->name << "</td></tr>" << std::endl;
-        s << "<tr><th>date</th><td>" << camera->date << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << htmlEscape(camera->name) << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << htmlEscape(camera->date) << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
         s << "<h3>Image resolution</h3>" << std::endl;
@@ -776,15 +776,15 @@ bool Project::describeRig(int id, QString& descr)
         s << "<h3>Metadata</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-        s << "<tr><th>name</th><td>" << rig->name << "</td></tr>" << std::endl;
-        s << "<tr><th>date</th><td>" << rig->date << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << htmlEscape(rig->name) << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << htmlEscape(rig->date) << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
         for(int i=0; i<2; i++)
         {
             s << "<h3>Camera #" << i << "</h3>" << std::endl;
             s << "<table>" << std::endl;
-            s << "<tr><th>Camera calibration</th><td><em>" << QString(rig->cameras[i].calibration->name.c_str()).toHtmlEscaped().toStdString() << "</em> (" << rig->cameras[i].calibration->id << ").</td></tr>" << std::endl;
+            s << "<tr><th>Camera calibration</th><td><em>" << htmlEscape(rig->cameras[i].calibration->name) << "</em> (" << rig->cameras[i].calibration->id << ").</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_tx</th><td>" << rig->cameras[i].camera_to_rig.translation().x() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_ty</th><td>" << rig->cameras[i].camera_to_rig.translation().y() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_tz</th><td>" << rig->cameras[i].camera_to_rig.translation().z() << "</td></tr>" << std::endl;
@@ -1404,14 +1404,14 @@ bool Project::describeRecording(int id, QString& descr)
             s << "<h3>Metadata</h3>" << std::endl;
             s << "<table>" << std::endl;
             s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-            s << "<tr><th>name</th><td>" << q.value(0).toString().toStdString() << "</td></tr>" << std::endl;
-            s << "<tr><th>date</th><td>" << q.value(1).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>name</th><td>" << q.value(0).toString().toHtmlEscaped().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>date</th><td>" << q.value(1).toString().toHtmlEscaped().toStdString() << "</td></tr>" << std::endl;
             s << "</table>" << std::endl;
 
             s << "<h3>Content</h3>" << std::endl;
             s << "<table>" << std::endl;
             s << "<tr><th>Number of cameras:</th><td>" << q.value(3).toInt() << "</td></tr>" << std::endl;
-            s << "<tr><th>Directory:</th><td>" << q.value(2).toString().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>Directory:</th><td>" << q.value(2).toString().toHtmlEscaped().toStdString() << "</td></tr>" << std::endl;
             s << "<tr><th>Number of frames:</th><td>" << num_frames << "</td></tr>" << std::endl;
             s << "<tr><th>Duration:</th><td>" << duration << "</td></tr>" << std::endl;
             s << "</table>" << std::endl;
@@ -1631,14 +1631,14 @@ bool Project::describeReconstruction(int id, QString& descr)
         s << "<h3>Metadata</h3>" << std::endl;
         s << "<table>" << std::endl;
         s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-        s << "<tr><th>name</th><td>" << reconstruction_name << "</td></tr>" << std::endl;
-        s << "<tr><th>date</th><td>" << reconstruction_date << "</td></tr>" << std::endl;
+        s << "<tr><th>name</th><td>" << htmlEscape(reconstruction_name) << "</td></tr>" << std::endl;
+        s << "<tr><th>date</th><td>" << htmlEscape(reconstruction_date) << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
         s << "<h3>Input</h3>" << std::endl;
         s << "<table>" << std::endl;
-        s << "<tr><th>Recording</th><td><em>" << recording_name << "</em> (" << recording_id << ")</td></tr>" << std::endl;
-        s << "<tr><th>Rig calibration</th><td><em>" << rig_name << "</em> (" << rig_id << ")</td></tr>" << std::endl;
+        s << "<tr><th>Recording</th><td><em>" << htmlEscape(recording_name) << "</em> (" << recording_id << ")</td></tr>" << std::endl;
+        s << "<tr><th>Rig calibration</th><td><em>" << htmlEscape(rig_name) << "</em> (" << rig_id << ")</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
         s << "<h3>Reconstruction</h3>" << std::endl;
@@ -2236,5 +2236,10 @@ bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
     }
 
     return ok;
+}
+
+std::string Project::htmlEscape(const std::string& from)
+{
+    return QString(from.c_str()).toHtmlEscaped().toStdString();
 }
 

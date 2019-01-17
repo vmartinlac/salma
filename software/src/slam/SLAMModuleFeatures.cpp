@@ -116,7 +116,7 @@ void SLAMModuleFeatures::processView(SLAMView& v)
     }
     //
 
-    mFeature2d->compute( v.image, v.keypoints, v.descriptors );
+    //mFeature2d->compute( v.image, v.keypoints, v.descriptors );
     //mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
 
     v.tracks.resize( v.keypoints.size() );

@@ -13,7 +13,7 @@ SLAMConfiguration::~SLAMConfiguration()
 
 SLAMConfigurationFeatures::SLAMConfigurationFeatures()
 {
-    debug = true;
+    debug = false;
     scale_factor = 1.1;
     min_width = 160;
     max_features = 500;
@@ -35,8 +35,8 @@ SLAMConfigurationTemporalMatcher::SLAMConfigurationTemporalMatcher()
 SLAMConfigurationAlignment::SLAMConfigurationAlignment()
 {
     debug = false;
-    ransac_inlier_rate = 0.8;
-    ransac_inlier_threshold = 8.0;
+    ransac_inlier_rate = 0.75;
+    ransac_inlier_threshold = 10.0;
 }
 
 SLAMConfigurationEKF::SLAMConfigurationEKF()

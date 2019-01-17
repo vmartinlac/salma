@@ -80,6 +80,8 @@ protected:
 
     bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
 
+    static std::string htmlEscape(const std::string& from);
+
 signals:
     
     void changed();
