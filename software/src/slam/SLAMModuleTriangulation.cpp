@@ -117,6 +117,10 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
 
         ret->position_covariance = cov_in_world_frame;
 
+        ret->num_outlier_verdicts = 0;
+
+        ret->num_inlier_verdicts = 0;
+
         ret->frame_id_of_creation = frame->id;
 
         ret->frame_id_of_last_position_update = frame->id;

@@ -402,6 +402,7 @@ bool Project::listCameras(CameraCalibrationList& list)
     if(ok)
     {
         QSqlQuery q(mDB);
+        q.setForwardOnly(true);
         ok = q.exec("SELECT id, name, date FROM camera_parameters");
 
         if(ok)
@@ -436,6 +437,7 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         bool ok = q.exec() && q.next();
 
@@ -467,6 +469,7 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
         QSqlQuery q(mDB);
         q.prepare("SELECT `rank`, `value` FROM `distortion_coefficients` WHERE `camera_id`=? ORDER BY `rank` ASC");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         std::vector<double> values;
 
@@ -514,6 +517,7 @@ bool Project::isCameraMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM camera_parameters WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
 
@@ -524,6 +528,7 @@ bool Project::isCameraMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT rig_parameters.id) FROM rig_parameters, rig_cameras WHERE rig_cameras.rig_id=rig_parameters.id AND rig_cameras.camera_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
 
@@ -645,6 +650,7 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
         QSqlQuery q(mDB);
         q.prepare("SELECT qx, qy, qz, qw, x, y, z FROM poses WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         ok = ( q.exec() && q.next() );
 
@@ -808,6 +814,7 @@ bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `number_of_cameras` FROM `rig_parameters` WHERE `id`=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -828,6 +835,7 @@ bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
         QSqlQuery q(mDB);
         q.prepare("SELECT `rank`, `camera_to_rig`, `camera_id` FROM `rig_cameras` WHERE `rig_id`=? ORDER BY `rank` ASC");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec();
 
         std::vector<StereoRigCalibrationDataCamera> cameras;
@@ -985,6 +993,7 @@ bool Project::isRigMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM rig_parameters WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
 
@@ -995,6 +1004,7 @@ bool Project::isRigMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE rig_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
 
@@ -1021,6 +1031,7 @@ bool Project::listRigs(RigCalibrationList& list)
     if(ok)
     {
         QSqlQuery q(mDB);
+        q.setForwardOnly(true);
         ok = q.exec("SELECT id, name, date FROM rig_parameters");
 
         if(ok)
@@ -1136,6 +1147,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1156,6 +1168,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
         QSqlQuery q(mDB);
         q.prepare("SELECT f.rank, f.time, v.view, v.filename FROM recording_views v, recording_frames f WHERE v.frame_id=f.id AND f.recording_id=? ORDER BY f.rank ASC, v.view ASC");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec();
 
         rec->num_frames = 0;
@@ -1219,6 +1232,7 @@ bool Project::removeRecording(int id)
         QSqlQuery q(mDB);
         q.prepare("SELECT directory FROM recordings WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1314,6 +1328,7 @@ bool Project::isRecordingMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM recordings WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
 
@@ -1324,6 +1339,7 @@ bool Project::isRecordingMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE recording_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
 
@@ -1353,6 +1369,7 @@ bool Project::describeRecording(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT MAX(`rank`)+1 AS `number_of_frames`, MAX(`time`) AS `duration` FROM recording_frames WHERE recording_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec();
         
         if(ok)
@@ -1375,6 +1392,7 @@ bool Project::describeRecording(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1435,6 +1453,7 @@ bool Project::listRecordings(RecordingList& list)
     if(ok)
     {
         QSqlQuery q(mDB);
+        q.setForwardOnly(true);
         ok = q.exec("SELECT `id`, `name`, `date` FROM `recordings`");
 
         if(ok)
@@ -1504,6 +1523,7 @@ bool Project::listReconstructions(ReconstructionList& list)
     if(ok)
     {
         QSqlQuery q(mDB);
+        q.setForwardOnly(true);
         ok = q.exec("SELECT id, name, date FROM reconstructions");
 
         if(ok)
@@ -1547,6 +1567,7 @@ bool Project::describeReconstruction(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name FROM reconstructions reconstruction, rig_parameters rig, recordings recording WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1565,6 +1586,7 @@ bool Project::describeReconstruction(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(id) FROM frames WHERE reconstruction_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1578,6 +1600,7 @@ bool Project::describeReconstruction(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1591,6 +1614,7 @@ bool Project::describeReconstruction(int id, QString& descr)
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(densepoints.id) FROM densepoints, frames WHERE densepoints.frame_id=frames.id AND frames.reconstruction_id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -1664,6 +1688,7 @@ bool Project::isReconstructionMutable(int id, bool& ismutable)
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM reconstructions WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
 
@@ -1959,6 +1984,7 @@ bool Project::loadMapPoint(int id, SLAMMapPointPtr& mappoint)
         QSqlQuery q(mDB);
         q.prepare("SELECT rank, world_x, world_y, world_z FROM mappoints WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
@@ -2030,6 +2056,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         QSqlQuery q(mDB);
         q.prepare("SELECT name,DATETIME(date,'localtime'),rig_id,recording_id FROM reconstructions WHERE id=?");
         q.addBindValue(id);
+        q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
 
@@ -2058,6 +2085,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         QSqlQuery q(mDB);
         q.prepare("SELECT id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous FROM frames WHERE reconstruction_id=? ORDER BY rank ASC");
         q.addBindValue(id);
+        q.setForwardOnly(true);
         ok = q.exec();
 
         int count = 0;
@@ -2127,6 +2155,7 @@ bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
         QSqlQuery q(mDB);
         q.prepare("SELECT id, view, rank, u, v FROM keypoints WHERE frame_id=? ORDER BY view ASC, rank ASC");
         q.addBindValue(frame_id);
+        q.setForwardOnly(true);
         ok = q.exec();
 
         while(ok && q.next())
@@ -2166,6 +2195,7 @@ bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
         QSqlQuery q(mDB);
         q.prepare("SELECT projections.mappoint_id, keypoints.view, keypoints.rank FROM projections, keypoints WHERE keypoints.frame_id=? AND projections.keypoint_id=keypoints.id");
         q.addBindValue(frame_id);
+        q.setForwardOnly(true);
         ok = q.exec();
 
         frame->views[0].tracks.resize( frame->views[0].keypoints.size() );

@@ -33,6 +33,8 @@ SLAMFrame::SLAMFrame()
 SLAMMapPoint::SLAMMapPoint()
 {
     id = -1;
+    num_outlier_verdicts = 0;
+    num_inlier_verdicts = 0;
     frame_id_of_creation = -1;
     frame_id_of_last_position_update = -1;
     position.setZero();

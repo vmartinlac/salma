@@ -33,14 +33,12 @@ Estimate covariance of triangulated point wrt to covariance of rig pose.
 TO DO
 =====
 
-Local Bundle Adjustment
-Improve the robustness
+Assess and improve the robustness
     Write specifications?
     Test/check functions
     Find and understand failure regimes
     Correct failures
 UI improvements
-    Let the user remove calibration, recording or reconstruction from the UI
     let the user see available cameras
     let the user set configuration from the UI
 Dense reconstruction
@@ -51,14 +49,32 @@ Move EKF data (localmap, mu, sigma) into SLAMFrame.
 
 Move math into some common module (common at least to mvpnp and slam).
 
-Do not expose transaction/commit/rollback in Project class. Do it internally (notably in removeCamera, removeRig, removeRecording and removeReconstruction).
+In LBA, ensure that older mappoints are harder to move than newer ones.
+
+Create some garbage collector module.
+
+Choosing a good lens
+====================
+
+KOWA LM4NCL or LM5NCL
+<https://www.kowa-lenses.com/en/applications/machine-vision/269/lm5ncl>
+
+Theia Technologies MY110M
+<https://www.theiatech.com/sy110-ultra-wide/>
+
+https://www.edmundoptics.com/
+https://www.vision-dimension.com/
+https://industry.ricoh.com/
 
 Open questions
 ==============
 
 Implement keyframe selection?
 
+When do local bundle adjustment?
+
 Why is framerate so low? What is limiting it?
+    Study repartition of computation time.
 
 Study of regimes of failures
 ============================

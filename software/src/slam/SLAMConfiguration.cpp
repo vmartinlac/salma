@@ -55,7 +55,7 @@ SLAMConfigurationEKF::SLAMConfigurationEKF()
 SLAMConfigurationLBA::SLAMConfigurationLBA()
 {
     debug = false;
-    max_previous_frames = 10;
+    max_previous_frames = 5;
     max_mappoints = 400;
     sigma_projection = 2.0;
     verbose = false;

@@ -87,10 +87,18 @@ void SLAMModuleAlignment::operator()()
 
                 for(int j=0; j<inliers[i].size(); j++)
                 {
-                    if(inliers[i][j] == false)
+                    const int keypoint = projections[i][j];
+
+                    SLAMMapPointPtr& mp = current_frame->views[i].tracks[keypoint].mappoint;
+
+                    if(inliers[i][j])
                     {
-                        const int keypoint = projections[i][j];
-                        current_frame->views[i].tracks[keypoint].mappoint.reset();
+                        mp->num_inlier_verdicts++;
+                    }
+                    else
+                    {
+                        mp->num_outlier_verdicts++;
+                        mp.reset();
                         num_outliers++;
                     }
 

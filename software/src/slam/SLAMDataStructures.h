@@ -21,6 +21,9 @@ public:
 
     int id;
 
+    int num_outlier_verdicts;
+    int num_inlier_verdicts;
+
     int frame_id_of_creation;
     int frame_id_of_last_position_update;
 
