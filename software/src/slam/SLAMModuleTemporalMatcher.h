@@ -13,7 +13,7 @@ public:
     SLAMModuleTemporalMatcher(SLAMContextPtr con);
 
     bool init() override;
-    void operator()() override;
+    SLAMModuleResult operator()() override;
 
 protected:
 

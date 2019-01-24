@@ -24,6 +24,7 @@ public:
 
 protected:
 
+    SLAMModuleId mNextModule;
     SLAMContextPtr mContext;
     std::vector<SLAMModulePtr> mModules;
 };

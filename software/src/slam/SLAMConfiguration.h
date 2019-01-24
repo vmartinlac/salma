@@ -4,8 +4,8 @@
 
 enum SLAMPipeline
 {
-    SLAM_PIPELINE_EKF,
-    SLAM_PIPELINE_LBA,
+    SLAM_PIPELINE1,
+    SLAM_PIPELINE2,
 };
 
 struct SLAMConfigurationFeatures
@@ -112,7 +112,6 @@ public:
     SLAMConfiguration();
     ~SLAMConfiguration();
 
-    bool debug;
     SLAMPipeline pipeline;
 
     SLAMConfigurationFeatures features;

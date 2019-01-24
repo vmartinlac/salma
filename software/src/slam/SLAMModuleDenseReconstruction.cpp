@@ -9,7 +9,8 @@
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleDenseReconstruction.h"
 
-SLAMModuleDenseReconstruction::SLAMModuleDenseReconstruction(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleDenseReconstruction::SLAMModuleDenseReconstruction(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_DENSERECONSTRUCTION, con)
 {
 }
 
@@ -62,7 +63,7 @@ bool SLAMModuleDenseReconstruction::init()
     return true;
 }
 
-void SLAMModuleDenseReconstruction::operator()()
+SLAMModuleResult SLAMModuleDenseReconstruction::operator()()
 {
     /*
     std::cout << "   DENSE RECONSTRUCTION" << std::endl;
@@ -129,5 +130,7 @@ void SLAMModuleDenseReconstruction::operator()()
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpright", rectified_right);
     }
     */
+
+    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
 }
 

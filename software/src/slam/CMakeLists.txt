@@ -43,8 +43,8 @@ target_link_libraries(
     g2o::core
     g2o::types_sba
     g2o::solver_eigen
-    Qt5::Core
-    Qt5::Widgets
+    #Qt5::Core
+    #Qt5::Widgets
     Eigen3::Eigen
     OpenMP::OpenMP_CXX
     opencv_imgproc

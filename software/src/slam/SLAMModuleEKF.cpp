@@ -9,7 +9,8 @@
 #include "SLAMModuleEKF.h"
 #include "SLAMMath.h"
 
-SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE2_EKF, con)
 {
     mLastFrameId = -1;
     mLastFrameTimestamp = 0.0;
@@ -24,7 +25,7 @@ bool SLAMModuleEKF::init()
     return true;
 }
 
-void SLAMModuleEKF::operator()()
+SLAMModuleResult SLAMModuleEKF::operator()()
 {
     std::cout << "   EXTENDED KALMAN FILTER" << std::endl;
 
@@ -82,6 +83,8 @@ void SLAMModuleEKF::operator()()
     mLastFrameId = mCurrentFrame->id;
     mLastFrameTimestamp = mCurrentFrame->timestamp;
     mCurrentFrame.reset();
+
+    return SLAMModuleResult(true, SLAM_MODULE2_OPTICALFLOW);
 }
 
 void SLAMModuleEKF::initializeState()

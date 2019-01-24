@@ -4,7 +4,8 @@
 #include <random>
 #include "SLAMModuleAlignment.h"
 
-SLAMModuleAlignment::SLAMModuleAlignment(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleAlignment::SLAMModuleAlignment(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_ALIGNMENT, con)
 {
 }
 
@@ -23,7 +24,7 @@ bool SLAMModuleAlignment::init()
     return true;
 }
 
-void SLAMModuleAlignment::operator()()
+SLAMModuleResult SLAMModuleAlignment::operator()()
 {
     std::cout << "   ALIGNMENT" << std::endl;
 
@@ -137,5 +138,7 @@ void SLAMModuleAlignment::operator()()
     std::cout << "      Alignment status: " << ( (reconstr->frames.back()->aligned_wrt_previous_frame) ? "ALIGNED" : "NOT ALIGNED" ) << std::endl;
     std::cout << "      Position: " << reconstr->frames.back()->frame_to_world.translation().transpose() << std::endl;
     std::cout << "      Attitude: " << reconstr->frames.back()->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
+
+    return SLAMModuleResult(false, SLAM_MODULE1_LBA);
 }
 

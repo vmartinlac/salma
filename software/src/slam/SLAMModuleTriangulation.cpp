@@ -4,7 +4,8 @@
 #include "SLAMModuleTriangulation.h"
 #include "SLAMMath.h"
 
-SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_TRIANGULATION, con)
 {
 }
 
@@ -37,7 +38,7 @@ bool SLAMModuleTriangulation::init()
     return true;
 }
 
-void SLAMModuleTriangulation::operator()()
+SLAMModuleResult SLAMModuleTriangulation::operator()()
 {
     std::cout << "   TRIANGULATION" << std::endl;
 
@@ -51,29 +52,34 @@ void SLAMModuleTriangulation::operator()()
 
     for( std::pair<int,int>& p : frame->stereo_matches )
     {
-        if( bool(frame->views[0].tracks[p.first].mappoint) == false || bool(frame->views[1].tracks[p.second].mappoint) == false )
+        const bool has_left_projection = bool(frame->views[0].tracks[p.first].mappoint);
+        const bool has_right_projection = bool(frame->views[1].tracks[p.first].mappoint);
+
+        if(has_left_projection == false && has_right_projection == false)
         {
 
             SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
 
             if(world_point)
             {
-                if(bool(frame->views[0].tracks[p.first].mappoint) == false)
-                {
-                    frame->views[0].tracks[p.first].mappoint = world_point;
-                }
-
-                if(bool(frame->views[1].tracks[p.second].mappoint) == false)
-                {
-                    frame->views[1].tracks[p.second].mappoint = world_point;
-                }
-
+                frame->views[0].tracks[p.first].mappoint = world_point;
+                frame->views[1].tracks[p.second].mappoint = world_point;
                 triangulation_count++;
             }
+        }
+        else if(has_left_projection == false)
+        {
+            frame->views[0].tracks[p.first].mappoint = frame->views[1].tracks[p.second].mappoint;
+        }
+        else if(has_right_projection == false)
+        {
+            frame->views[1].tracks[p.second].mappoint = frame->views[0].tracks[p.first].mappoint;
         }
     }
 
     std::cout << "      Number of new mappoints: " << triangulation_count << std::endl;
+
+    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
 }
 
 SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)

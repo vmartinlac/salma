@@ -3,8 +3,7 @@
 
 SLAMConfiguration::SLAMConfiguration()
 {
-    debug = true;
-    pipeline = SLAM_PIPELINE_LBA;
+    pipeline = SLAM_PIPELINE1;
 }
 
 SLAMConfiguration::~SLAMConfiguration()
@@ -25,18 +24,18 @@ SLAMConfigurationTemporalMatcher::SLAMConfigurationTemporalMatcher()
 {
     debug = false;
     check_symmetry = true;
-    check_lowe = true;
-    lowe_ratio = 0.85;
+    check_lowe = false;
+    lowe_ratio = 0.90;
     check_octave = false;
     max_projected_mappoints_per_view = 300;
-    num_previous_frames = 5;
+    num_previous_frames = 6;
 }
 
 SLAMConfigurationAlignment::SLAMConfigurationAlignment()
 {
     debug = false;
     ransac_inlier_rate = 0.75;
-    ransac_inlier_threshold = 10.0;
+    ransac_inlier_threshold = 12.0;
 }
 
 SLAMConfigurationEKF::SLAMConfigurationEKF()

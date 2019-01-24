@@ -6,7 +6,8 @@
 #include "SLAMModuleStereoMatcher.h"
 #include "FinitePriorityQueue.h"
 
-SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_STEREOMATCHER, con)
 {
 }
 
@@ -184,7 +185,7 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
     return ret;
 }
 
-void SLAMModuleStereoMatcher::operator()()
+SLAMModuleResult SLAMModuleStereoMatcher::operator()()
 {
     std::cout << "   STEREO MATCHING" << std::endl;
 
@@ -261,5 +262,7 @@ void SLAMModuleStereoMatcher::operator()()
     }
 
     std::cout << "      Number of stereo matches: " << f->stereo_matches.size() << std::endl;
+
+    return SLAMModuleResult(false, SLAM_MODULE1_TRIANGULATION);
 }
 

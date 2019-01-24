@@ -1,7 +1,8 @@
 #include "FinitePriorityQueue.h"
 #include "SLAMModuleFeatures.h"
 
-SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_FEATURES, con)
 {
 }
 
@@ -36,7 +37,7 @@ bool SLAMModuleFeatures::init()
     return true;
 }
 
-void SLAMModuleFeatures::operator()()
+SLAMModuleResult SLAMModuleFeatures::operator()()
 {
     std::cout << "   FEATURES DETECTION" << std::endl;
 
@@ -68,6 +69,8 @@ void SLAMModuleFeatures::operator()()
 
     std::cout << "      Num keypoints on left view: " << frame->views[0].keypoints.size() << std::endl;
     std::cout << "      Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
+
+    return SLAMModuleResult(false, SLAM_MODULE1_TEMPORALMATCHER);
 }
 
 void SLAMModuleFeatures::processView(SLAMView& v)

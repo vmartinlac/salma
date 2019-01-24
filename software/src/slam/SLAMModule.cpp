@@ -1,17 +1,13 @@
 #include "SLAMModule.h"
 
-SLAMModule::SLAMModule(SLAMContextPtr con)
+SLAMModule::SLAMModule(SLAMModuleId id, SLAMContextPtr con)
 {
+    mId = id;
     mContext = std::move(con);
 }
 
 SLAMModule::~SLAMModule()
 {
-}
-
-SLAMContextPtr SLAMModule::context()
-{
-    return mContext;
 }
 
 bool SLAMModule::init()

@@ -3,7 +3,8 @@
 #include "SLAMModuleTemporalMatcher.h"
 #include "SLAMDebug.h"
 
-SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_TEMPORALMATCHER, con)
 {
 }
 
@@ -21,7 +22,7 @@ bool SLAMModuleTemporalMatcher::init()
     return true;
 }
 
-void SLAMModuleTemporalMatcher::operator()()
+SLAMModuleResult SLAMModuleTemporalMatcher::operator()()
 {
     std::cout << "   TEMPORAL MATCHER" << std::endl;
 
@@ -47,6 +48,8 @@ void SLAMModuleTemporalMatcher::operator()()
 
         std::cout << "      Total number of projections on VIEW_" << i << ": " << projected_mappoints_ids.size() << std::endl;
     }
+
+    return SLAMModuleResult(false, SLAM_MODULE1_ALIGNMENT);
 }
 
 void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view, std::set<int>& projected_mappoints_ids)

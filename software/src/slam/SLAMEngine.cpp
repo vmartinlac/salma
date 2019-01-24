@@ -31,23 +31,26 @@ bool SLAMEngine::initialize(
         mContext->debug.reset(new SLAMDebug( mContext->configuration ));
         mContext->num_mappoints = 0;
 
-        mModules.emplace_back(new SLAMModuleFeatures(mContext));
-        mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
-        mModules.emplace_back(new SLAMModuleAlignment(mContext));
         switch(configuration->pipeline)
         {
-        case SLAM_PIPELINE_EKF:
-            mModules.emplace_back(new SLAMModuleEKF(mContext));
-            break;
-        case SLAM_PIPELINE_LBA:
+        case SLAM_PIPELINE1:
+            mModules.emplace_back(new SLAMModuleFeatures(mContext));
+            mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
+            mModules.emplace_back(new SLAMModuleAlignment(mContext));
             mModules.emplace_back(new SLAMModuleLBA(mContext));
+            mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
+            mModules.emplace_back(new SLAMModuleTriangulation(mContext));
+            //mModules.emplace_back(new SLAMModuleDenseReconstruction(mContext));
+            mNextModule = SLAM_MODULE1_FEATURES;
+            break;
+        case SLAM_PIPELINE2:
+            //mModules.emplace_back(new SLAMModuleOpticalFlow(mContext));
+            //mModules.emplace_back(new SLAMModuleEKF(mContext));
+            mNextModule = SLAM_MODULE2_OPTICALFLOW;
             break;
         default:
-            throw std::runtime_error("incorrect pipeline");
+            throw std::runtime_error("internal error");
         }
-        mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
-        mModules.emplace_back(new SLAMModuleTriangulation(mContext));
-        //mModules.emplace_back(new SLAMModuleDenseReconstruction(mContext));
     }
 
     if(ok)
@@ -81,10 +84,36 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
         std::cout << "PROCESSING FRAME " << curr_frame->id << std::endl;
 
-        for(SLAMModulePtr module : mModules)
+        int milliseconds = 0;
+
+        bool go_on = true;
+
+        while(go_on)
         {
-            (*module)();
+            std::chrono::time_point< std::chrono::steady_clock > t0 = std::chrono::steady_clock::now();
+
+            std::vector<SLAMModulePtr>::iterator module_it = std::find_if(
+                mModules.begin(),
+                mModules.end(),
+                [this] (SLAMModulePtr m) -> bool { return (m->id() == mNextModule); } );
+
+            if(module_it == mModules.end()) throw std::runtime_error("internal error");
+
+            SLAMModuleResult result = (**module_it)();
+
+            go_on = (result.getEndPipeline() == false);
+            mNextModule = result.getNextModule();
+
+            std::chrono::time_point< std::chrono::steady_clock > t1 = std::chrono::steady_clock::now();
+
+            const int module_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
+
+            milliseconds += module_milliseconds;
+
+            std::cout << "      Computation time: " << module_milliseconds << " ms" << std::endl;
         }
+
+        std::cout << "   Frame computation time: " << milliseconds << " ms" << std::endl;
     }
 
     // free old images.

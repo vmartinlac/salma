@@ -5,7 +5,8 @@
 #include "EdgeProjectP2R.h"
 #include "SLAMModuleLBA.h"
 
-SLAMModuleLBA::SLAMModuleLBA(SLAMContextPtr con) : SLAMModule(con)
+SLAMModuleLBA::SLAMModuleLBA(SLAMContextPtr con) :
+    SLAMModule(SLAM_MODULE1_LBA, con)
 {
 }
 
@@ -22,7 +23,7 @@ bool SLAMModuleLBA::init()
     return true;
 }
 
-void SLAMModuleLBA::operator()()
+SLAMModuleResult SLAMModuleLBA::operator()()
 {
     std::vector<SLAMFramePtr> frames;
     std::vector<SLAMMapPointPtr> mappoints;
@@ -244,5 +245,7 @@ void SLAMModuleLBA::operator()()
             mappoints[i]->position = mappoint_vertices[i]->estimate();
         }
     }
+
+    return SLAMModuleResult(false, SLAM_MODULE1_STEREOMATCHER);
 }
 

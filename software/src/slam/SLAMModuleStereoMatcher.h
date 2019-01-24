@@ -17,7 +17,7 @@ public:
     ~SLAMModuleStereoMatcher() override;
 
     bool init() override;
-    void operator()() override;
+    SLAMModuleResult operator()() override;
 
 protected:
 
