@@ -4,6 +4,7 @@
 #include <string>
 #include <opencv2/core.hpp>
 #include "SLAMConfiguration.h"
+#include <QDir>
 
 class SLAMDebug
 {
@@ -30,6 +31,7 @@ protected:
 
     int mImageCount;
     SLAMConfigurationPtr mConfiguration;
+    QDir mDir;
 };
 
 typedef std::shared_ptr<SLAMDebug> SLAMDebugPtr;

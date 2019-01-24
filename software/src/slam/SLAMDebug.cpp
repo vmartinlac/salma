@@ -1,4 +1,5 @@
 #include <opencv2/imgcodecs.hpp>
+#include <QDateTime>
 #include <iomanip>
 #include <sstream>
 #include "SLAMDebug.h"
@@ -15,16 +16,32 @@ SLAMDebug::~SLAMDebug()
 
 bool SLAMDebug::init()
 {
+    bool ok = true;
+
+    const QString dirname = QString("salma_debug_") + QDateTime::currentDateTime().toString("dd.MM.yyyy_hh.mm.ss");
+
     mImageCount = 0;
-    return true;
+
+    if(ok)
+    {
+        mDir = QDir();
+        ok = mDir.mkdir(dirname);
+    }
+
+    if(ok)
+    {
+        ok = mDir.cd(dirname);
+    }
+
+    return ok;
 }
 
 void SLAMDebug::saveImage(int frame, const std::string& name, const cv::Mat& image)
 {
-    std::stringstream s;
-    s << std::setfill('0') << std::setw(6) << mImageCount << '_' << frame << '_' << name << ".png";
+    const QString fname = QString("%1_frame%2_%3.png").arg(mImageCount, 6, 10, QChar('0')).arg(frame).arg(name.c_str());
+    const QString fpath = mDir.absoluteFilePath(fname);
 
-    cv::imwrite(s.str(), image);
+    cv::imwrite(fpath.toLocal8Bit().data(), image);
 
     mImageCount++;
 }
