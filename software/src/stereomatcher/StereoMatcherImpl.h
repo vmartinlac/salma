@@ -29,9 +29,5 @@ public:
 protected:
 
     int mNumDisparities;
-    int mBlockWidth;
-    int mBlockHeight;
-    int mGridWidth;
-    int mGridHeight;
 };
 
