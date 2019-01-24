@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(slam LANGUAGES CXX)# CUDA)
+project(slam LANGUAGES CXX CUDA)
 
 include(GNUInstallDirs)
 include(GenerateExportHeader)

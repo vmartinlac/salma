@@ -2,9 +2,10 @@ Dependencies
 ============
 
 * Aravis (access to GenICam cameras)
+* Cuda (Nvidia GPU programming)
 * Eigen3 (linear algebra primitives)
-* g2o (bundle adjustment)
-* nanoflann (knn search)
+* g2o (graph optimization)
+* nanoflann (nearest neighbors search)
 * OpenCV (general purpose computer vision)
 * OpenMP (shared-memory parallelism)
 * openscenegraph (3d visualization)

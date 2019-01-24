@@ -3,8 +3,8 @@ add_library(
     salma_stereomatcher
     SHARED
     StereoMatcher.h
-    StereoMatcher.cpp
-    Primitives.cu
+    StereoMatcherImpl.h
+    StereoMatcherImpl.cu
 )
 
 target_link_libraries(

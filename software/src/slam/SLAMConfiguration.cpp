@@ -12,7 +12,7 @@ SLAMConfiguration::~SLAMConfiguration()
 
 SLAMConfigurationFeatures::SLAMConfigurationFeatures()
 {
-    debug = true;
+    debug = false;
     scale_factor = 1.1;
     min_width = 160;
     max_features = 500;

@@ -33,6 +33,8 @@ Estimate covariance of triangulated point wrt to covariance of rig pose.
 TO DO
 =====
 
+One
+---
 Assess and improve the robustness
     Write specifications?
     Test/check functions
@@ -45,7 +47,15 @@ Dense reconstruction
 Improve debug output
     For each reconstruction, generate a set of html pages
 
-Move EKF data (localmap, mu, sigma) into SLAMFrame.
+Two
+---
+
+* dense stereo matcher
+* keyframe selection dans pipeline1
+* pipeline two
+
+Three
+-----
 
 Move math into some common module (common at least to mvpnp and slam).
 
