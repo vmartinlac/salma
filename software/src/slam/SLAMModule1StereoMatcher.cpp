@@ -3,19 +3,19 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
 #include <utility>
-#include "SLAMModuleStereoMatcher.h"
+#include "SLAMModule1StereoMatcher.h"
 #include "FinitePriorityQueue.h"
 
-SLAMModuleStereoMatcher::SLAMModuleStereoMatcher(SLAMContextPtr con) :
+SLAMModule1StereoMatcher::SLAMModule1StereoMatcher(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_STEREOMATCHER, con)
 {
 }
 
-SLAMModuleStereoMatcher::~SLAMModuleStereoMatcher()
+SLAMModule1StereoMatcher::~SLAMModule1StereoMatcher()
 {
 }
 
-bool SLAMModuleStereoMatcher::init()
+bool SLAMModule1StereoMatcher::init()
 {
     SLAMContextPtr con = context();
 
@@ -39,7 +39,7 @@ bool SLAMModuleStereoMatcher::init()
     return true;
 }
 
-int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool check_symmetry)
+int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool check_symmetry)
 {
     const int other_view = (view + 1) % 2;
 
@@ -185,7 +185,7 @@ int SLAMModuleStereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, bool
     return ret;
 }
 
-SLAMModuleResult SLAMModuleStereoMatcher::operator()()
+SLAMModuleResult SLAMModule1StereoMatcher::operator()()
 {
     std::cout << "   STEREO MATCHING" << std::endl;
 

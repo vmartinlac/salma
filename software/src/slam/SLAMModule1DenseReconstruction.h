@@ -6,12 +6,12 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleDenseReconstruction : public SLAMModule
+class SLAMModule1DenseReconstruction : public SLAMModule
 {
 public:
 
-    SLAMModuleDenseReconstruction(SLAMContextPtr con);
-    ~SLAMModuleDenseReconstruction();
+    SLAMModule1DenseReconstruction(SLAMContextPtr con);
+    ~SLAMModule1DenseReconstruction();
 
     bool init() override;
 

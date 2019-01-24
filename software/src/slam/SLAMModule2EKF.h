@@ -5,12 +5,12 @@
 #include "SLAMModule.h"
 #include <random>
 
-class SLAMModuleEKF : public SLAMModule
+class SLAMModule2EKF : public SLAMModule
 {
 public:
 
-    SLAMModuleEKF(SLAMContextPtr con);
-    ~SLAMModuleEKF() override;
+    SLAMModule2EKF(SLAMContextPtr con);
+    ~SLAMModule2EKF() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

@@ -1,6 +1,6 @@
 #include <Eigen/Eigen>
 #include <opencv2/core/eigen.hpp>
-#include "SLAMModuleTriangulation.h"
+#include "SLAMModule1Triangulation.h"
 #include "SLAMDebug.h"
 #include "SLAMConfiguration.h"
 #include "SLAMContext.h"
@@ -61,7 +61,7 @@ int main(int num_args, char** args)
         frame->stereo_matches.push_back( std::pair<int,int>(0,0) );
     }
 
-    SLAMModulePtr mod(new SLAMModuleTriangulation(con));
+    SLAMModulePtr mod(new SLAMModule1Triangulation(con));
 
     mod->init();
     (*mod)();

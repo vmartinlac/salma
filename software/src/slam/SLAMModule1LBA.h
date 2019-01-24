@@ -6,12 +6,12 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleLBA : public SLAMModule
+class SLAMModule1LBA : public SLAMModule
 {
 public:
 
-    SLAMModuleLBA(SLAMContextPtr con);
-    ~SLAMModuleLBA() override;
+    SLAMModule1LBA(SLAMContextPtr con);
+    ~SLAMModule1LBA() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

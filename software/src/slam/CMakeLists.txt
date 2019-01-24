@@ -13,22 +13,24 @@ add_library(
     SLAMContext.h
     SLAMModule.cpp
     SLAMModule.h
-    SLAMModuleFeatures.cpp
-    SLAMModuleFeatures.h
-    SLAMModuleTemporalMatcher.cpp
-    SLAMModuleTemporalMatcher.h
-    SLAMModuleAlignment.cpp
-    SLAMModuleAlignment.h
-    SLAMModuleLBA.cpp
-    SLAMModuleLBA.h
-    SLAMModuleEKF.cpp
-    SLAMModuleEKF.h
-    SLAMModuleStereoMatcher.cpp
-    SLAMModuleStereoMatcher.h
-    SLAMModuleTriangulation.cpp
-    SLAMModuleTriangulation.h
-    SLAMModuleDenseReconstruction.cpp
-    SLAMModuleDenseReconstruction.h
+    SLAMModule1Features.cpp
+    SLAMModule1Features.h
+    SLAMModule1TemporalMatcher.cpp
+    SLAMModule1TemporalMatcher.h
+    SLAMModule1Alignment.cpp
+    SLAMModule1Alignment.h
+    SLAMModule1LBA.cpp
+    SLAMModule1LBA.h
+    SLAMModule1StereoMatcher.cpp
+    SLAMModule1StereoMatcher.h
+    SLAMModule1Triangulation.cpp
+    SLAMModule1Triangulation.h
+    SLAMModule1DenseReconstruction.cpp
+    SLAMModule1DenseReconstruction.h
+    #SLAMModule2OpticalFlow.cpp
+    #SLAMModule2OpticalFlow.h
+    SLAMModule2EKF.cpp
+    SLAMModule2EKF.h
     SLAMDebug.cpp
     SLAMDebug.h
     SLAMMath.cpp

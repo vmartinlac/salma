@@ -9,12 +9,12 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleFeatures : public SLAMModule
+class SLAMModule1Features : public SLAMModule
 {
 public:
 
-    SLAMModuleFeatures(SLAMContextPtr con);
-    ~SLAMModuleFeatures() override;
+    SLAMModule1Features(SLAMContextPtr con);
+    ~SLAMModule1Features() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

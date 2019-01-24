@@ -2,7 +2,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
 #include <random>
-#include "SLAMModuleLBA.h"
+#include "SLAMModule1LBA.h"
 #include "SLAMDebug.h"
 #include "SLAMConfiguration.h"
 #include "SLAMContext.h"
@@ -183,7 +183,7 @@ int main(int num_args, char** args)
 
     // call LBA module.
 
-    SLAMModulePtr mod(new SLAMModuleLBA(con));
+    SLAMModulePtr mod(new SLAMModule1LBA(con));
 
     mod->init();
     (*mod)();

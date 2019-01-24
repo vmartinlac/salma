@@ -6,26 +6,26 @@
 #include <Eigen/Eigen>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
-#include "SLAMModuleEKF.h"
+#include "SLAMModule2EKF.h"
 #include "SLAMMath.h"
 
-SLAMModuleEKF::SLAMModuleEKF(SLAMContextPtr con) :
+SLAMModule2EKF::SLAMModule2EKF(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE2_EKF, con)
 {
     mLastFrameId = -1;
     mLastFrameTimestamp = 0.0;
 }
 
-SLAMModuleEKF::~SLAMModuleEKF()
+SLAMModule2EKF::~SLAMModule2EKF()
 {
 }
 
-bool SLAMModuleEKF::init()
+bool SLAMModule2EKF::init()
 {
     return true;
 }
 
-SLAMModuleResult SLAMModuleEKF::operator()()
+SLAMModuleResult SLAMModule2EKF::operator()()
 {
     std::cout << "   EXTENDED KALMAN FILTER" << std::endl;
 
@@ -87,7 +87,7 @@ SLAMModuleResult SLAMModuleEKF::operator()()
     return SLAMModuleResult(true, SLAM_MODULE2_OPTICALFLOW);
 }
 
-void SLAMModuleEKF::initializeState()
+void SLAMModule2EKF::initializeState()
 {
     mLocalMap.clear();
 
@@ -120,7 +120,7 @@ void SLAMModuleEKF::initializeState()
     mSigma.diagonal().segment<3>(10).fill(angular_momentum_sdev*angular_momentum_sdev);
 }
 
-void SLAMModuleEKF::prepareLocalMap()
+void SLAMModule2EKF::prepareLocalMap()
 {
     std::vector<SLAMMapPointPtr> new_local_map;
     Eigen::VectorXd new_mu;
@@ -263,7 +263,7 @@ void SLAMModuleEKF::prepareLocalMap()
     */
 }
 
-void SLAMModuleEKF::ekfPrediction()
+void SLAMModule2EKF::ekfPrediction()
 {
     /*
     {
@@ -337,7 +337,7 @@ void SLAMModuleEKF::ekfPrediction()
     mSigma.swap(new_sigma);
 }
 
-void SLAMModuleEKF::ekfUpdate()
+void SLAMModule2EKF::ekfUpdate()
 {
     std::vector<VisiblePoint> visible_points;
 
@@ -434,7 +434,7 @@ void SLAMModuleEKF::ekfUpdate()
     }
 }
 
-void SLAMModuleEKF::exportResult()
+void SLAMModule2EKF::exportResult()
 {
     // export frame pose.
 
@@ -462,7 +462,7 @@ void SLAMModuleEKF::exportResult()
     }
 }
 
-void SLAMModuleEKF::compute_f(
+void SLAMModule2EKF::compute_f(
     const Eigen::VectorXd& X,
     double dt,
     Eigen::VectorXd& f,
@@ -573,7 +573,7 @@ void SLAMModuleEKF::compute_f(
     J = Jrm;
 }
 
-Eigen::Vector4d SLAMModuleEKF::rotationVectorToQuaternion(const Eigen::Vector3d& v, Eigen::Matrix<double, 4, 3>& J)
+Eigen::Vector4d SLAMModule2EKF::rotationVectorToQuaternion(const Eigen::Vector3d& v, Eigen::Matrix<double, 4, 3>& J)
 {
     // TODO: optimize the evaluation of these sympy-generated formulae.
 
@@ -643,7 +643,7 @@ Eigen::Vector4d SLAMModuleEKF::rotationVectorToQuaternion(const Eigen::Vector3d&
     return ret;
 }
 
-void SLAMModuleEKF::compute_h(
+void SLAMModule2EKF::compute_h(
     const Eigen::VectorXd& X,
     const std::vector<VisiblePoint>& visible_points,
     Eigen::VectorXd& h,
@@ -746,7 +746,7 @@ void SLAMModuleEKF::compute_h(
     }
 }
 
-void SLAMModuleEKF::jacobianOfQuaternionToRotationMatrix( const Eigen::Quaterniond& q, Eigen::Matrix<double, 9, 4>& J )
+void SLAMModule2EKF::jacobianOfQuaternionToRotationMatrix( const Eigen::Quaterniond& q, Eigen::Matrix<double, 9, 4>& J )
 {
     const double qi = q.x();
     const double qj = q.y();

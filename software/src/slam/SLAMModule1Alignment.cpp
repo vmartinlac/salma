@@ -2,18 +2,18 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
 #include <random>
-#include "SLAMModuleAlignment.h"
+#include "SLAMModule1Alignment.h"
 
-SLAMModuleAlignment::SLAMModuleAlignment(SLAMContextPtr con) :
+SLAMModule1Alignment::SLAMModule1Alignment(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_ALIGNMENT, con)
 {
 }
 
-SLAMModuleAlignment::~SLAMModuleAlignment()
+SLAMModule1Alignment::~SLAMModule1Alignment()
 {
 }
 
-bool SLAMModuleAlignment::init()
+bool SLAMModule1Alignment::init()
 {
     SLAMContextPtr con = context();
 
@@ -24,7 +24,7 @@ bool SLAMModuleAlignment::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleAlignment::operator()()
+SLAMModuleResult SLAMModule1Alignment::operator()()
 {
     std::cout << "   ALIGNMENT" << std::endl;
 

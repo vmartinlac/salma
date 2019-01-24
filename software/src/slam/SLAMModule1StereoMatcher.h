@@ -9,12 +9,12 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleStereoMatcher : public SLAMModule
+class SLAMModule1StereoMatcher : public SLAMModule
 {
 public:
 
-    SLAMModuleStereoMatcher(SLAMContextPtr con);
-    ~SLAMModuleStereoMatcher() override;
+    SLAMModule1StereoMatcher(SLAMContextPtr con);
+    ~SLAMModule1StereoMatcher() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

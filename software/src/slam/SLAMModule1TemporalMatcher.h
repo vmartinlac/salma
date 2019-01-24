@@ -6,11 +6,11 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleTemporalMatcher : public SLAMModule
+class SLAMModule1TemporalMatcher : public SLAMModule
 {
 public:
 
-    SLAMModuleTemporalMatcher(SLAMContextPtr con);
+    SLAMModule1TemporalMatcher(SLAMContextPtr con);
 
     bool init() override;
     SLAMModuleResult operator()() override;
@@ -38,5 +38,5 @@ protected:
     int mMaxProjectedMapPointsPerView;
 };
 
-typedef std::shared_ptr<SLAMModuleTemporalMatcher> SLAMModuleTemporalMatcherPtr;
+typedef std::shared_ptr<SLAMModule1TemporalMatcher> SLAMModule1TemporalMatcherPtr;
 

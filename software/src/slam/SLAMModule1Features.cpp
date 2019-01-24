@@ -1,16 +1,16 @@
 #include "FinitePriorityQueue.h"
-#include "SLAMModuleFeatures.h"
+#include "SLAMModule1Features.h"
 
-SLAMModuleFeatures::SLAMModuleFeatures(SLAMContextPtr con) :
+SLAMModule1Features::SLAMModule1Features(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_FEATURES, con)
 {
 }
 
-SLAMModuleFeatures::~SLAMModuleFeatures()
+SLAMModule1Features::~SLAMModule1Features()
 {
 }
 
-bool SLAMModuleFeatures::init()
+bool SLAMModule1Features::init()
 {
     SLAMContextPtr con = context();
 
@@ -37,7 +37,7 @@ bool SLAMModuleFeatures::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleFeatures::operator()()
+SLAMModuleResult SLAMModule1Features::operator()()
 {
     std::cout << "   FEATURES DETECTION" << std::endl;
 
@@ -73,7 +73,7 @@ SLAMModuleResult SLAMModuleFeatures::operator()()
     return SLAMModuleResult(false, SLAM_MODULE1_TEMPORALMATCHER);
 }
 
-void SLAMModuleFeatures::processView(SLAMView& v)
+void SLAMModule1Features::processView(SLAMView& v)
 {
 
     //if( context()->configuration->features.uniformize )
@@ -125,7 +125,7 @@ void SLAMModuleFeatures::processView(SLAMView& v)
     v.tracks.resize( v.keypoints.size() );
 }
 
-void SLAMModuleFeatures::uniformize(std::vector<cv::KeyPoint>& keypoints)
+void SLAMModule1Features::uniformize(std::vector<cv::KeyPoint>& keypoints)
 {
     const int N = keypoints.size();
 

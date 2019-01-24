@@ -1,19 +1,19 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <Eigen/Eigen>
-#include "SLAMModuleTriangulation.h"
+#include "SLAMModule1Triangulation.h"
 #include "SLAMMath.h"
 
-SLAMModuleTriangulation::SLAMModuleTriangulation(SLAMContextPtr con) :
+SLAMModule1Triangulation::SLAMModule1Triangulation(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_TRIANGULATION, con)
 {
 }
 
-SLAMModuleTriangulation::~SLAMModuleTriangulation()
+SLAMModule1Triangulation::~SLAMModule1Triangulation()
 {
 }
 
-bool SLAMModuleTriangulation::init()
+bool SLAMModule1Triangulation::init()
 {
     SLAMContextPtr con = context();
 
@@ -38,7 +38,7 @@ bool SLAMModuleTriangulation::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleTriangulation::operator()()
+SLAMModuleResult SLAMModule1Triangulation::operator()()
 {
     std::cout << "   TRIANGULATION" << std::endl;
 
@@ -82,7 +82,7 @@ SLAMModuleResult SLAMModuleTriangulation::operator()()
     return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
 }
 
-SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)
+SLAMMapPointPtr SLAMModule1Triangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)
 {
     SLAMMapPointPtr ret;
 
@@ -137,7 +137,7 @@ SLAMMapPointPtr SLAMModuleTriangulation::triangulate(SLAMFramePtr frame, int lef
     return ret;
 }
 
-void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right )
+void SLAMModule1Triangulation::correctWithLindstrom( Eigen::Vector3d& normalized_left, Eigen::Vector3d& normalized_right )
 {
     // See "Triangulation Made Easy" from Peter Lindstrom, Lawrence Livermore National Laboratory.
 
@@ -168,7 +168,7 @@ void SLAMModuleTriangulation::correctWithLindstrom( Eigen::Vector3d& normalized_
     }
 }
 
-bool SLAMModuleTriangulation::triangulateInRigFrame(
+bool SLAMModule1Triangulation::triangulateInRigFrame(
     const cv::Point2f& proj_left,
     const cv::Point2f& proj_right,
     Eigen::Vector3d& in_rig_frame,
@@ -442,7 +442,7 @@ bool SLAMModuleTriangulation::triangulateInRigFrame(
 }
 
 /*
-void SLAMModuleTriangulation::computePositionCovariance(SLAMFramePtr frame, const Eigen::Vector3d& normalized_left, const Eigen::Vector3d& normalized_right, Eigen::Matrix<double, 3, 10>& cov)
+void SLAMModule1Triangulation::computePositionCovariance(SLAMFramePtr frame, const Eigen::Vector3d& normalized_left, const Eigen::Vector3d& normalized_right, Eigen::Matrix<double, 3, 10>& cov)
 {
     const Sophus::SE3d& leftcam_to_world = frame->frame_to_world * mRig->cameras[0].camera_to_rig;
     const Sophus::SE3d& rightcam_to_world = frame->frame_to_world * mRig->cameras[1].camera_to_rig;

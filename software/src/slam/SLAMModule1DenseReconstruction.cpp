@@ -7,18 +7,18 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include "FinitePriorityQueue.h"
-#include "SLAMModuleDenseReconstruction.h"
+#include "SLAMModule1DenseReconstruction.h"
 
-SLAMModuleDenseReconstruction::SLAMModuleDenseReconstruction(SLAMContextPtr con) :
+SLAMModule1DenseReconstruction::SLAMModule1DenseReconstruction(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_DENSERECONSTRUCTION, con)
 {
 }
 
-SLAMModuleDenseReconstruction::~SLAMModuleDenseReconstruction()
+SLAMModule1DenseReconstruction::~SLAMModule1DenseReconstruction()
 {
 }
 
-bool SLAMModuleDenseReconstruction::init()
+bool SLAMModule1DenseReconstruction::init()
 {
     /*
     SLAMContextPtr con = context();
@@ -63,7 +63,7 @@ bool SLAMModuleDenseReconstruction::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleDenseReconstruction::operator()()
+SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 {
     /*
     std::cout << "   DENSE RECONSTRUCTION" << std::endl;

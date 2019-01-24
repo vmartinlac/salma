@@ -6,12 +6,12 @@
 #include "SLAMModule.h"
 #include "MVPnPRANSACLM.h"
 
-class SLAMModuleAlignment : public SLAMModule
+class SLAMModule1Alignment : public SLAMModule
 {
 public:
 
-    SLAMModuleAlignment(SLAMContextPtr con);
-    ~SLAMModuleAlignment() override;
+    SLAMModule1Alignment(SLAMContextPtr con);
+    ~SLAMModule1Alignment() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

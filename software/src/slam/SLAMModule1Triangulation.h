@@ -4,12 +4,12 @@
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
-class SLAMModuleTriangulation : public SLAMModule
+class SLAMModule1Triangulation : public SLAMModule
 {
 public:
 
-    SLAMModuleTriangulation(SLAMContextPtr con);
-    ~SLAMModuleTriangulation() override;
+    SLAMModule1Triangulation(SLAMContextPtr con);
+    ~SLAMModule1Triangulation() override;
 
     bool init() override;
     SLAMModuleResult operator()() override;

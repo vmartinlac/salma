@@ -1,11 +1,11 @@
-#include "SLAMModuleFeatures.h"
-#include "SLAMModuleTemporalMatcher.h"
-#include "SLAMModuleAlignment.h"
-#include "SLAMModuleEKF.h"
-#include "SLAMModuleLBA.h"
-#include "SLAMModuleStereoMatcher.h"
-#include "SLAMModuleTriangulation.h"
-#include "SLAMModuleDenseReconstruction.h"
+#include "SLAMModule1Features.h"
+#include "SLAMModule1TemporalMatcher.h"
+#include "SLAMModule1Alignment.h"
+#include "SLAMModule2EKF.h"
+#include "SLAMModule1LBA.h"
+#include "SLAMModule1StereoMatcher.h"
+#include "SLAMModule1Triangulation.h"
+#include "SLAMModule1DenseReconstruction.h"
 #include "SLAMEngine.h"
 
 SLAMEngine::SLAMEngine()
@@ -34,18 +34,18 @@ bool SLAMEngine::initialize(
         switch(configuration->pipeline)
         {
         case SLAM_PIPELINE1:
-            mModules.emplace_back(new SLAMModuleFeatures(mContext));
-            mModules.emplace_back(new SLAMModuleTemporalMatcher(mContext));
-            mModules.emplace_back(new SLAMModuleAlignment(mContext));
-            mModules.emplace_back(new SLAMModuleLBA(mContext));
-            mModules.emplace_back(new SLAMModuleStereoMatcher(mContext));
-            mModules.emplace_back(new SLAMModuleTriangulation(mContext));
-            //mModules.emplace_back(new SLAMModuleDenseReconstruction(mContext));
+            mModules.emplace_back(new SLAMModule1Features(mContext));
+            mModules.emplace_back(new SLAMModule1TemporalMatcher(mContext));
+            mModules.emplace_back(new SLAMModule1Alignment(mContext));
+            mModules.emplace_back(new SLAMModule1LBA(mContext));
+            mModules.emplace_back(new SLAMModule1StereoMatcher(mContext));
+            mModules.emplace_back(new SLAMModule1Triangulation(mContext));
+            //mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
             mNextModule = SLAM_MODULE1_FEATURES;
             break;
         case SLAM_PIPELINE2:
-            //mModules.emplace_back(new SLAMModuleOpticalFlow(mContext));
-            //mModules.emplace_back(new SLAMModuleEKF(mContext));
+            //mModules.emplace_back(new SLAMModule2OpticalFlow(mContext));
+            //mModules.emplace_back(new SLAMModule2EKF(mContext));
             mNextModule = SLAM_MODULE2_OPTICALFLOW;
             break;
         default:

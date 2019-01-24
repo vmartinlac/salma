@@ -1,14 +1,14 @@
 #include <opencv2/calib3d.hpp>
 #include "FinitePriorityQueue.h"
-#include "SLAMModuleTemporalMatcher.h"
+#include "SLAMModule1TemporalMatcher.h"
 #include "SLAMDebug.h"
 
-SLAMModuleTemporalMatcher::SLAMModuleTemporalMatcher(SLAMContextPtr con) :
+SLAMModule1TemporalMatcher::SLAMModule1TemporalMatcher(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_TEMPORALMATCHER, con)
 {
 }
 
-bool SLAMModuleTemporalMatcher::init()
+bool SLAMModule1TemporalMatcher::init()
 {
     SLAMConfigurationPtr conf = context()->configuration;
 
@@ -22,7 +22,7 @@ bool SLAMModuleTemporalMatcher::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleTemporalMatcher::operator()()
+SLAMModuleResult SLAMModule1TemporalMatcher::operator()()
 {
     std::cout << "   TEMPORAL MATCHER" << std::endl;
 
@@ -52,7 +52,7 @@ SLAMModuleResult SLAMModuleTemporalMatcher::operator()()
     return SLAMModuleResult(false, SLAM_MODULE1_ALIGNMENT);
 }
 
-void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view, std::set<int>& projected_mappoints_ids)
+void SLAMModule1TemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePtr curr_frame, int view, std::set<int>& projected_mappoints_ids)
 {
     SLAMView& previous_view = prev_frame->views[view];
     SLAMView& current_view = curr_frame->views[view];
@@ -124,7 +124,7 @@ void SLAMModuleTemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFramePt
     std::cout << "      Projection count on FRAME_" << prev_frame->id << "/FRAME_" << curr_frame->id << "/VIEW_" << view << ": " << projection_count << std::endl;
 }
 
-int SLAMModuleTemporalMatcher::matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry)
+int SLAMModule1TemporalMatcher::matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry)
 {
     FinitePriorityQueueF<int, double, 2> queue;
 

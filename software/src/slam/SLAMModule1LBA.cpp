@@ -3,18 +3,18 @@
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
 #include <g2o/core/block_solver.h>
 #include "EdgeProjectP2R.h"
-#include "SLAMModuleLBA.h"
+#include "SLAMModule1LBA.h"
 
-SLAMModuleLBA::SLAMModuleLBA(SLAMContextPtr con) :
+SLAMModule1LBA::SLAMModule1LBA(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_LBA, con)
 {
 }
 
-SLAMModuleLBA::~SLAMModuleLBA()
+SLAMModule1LBA::~SLAMModule1LBA()
 {
 }
 
-bool SLAMModuleLBA::init()
+bool SLAMModule1LBA::init()
 {
     SLAMContextPtr con = context();
 
@@ -23,7 +23,7 @@ bool SLAMModuleLBA::init()
     return true;
 }
 
-SLAMModuleResult SLAMModuleLBA::operator()()
+SLAMModuleResult SLAMModule1LBA::operator()()
 {
     std::vector<SLAMFramePtr> frames;
     std::vector<SLAMMapPointPtr> mappoints;
