@@ -29,5 +29,6 @@ public:
 protected:
 
     int mNumDisparities;
+    int mMargin;
 };
 
