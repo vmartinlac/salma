@@ -162,6 +162,8 @@ int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, boo
 
             const double val = pointj.transpose() * line;
 
+            //std::cout << std::fabs(val) << std::endl;
+
             if( std::fabs(val) < mEpipolarThreshold )
             {
                 //ok = true;
@@ -214,8 +216,11 @@ SLAMModuleResult SLAMModule1StereoMatcher::operator()()
                 mUndistortedPoints[k], 
                 mCameraCalibration[k]->calibration_matrix,
                 mCameraCalibration[k]->distortion_coefficients,
+
+                //
                 cv::noArray(),
                 mCameraCalibration[k]->calibration_matrix);
+                //
         }
     }
 

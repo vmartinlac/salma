@@ -19,7 +19,6 @@ public:
 
 protected:
 
-    /*
     struct RectifiedCamera
     {
         cv::Mat P;
@@ -35,17 +34,12 @@ protected:
         cv::Mat Q;
         RectifiedCamera cameras[2];
     };
-    */
 
 protected:
 
-    /*
     CameraCalibrationDataPtr mCameras[2];
     StereoRigCalibrationDataPtr mStereoRig;
 
     RectificationParameters mRectification;
-    */
-
-    //cv::Ptr<cv::cuda::StereoBeliefPropagation> mSBP;
 };
 

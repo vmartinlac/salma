@@ -20,7 +20,6 @@ SLAMModule1DenseReconstruction::~SLAMModule1DenseReconstruction()
 
 bool SLAMModule1DenseReconstruction::init()
 {
-    /*
     SLAMContextPtr con = context();
 
     mCameras[0] = con->calibration->cameras[0].calibration;
@@ -44,28 +43,28 @@ bool SLAMModule1DenseReconstruction::init()
         mRectification.cameras[1].R,
         mRectification.cameras[0].P,
         mRectification.cameras[1].P,
-        mRectification.Q);
+        mRectification.Q,
+        cv::CALIB_ZERO_DISPARITY,
+        0.0);
 
     for(int i=0; i<2; i++)
     {
         cv::initUndistortRectifyMap(
             mCameras[i]->calibration_matrix,
             mCameras[i]->distortion_coefficients,
-            mRectification.cameras[i].R,
+            cv::Mat(), //mRectification.cameras[i].R,
             mRectification.cameras[i].P,
             mCameras[i]->image_size,
             CV_32FC1,
             mRectification.cameras[i].map0,
             mRectification.cameras[i].map1 );
     }
-    */
 
     return true;
 }
 
 SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 {
-    /*
     std::cout << "   DENSE RECONSTRUCTION" << std::endl;
 
     SLAMReconstructionPtr reconstr = context()->reconstruction;
@@ -79,13 +78,13 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
     cv::remap( frame->views[0].image, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
     cv::remap( frame->views[1].image, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
 
-    if( context()->configuration->densereconstruction_debug )
+    if( context()->configuration->dense_reconstruction.debug )
     {
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_left", rectified_left);
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_right", rectified_right);
     }
 
-    //
+    /*
     cv::Ptr<cv::cuda::StereoBeliefPropagation> matcher;
 
     {

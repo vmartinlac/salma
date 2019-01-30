@@ -57,7 +57,6 @@ SLAMModuleResult SLAMModule1Triangulation::operator()()
 
         if(has_left_projection == false && has_right_projection == false)
         {
-
             SLAMMapPointPtr world_point = triangulate( frame, p.first, p.second );
 
             if(world_point)
@@ -79,7 +78,7 @@ SLAMModuleResult SLAMModule1Triangulation::operator()()
 
     std::cout << "      Number of new mappoints: " << triangulation_count << std::endl;
 
-    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
+    return SLAMModuleResult(false, SLAM_MODULE1_DENSERECONSTRUCTION);
 }
 
 SLAMMapPointPtr SLAMModule1Triangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)
@@ -321,6 +320,7 @@ bool SLAMModule1Triangulation::triangulateInRigFrame(
 
     if(ok)
     {
+    /*
         Eigen::Matrix<double, 6, 4> J1;
         Eigen::Matrix<double, 3, 6> J2;
 
@@ -428,6 +428,7 @@ bool SLAMModule1Triangulation::triangulateInRigFrame(
         sigma_input(3,3) = mSigmaProjRight*mSigmaProjRight;
 
         cov_in_rig_frame = J * sigma_input * J.transpose();
+    */
     }
 
     // If triangulation failed, clear output.

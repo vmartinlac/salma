@@ -14,6 +14,7 @@
 #include "Project.h"
 
 //#define DEBUG_SAVE_TRACKED_IMAGES
+//#define CAMERA_CALIBRATION_SKIP_CORNERS
 
 CameraCalibrationOperation::CameraCalibrationOperation()
 {
@@ -87,14 +88,45 @@ bool CameraCalibrationOperation::step()
     {
         if( mObjectPoints.empty() || mClock.elapsed() > mMillisecondsTemporisation )
         {
-            const bool target_found =
-                mTracker.track(image.getFrame(), false) &&
-                (mTracker.imagePoints().size() >= 30);
+            std::vector<cv::Point2f> image_points;
+            std::vector<cv::Point3f> object_points;
+
+            const bool target_found = mTracker.track(image.getFrame(), false);
 
             if( target_found )
             {
-                mImagePoints.push_back( mTracker.imagePoints() );
-                mObjectPoints.push_back( mTracker.objectPoints() );
+                image_points = mTracker.imagePoints();
+                object_points = mTracker.objectPoints();
+
+                if( image_points.size() != object_points.size() ) throw std::runtime_error("internal error");
+
+#ifdef CAMERA_CALIBRATION_SKIP_CORNERS
+
+                const double roi_radius = 0.4 * double( std::min(image.getFrame().cols, image.getFrame().rows) );
+                const cv::Point2f roi_center( image.getFrame().cols/2, image.getFrame().rows/2 );
+
+                for(int i=0; i<image_points.size();)
+                {
+                    if( cv::norm( image_points[i] - roi_center ) > roi_radius )
+                    {
+                        image_points[i] = image_points.back();
+                        image_points.pop_back();
+
+                        object_points[i] = object_points.back();
+                        object_points.pop_back();
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+#endif
+            }
+
+            if( image_points.size() >= 22 )
+            {
+                mImagePoints.push_back( image_points );
+                mObjectPoints.push_back( object_points );
 
                 mSuccessfulFrameCount++;
 

@@ -40,7 +40,7 @@ bool SLAMEngine::initialize(
             mModules.emplace_back(new SLAMModule1LBA(mContext));
             mModules.emplace_back(new SLAMModule1StereoMatcher(mContext));
             mModules.emplace_back(new SLAMModule1Triangulation(mContext));
-            //mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
+            mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
             mNextModule = SLAM_MODULE1_FEATURES;
             break;
         case SLAM_PIPELINE2:
