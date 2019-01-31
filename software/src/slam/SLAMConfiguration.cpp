@@ -27,15 +27,15 @@ SLAMConfigurationTemporalMatcher::SLAMConfigurationTemporalMatcher()
     check_lowe = false;
     lowe_ratio = 0.90;
     check_octave = false;
-    max_projected_mappoints_per_view = 300;
-    num_previous_frames = 4;
+    //max_projected_mappoints_per_view = 300;
+    num_previous_frames = 2;
 }
 
 SLAMConfigurationAlignment::SLAMConfigurationAlignment()
 {
     debug = false;
     ransac_inlier_rate = 0.75;
-    ransac_inlier_threshold = 10.0;
+    ransac_inlier_threshold = 12.0;
 }
 
 SLAMConfigurationEKF::SLAMConfigurationEKF()
@@ -69,7 +69,7 @@ SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()
     check_lowe = true;
     lowe_ratio = 0.92;
     check_epipolar = true;
-    epipolar_threshold = 16.0;
+    epipolar_threshold = 10.0;
 }
 
 SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()
@@ -78,7 +78,7 @@ SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()
     min_angle_between_rays = 1.5 * M_PI / 180.0;
     check_perpendicular_length = false;
     perpendicular_max_length = 0.0;
-    max_reprojection_error = 8.0;
+    max_reprojection_error = 4.0;
     use_lindstrom = true;
     min_distance_to_camera = 1.0;
     sigma_proj_left = 0.5;

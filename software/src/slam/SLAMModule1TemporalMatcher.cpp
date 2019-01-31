@@ -17,7 +17,7 @@ bool SLAMModule1TemporalMatcher::init()
     mLoweRatio = conf->temporal_matcher.lowe_ratio;
     mCheckOctave = conf->temporal_matcher.check_octave;
     mNumPreviousFrames = conf->temporal_matcher.num_previous_frames;
-    mMaxProjectedMapPointsPerView = conf->temporal_matcher.max_projected_mappoints_per_view;
+    //mMaxProjectedMapPointsPerView = conf->temporal_matcher.max_projected_mappoints_per_view;
 
     return true;
 }
@@ -42,7 +42,7 @@ SLAMModuleResult SLAMModule1TemporalMatcher::operator()()
             processView(rec->frames[N-2-j], rec->frames[N-1], i, projected_mappoints_ids);
 
             go_on =
-                ( projected_mappoints_ids.size() < mMaxProjectedMapPointsPerView ) &&
+                //( projected_mappoints_ids.size() < mMaxProjectedMapPointsPerView ) &&
                 ( rec->frames[N-2-j]->aligned_wrt_previous_frame );
         }
 

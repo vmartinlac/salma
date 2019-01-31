@@ -35,7 +35,7 @@ protected:
     bool mCheckOctave;
 
     int mNumPreviousFrames;
-    int mMaxProjectedMapPointsPerView;
+    //int mMaxProjectedMapPointsPerView;
 };
 
 typedef std::shared_ptr<SLAMModule1TemporalMatcher> SLAMModule1TemporalMatcherPtr;

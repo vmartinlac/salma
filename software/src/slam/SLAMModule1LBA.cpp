@@ -185,7 +185,9 @@ SLAMModuleResult SLAMModule1LBA::operator()()
 
                         if(it != mappoint_id_to_local_id.end())
                         {
-                            const double sigma_projection = context()->configuration->lba.sigma_projection;
+                            const double coeff = std::pow(context()->configuration->features.scale_factor, v.keypoints[i].octave);
+
+                            const double sigma_projection = context()->configuration->lba.sigma_projection * coeff;
 
                             const Eigen::Matrix2d information = (1.0/(sigma_projection*sigma_projection)) * Eigen::Matrix2d::Identity();
 
