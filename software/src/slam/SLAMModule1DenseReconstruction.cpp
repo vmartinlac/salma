@@ -1,13 +1,19 @@
 #include <fstream>
 #include <Eigen/Eigen>
-//#include <opencv2/cudastereo.hpp>
-//#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include "FinitePriorityQueue.h"
 #include "SLAMModule1DenseReconstruction.h"
+#if defined(SALMA_WITH_CUDA)
+#include "StereoMatcher.h"
+#elif defined(SALMA_OPENCV_HAS_CUDA)
+#include <opencv2/cudastereo.hpp>
+#include <opencv2/cudaimgproc.hpp>
+#else
+#include <opencv2/stereo.hpp>
+#endif
 
 SLAMModule1DenseReconstruction::SLAMModule1DenseReconstruction(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_DENSERECONSTRUCTION, con)
@@ -84,7 +90,81 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
         context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_right", rectified_right);
     }
 
-    /*
+    cv::Mat disparity;
+    computeDisparity(rectified_left, rectified_right, disparity);
+
+    if( disparity.type() != CV_16SC1 ) throw std::runtime_error("incorrect disparity cv::Mat type!");
+
+    if( context()->configuration->dense_reconstruction.debug )
+    {
+        cv::Mat tmp;
+        disparity.convertTo(tmp, CV_32F);
+
+        double mini = 0.0;
+        double maxi = 1.0;
+        cv::minMaxLoc(tmp, &mini, &maxi);
+
+        tmp = (tmp - mini) * (255.0 / (maxi - mini));
+
+        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_disparity", tmp);
+    }
+
+    cv::Mat reconstruction;
+    cv::reprojectImageTo3D(
+        disparity,
+        reconstruction,
+        mRectification.Q,
+        false,
+        CV_32F);
+
+    if( reconstruction.type() != CV_32FC3 ) throw std::runtime_error("incorrect disparity cv::Mat type!");
+
+    frame->dense_cloud.clear();
+
+    for(int i=0; i<reconstruction.rows; i++)
+    {
+        for(int j=0; j<reconstruction.cols; j++)
+        {
+            if( disparity.at<int16_t>(i, j) != 0 )
+            {
+                const cv::Point3f pt = reconstruction.at<cv::Point3f>(i, j);
+
+                frame->dense_cloud.push_back(pt);
+            }
+        }
+    }
+
+    std::cout << "      Size of point cloud: " << frame->dense_cloud.size() << std::endl;
+
+    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
+}
+
+void SLAMModule1DenseReconstruction::computeDisparity(
+    const cv::Mat& rectified_left,
+    const cv::Mat& rectified_right,
+    cv::Mat& disparity)
+{
+
+#if defined(SALMA_WITH_CUDA)
+
+    std::cout << "      Computing disparity with salma belief propagation stereo matcher." << std::endl;
+
+    cv::cuda::GpuMat d_rectified_left;
+    cv::cuda::GpuMat d_rectified_right;
+
+    d_rectified_left.upload(rectified_left);
+    d_rectified_right.upload(rectified_right);
+
+    cv::cuda::GpuMat d_disparity;
+
+    cv::Ptr<StereoMatcher> matcher = StereoMatcher::create();
+
+    d_disparity.download(disparity);
+
+#elif defined(SALMA_OPENCV_HAS_CUDA)
+
+    std::cout << "      Computing disparity with OpenCV CUDA Belief Propagation stereo matcher." << std::endl;
+
     cv::Ptr<cv::cuda::StereoBeliefPropagation> matcher;
 
     {
@@ -93,21 +173,14 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
         int levels = 0;
 
         cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(
-            mCameras[0]->image_size.width/8,
-            mCameras[0]->image_size.height/8,
+            mCameras[0]->image_size.width,
+            mCameras[0]->image_size.height,
             ndisp,
             iters,
             levels);
 
         matcher = cv::cuda::createStereoBeliefPropagation(ndisp, iters, levels);
     }
-
-    cv::Mat tmpl;
-    cv::Mat tmpr;
-    cv::resize(rectified_left, tmpl, cv::Size(), 0.125, 0.125);
-    cv::resize(rectified_right, tmpr, cv::Size(), 0.125, 0.125);
-    rectified_left = tmpl;
-    rectified_right = tmpr;
 
     cv::cuda::GpuMat d_rectified_left;
     cv::cuda::GpuMat d_rectified_right;
@@ -119,17 +192,24 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
     matcher->compute(d_rectified_left, d_rectified_right, d_disparity);
 
-    cv::Mat disparity;
     d_disparity.download(disparity);
 
-    if( context()->configuration->densereconstruction_debug )
-    {
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpdisparity", disparity);
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpleft", rectified_left);
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_tmpright", rectified_right);
-    }
+#else
+
+    std::cout << "      Computing disparity with OpenCV SGBM stereo matcher." << std::endl;
+
+    /*
+    cv::Mat tmpl;
+    cv::Mat tmpr;
+    cv::resize(rectified_left, tmpl, cv::Size(), 0.25, 0.25);
+    cv::resize(rectified_right, tmpr, cv::Size(), 0.25, 0.25);
     */
 
-    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
+    cv::Ptr<cv::StereoSGBM> matcher = cv::StereoSGBM::create(0, 16, 81);
+    //matcher->compute(tmpl, tmpr, disparity);
+    matcher->compute(rectified_left, rectified_right, disparity);
+
+#endif
+
 }
 

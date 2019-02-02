@@ -69,6 +69,8 @@ public:
 
     Sophus::SE3d frame_to_world;
     Eigen::Matrix<double, 7, 7> pose_covariance;
+
+    std::vector<cv::Point3f> dense_cloud;
 };
 
 typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;

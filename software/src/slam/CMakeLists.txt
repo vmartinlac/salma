@@ -53,15 +53,20 @@ target_link_libraries(
     opencv_features2d
     opencv_calib3d
     opencv_video
-    #opencv_cudastereo
-    #opencv_cudaimgproc
     #Threads::Threads
     salma_video
     salma_mvpnp
     salma_calibration
     salma_buildinfo
-    #salma_stereomatcher
 )
+
+if(${SALMA_WITH_CUDA})
+    target_link_libraries(salma_slam PRIVATE salma_stereomatcher)
+    target_compile_definitions(salma_slam PRIVATE SALMA_WITH_CUDA)
+elseif(${SALMA_OPENCV_HAS_CUDA})
+    target_link_libraries(salma_slam PRIVATE opencv_cudastereo opencv_cudaimgproc)
+    target_compile_definitions(salma_slam PRIVATE SALMA_OPENCV_WITH_CUDA)
+endif()
 
 target_include_directories(salma_slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

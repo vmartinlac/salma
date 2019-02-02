@@ -37,6 +37,13 @@ protected:
 
 protected:
 
+    void computeDisparity(
+        const cv::Mat& rectified_left,
+        const cv::Mat& rectified_right,
+        cv::Mat& disparity);
+
+protected:
+
     CameraCalibrationDataPtr mCameras[2];
     StereoRigCalibrationDataPtr mStereoRig;
 

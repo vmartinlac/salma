@@ -103,6 +103,7 @@ struct SLAMConfigurationDenseReconstruction
     SLAMConfigurationDenseReconstruction();
 
     bool debug;
+    bool enabled;
 };
 
 class SLAMConfiguration
