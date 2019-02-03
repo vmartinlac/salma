@@ -8,6 +8,7 @@
 #include "SLAMModule1DenseReconstruction.h"
 #if defined(SALMA_WITH_CUDA)
 #include "StereoMatcher.h"
+#include <opencv2/core/cuda.hpp>
 #elif defined(SALMA_OPENCV_HAS_CUDA)
 #include <opencv2/cudastereo.hpp>
 #include <opencv2/cudaimgproc.hpp>

@@ -5,6 +5,8 @@ add_library(
     StereoMatcher.h
     StereoMatcherImpl.h
     StereoMatcherImpl.cu
+    PhotometricNormalizer.h
+    PhotometricNormalizer.cpp
 )
 
 target_link_libraries(
