@@ -12,9 +12,13 @@ public:
 
     void prepare(const cv::Mat& left_image, const cv::Mat& right_image);
 
-    void operator()(const cv::Mat& left_image, const cv::Mat& right_image);
+    void operator()(
+        const cv::Mat& left_from,
+        const cv::Mat& right_from,
+        cv::Mat& left_to,
+        cv::Mat& right_to);
 
 protected:
 
-    std::vector<float> mRightToLeft[3];
+    cv::Mat mRightToLeft;
 };
