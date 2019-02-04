@@ -3,33 +3,21 @@
 #include <algorithm>
 #include <array>
 #include <memory>
-#include <vector>
-#include <opencv2/core.hpp>
 #include <nanoflann.hpp>
 #include <Eigen/Eigen>
+#include "TrackerBase.h"
 
 namespace target
 {
-    class Tracker
+    class Tracker : public TrackerBase
     {
     public:
 
         Tracker();
 
-        Tracker(const Tracker& o) = delete;
-        void operator=(const Tracker& o) = delete;
+        bool track( const cv::Mat& image, bool absolute_pose=true ) override;
 
-        void setUnitLength(double length);
-
-        bool track( const cv::Mat& image, bool absolute_pose=true );
-
-        bool found();
-        const std::vector<cv::Point3f>& objectPoints();
-        const std::vector<cv::Point2f>& imagePoints();
-        const std::vector<cv::KeyPoint>& imageKeyPoints();
-        const std::vector<int>& pointIds();
-
-        void clear();
+        void clear() override;
 
     protected:
 
@@ -165,38 +153,6 @@ namespace target
         std::unique_ptr<KDTree> m_kdtree; // the kdtree used for knn searches.
         std::vector<ConnectedComponent> m_connected_components;
         int m_biggest_connected_component;
-
-        bool m_found;
-        std::vector<cv::Point3f> m_object_points;
-        std::vector<cv::Point2f> m_image_points;
-        //std::vector<cv::KeyPoint> m_image_keypoints;
-        std::vector<int> m_point_ids;
     };
-
-    inline void Tracker::setUnitLength(double length)
-    {
-        m_unit_length = length;
-    }
-
-    inline bool Tracker::found()
-    {
-        return m_found;
-    }
-
-    inline const std::vector<cv::Point3f>& Tracker::objectPoints()
-    {
-        return m_object_points;
-    }
-
-    inline const std::vector<cv::Point2f>& Tracker::imagePoints()
-    {
-        return m_image_points;
-    }
-
-    inline const std::vector<int>& Tracker::pointIds()
-    {
-        return m_point_ids;
-    }
-
 }
 

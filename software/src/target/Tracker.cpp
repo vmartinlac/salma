@@ -1227,8 +1227,8 @@ namespace target {
 
     void Tracker::clear()
     {
-        m_image_points.clear();
-        m_object_points.clear();
+        TrackerBase::clear();
+
         m_connected_components.clear();
         m_kdtree.reset();
         m_points.clear();
