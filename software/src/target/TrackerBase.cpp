@@ -2,6 +2,7 @@
 
 target::TrackerBase::TrackerBase()
 {
+    m_unit_length = 1.0;
     m_found = false;
 }
 

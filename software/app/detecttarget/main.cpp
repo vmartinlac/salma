@@ -2,7 +2,8 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <opencv2/imgcodecs.hpp>
-#include <Tracker.h>
+#include "Tracker.h"
+#include "Tracker2.h"
 
 int main(int num_args, char** args)
 {
@@ -27,7 +28,7 @@ int main(int num_args, char** args)
         exit(1);
     }
 
-    target::Tracker t;
+    target::Tracker2 t;
     t.setUnitLength(parser.value("unit-length").toDouble());
     t.track(image, (parser.value("absolute-orientation").toInt() != 0) );
 
