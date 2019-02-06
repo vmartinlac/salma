@@ -13,7 +13,7 @@
 #include <opencv2/cudastereo.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #else
-#include <opencv2/stereo.hpp>
+#include <opencv2/calib3d.hpp>
 #endif
 
 SLAMModule1DenseReconstruction::SLAMModule1DenseReconstruction(SLAMContextPtr con) :
