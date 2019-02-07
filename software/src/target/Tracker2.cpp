@@ -7,7 +7,7 @@
 
 static void find_maxima(const cv::Mat& image, std::vector<cv::Point>& pts)
 {
-    const int min_distance_to_border = 15;
+    const float min_distance_to_border = 20.0;
 
     std::vector<cv::Point> neighbors{
         cv::Point(-1,0),
@@ -23,9 +23,9 @@ static void find_maxima(const cv::Mat& image, std::vector<cv::Point>& pts)
     const int margin = 2;
     const cv::Rect roi(margin, margin, image.cols-2*margin, image.rows-2*margin);
 
-    cv::MatConstIterator_<int32_t> it = image.begin<int32_t>();
+    cv::MatConstIterator_<float> it = image.begin<float>();
 
-    while(it != image.end<int32_t>())
+    while(it != image.end<float>())
     {
         if( roi.contains(it.pos()) && *it >= min_distance_to_border )
         {
@@ -35,7 +35,7 @@ static void find_maxima(const cv::Mat& image, std::vector<cv::Point>& pts)
             {
                 const cv::Point pt = it.pos() + delta;
 
-                if( image.at<int32_t>(pt) > *it )
+                if( image.at<float>(pt) > *it )
                 {
                     local_maximum = false;
                 }
@@ -82,8 +82,8 @@ bool target::Tracker2::track( const cv::Mat& image, bool absolute_pose )
     std::cout << "Distance transform..." << std::endl;
     cv::Mat dist_a;
     cv::Mat dist_b;
-    cv::distanceTransform(thresh_a, dist_a, cv::DIST_L2, 5, CV_32S);
-    cv::distanceTransform(thresh_b, dist_b, cv::DIST_L2, 5, CV_32S);
+    cv::distanceTransform(thresh_a, dist_a, cv::DIST_L2, 5, CV_32F);
+    cv::distanceTransform(thresh_b, dist_b, cv::DIST_L2, 5, CV_32F);
     cv::imwrite("debug_output/50_dist.png", dist_a);
     cv::imwrite("debug_output/60_dist.png", dist_b);
 
@@ -99,15 +99,20 @@ bool target::Tracker2::track( const cv::Mat& image, bool absolute_pose )
     std::fill( locmax_a.begin<uint8_t>(), locmax_a.end<uint8_t>(), uint8_t(0));
     std::fill( locmax_b.begin<uint8_t>(), locmax_b.end<uint8_t>(), uint8_t(0));
 
+    cv::Mat tmp = image.clone();
     for(const cv::Point& pt : pts_a)
     {
         locmax_a.at<uint8_t>(pt) = uint8_t(255);
+        cv::circle(tmp, pt, 5, cv::Scalar(0,255,0), -1);
     }
 
     for(const cv::Point& pt : pts_b)
     {
         locmax_b.at<uint8_t>(pt) = uint8_t(255);
+        cv::circle(tmp, pt, 5, cv::Scalar(255,0,0), -1);
     }
+
+    cv::imwrite("debug_output/rien.png", tmp);
 
     cv::imwrite("debug_output/70_locmax.png", locmax_a);
     cv::imwrite("debug_output/80_locmax.png", locmax_b);
