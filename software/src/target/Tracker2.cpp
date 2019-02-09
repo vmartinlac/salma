@@ -5,132 +5,52 @@
 #include <map>
 #include "Tracker2.h"
 
-static void segment(
-    const cv::Mat& image)
+static void find_maxima(const cv::Mat& image, std::vector<cv::Point>& pts)
 {
-    std::vector<cv::Point> neighbors;
-    
-    {
-        const int radius = 5;
+    const float min_distance_to_border = 20.0;
 
-        for(int di=-radius; di<=radius; di++)
-        {
-            for(int dj=-radius; dj<=radius; dj++)
-            {
-                if(di*di + dj*dj <= radius*radius && (di != 0 || dj != 0))
-                {
-                    neighbors.emplace_back(di,dj);
-                }
-            }
-        }
-    }
-
-    const int N = image.rows;
-    const int M = image.cols;
-
-    cv::Mat a( N, M, CV_32SC1 );
-    a = -1;
-
-    const cv::Rect roi(0, 0, M, N);
-
-    std::cout << "A..." << std::endl;
-    for(cv::MatIterator_<int32_t> it=a.begin<int32_t>(); it!=a.end<int32_t>(); it++)
-    {
-        const cv::Point2i c = it.pos();
-
-        *it = c.y * M + c.x;
-
-        int32_t best = image.at<int32_t>(it.pos());
-
-        for(const cv::Point& delta : neighbors)
-        {
-            const cv::Point2i o = c + delta;
-
-            if(roi.contains(o))
-            {
-                const int32_t level = image.at<int32_t>(o);
-
-                if(level > best)
-                {
-                    *it = o.y * M + o.x;
-                    best = level;
-                }
-            }
-        }
-    }
-
-    std::vector<int> segments;
-
-    std::cout << "B..." << std::endl;
-    for(cv::MatIterator_<int32_t> it=a.begin<int32_t>(); it!=a.end<int32_t>(); it++)
-    {
-        bool go_on = true;
-
-        const cv::Point pt = it.pos();
-
-        const int32_t me = pt.y * M + pt.x;
-
-        while(go_on)
-        {
-            if( *it == me )
-            {
-                go_on = false;
-                segments.push_back(me);
-            }
-            else
-            {
-                cv::Point parent;
-                parent.x = *it % M;
-                parent.y = *it / M;
-
-                const int32_t parent_of_parent = a.at<int32_t>(parent);
-
-                if( parent_of_parent == *it )
-                {
-                    go_on = false;
-                }
-                else
-                {
-                    *it = parent_of_parent;
-                }
-            }
-        }
-    }
-
-    std::cout << "C..." << std::endl;
-    std::default_random_engine engine;
-    std::uniform_int_distribution<int> distrib(0, 255);
-    auto proc = [&engine, &distrib] ()
-    {
-        const int r = distrib(engine);
-        const int g = distrib(engine);
-        const int b = distrib(engine);
-        return cv::Vec<uint8_t,3>(r,b,g);
+    std::vector<cv::Point> neighbors{
+        cv::Point(-1,0),
+        cv::Point(1,0),
+        cv::Point(0,1),
+        cv::Point(0,-1),
+        cv::Point(-1,-1),
+        cv::Point(1,-1),
+        cv::Point(-1,1),
+        cv::Point(1,1)
     };
 
-    std::vector<cv::Vec<uint8_t,3> > colors(segments.size());
-    std::generate(colors.begin(), colors.end(), proc);
+    const int margin = 2;
+    const cv::Rect roi(margin, margin, image.cols-2*margin, image.rows-2*margin);
 
-    std::cout << segments.size() << std::endl;
+    cv::MatConstIterator_<float> it = image.begin<float>();
 
-    cv::Mat im(N, M, CV_8UC3);
-
-    for(cv::MatIterator_<int32_t> it=a.begin<int32_t>(); it!=a.end<int32_t>(); it++)
+    while(it != image.end<float>())
     {
-        int i = 0;
-        while(i<segments.size() && segments[i] != *it)
+        if( roi.contains(it.pos()) && *it >= min_distance_to_border )
         {
-            i++;
+            bool local_maximum = true;
+
+            for(const cv::Point& delta : neighbors)
+            {
+                const cv::Point pt = it.pos() + delta;
+
+                if( image.at<float>(pt) > *it )
+                {
+                    local_maximum = false;
+                }
+            }
+
+            if(local_maximum)
+            {
+                pts.push_back(it.pos());
+            }
         }
 
-        if(i<segments.size())
-        {
-            im.at< cv::Vec<uint8_t,3> >() = colors[i];
-        }
-        else
-        {
-        }
+        it++;
     }
+
+    std::cout << pts.size() << std::endl;
 }
 
 target::Tracker2::Tracker2()
@@ -156,19 +76,63 @@ bool target::Tracker2::track( const cv::Mat& image, bool absolute_pose )
         thresh_a.begin<uint8_t>(),
         thresh_a.end<uint8_t>(),
         thresh_b.begin<uint8_t>(),
-        [] (uint8_t x) { return (x == 0) ? 1 : 0; } );
+        [] (uint8_t x) { return (x == 0) ? 255 : 0; } );
     cv::imwrite("debug_output/40_threshold.png", thresh_b);
 
     std::cout << "Distance transform..." << std::endl;
     cv::Mat dist_a;
     cv::Mat dist_b;
-    cv::distanceTransform(thresh_a, dist_a, cv::DIST_L2, 5, CV_32S);
-    cv::distanceTransform(thresh_b, dist_b, cv::DIST_L2, 5, CV_32S);
+    cv::distanceTransform(thresh_a, dist_a, cv::DIST_L2, 5, CV_32F);
+    cv::distanceTransform(thresh_b, dist_b, cv::DIST_L2, 5, CV_32F);
+    cv::imwrite("debug_output/50_dist.png", dist_a);
+    cv::imwrite("debug_output/60_dist.png", dist_b);
 
-    std::cout << "Segment..." << std::endl;
-    segment(dist_a);
-    segment(dist_b);
+    std::cout << "Detecting local maxima..." << std::endl;
+    std::vector<cv::Point> pts_a;
+    std::vector<cv::Point> pts_b;
+    find_maxima(dist_a, pts_a);
+    find_maxima(dist_b, pts_b);
 
+    std::cout << "A..." << std::endl;
+    cv::Mat locmax_a(image.size(), CV_8UC1);
+    cv::Mat locmax_b(image.size(), CV_8UC1);
+    std::fill( locmax_a.begin<uint8_t>(), locmax_a.end<uint8_t>(), uint8_t(0));
+    std::fill( locmax_b.begin<uint8_t>(), locmax_b.end<uint8_t>(), uint8_t(0));
+
+    cv::Mat tmp = image.clone();
+    for(const cv::Point& pt : pts_a)
+    {
+        locmax_a.at<uint8_t>(pt) = uint8_t(255);
+        cv::circle(tmp, pt, 5, cv::Scalar(0,255,0), -1);
+    }
+
+    for(const cv::Point& pt : pts_b)
+    {
+        locmax_b.at<uint8_t>(pt) = uint8_t(255);
+        cv::circle(tmp, pt, 5, cv::Scalar(255,0,0), -1);
+    }
+
+    cv::imwrite("debug_output/rien.png", tmp);
+
+    cv::imwrite("debug_output/70_locmax.png", locmax_a);
+    cv::imwrite("debug_output/80_locmax.png", locmax_b);
+
+    std::cout << "B..." << std::endl;
+    cv::Mat distlocmax_a;
+    cv::Mat labels_a;
+    cv::distanceTransform(locmax_a, distlocmax_a, labels_a, cv::DIST_L2, 5);
+    
+    cv::Mat distlocmax_b;
+    cv::Mat labels_b;
+    cv::distanceTransform(locmax_b, distlocmax_b, labels_b, cv::DIST_L2, 5);
+
+    cv::Mat rien;
+    labels_a.convertTo(rien, CV_8U);
+    labels_a = rien;
+
+    cv::imwrite("debug_output/90_labels.png", labels_a);
+    cv::imwrite("debug_output/100_labels.png", labels_b);
+    
     return false;
 }
 
