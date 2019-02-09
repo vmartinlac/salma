@@ -1,5 +1,0 @@
-Rouge: power IN
-Noir: power GND
-Bleu: trigger GND
-Marron: trigger IN
-
