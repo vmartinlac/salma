@@ -5,7 +5,6 @@
 #include <opencv2/core.hpp>
 #include <QDir>
 #include <QTime>
-#include "Tracker.h"
 #include "VideoSource.h"
 #include "Operation.h"
 #include "SLAMEngine.h"

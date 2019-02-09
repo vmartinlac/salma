@@ -6,7 +6,12 @@ if(${SALMA_WITH_CUDA})
     add_subdirectory(stereomatcher)
 endif()
 add_subdirectory(target)
-add_subdirectory(ui)
+
 add_subdirectory(uicommon)
+add_subdirectory(uicameracalibration)
+add_subdirectory(uirigcalibration)
+add_subdirectory(uirecording)
+add_subdirectory(uireconstruction)
+add_subdirectory(ui)
 add_subdirectory(video)
 

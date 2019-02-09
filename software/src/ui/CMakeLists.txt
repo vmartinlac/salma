@@ -4,105 +4,17 @@ add_library(
 
     SHARED
 
-    db.qrc
-
     MainWindow.h
     MainWindow.cpp
-    Model.h
-    Model.cpp
-
-    SyncIO.h
-    SyncIO.cpp
-
-    TargetScaleWidget.h
-    TargetScaleWidget.cpp
-    CameraCalibrationListWidget.h
-    CameraCalibrationListWidget.cpp
-    RigCalibrationListWidget.h
-    RigCalibrationListWidget.cpp
-    RecordingListWidget.h
-    RecordingListWidget.cpp
-    FrameRateWidget.h
-    FrameRateWidget.cpp
-
-    Project.h
-    Project.cpp
-
-    Operation.cpp
-    Operation.h
-    OperationThread.cpp
-    OperationThread.h
-    OperationProgressDialog.h
-    OperationProgressDialog.cpp
-    NewOperationDialog.h
-    NewOperationDialog.cpp
-    OperationDialog.h
-    OperationDialog.cpp
-
-    CameraCalibrationModel.h
-    CameraCalibrationModel.cpp
-    CameraCalibrationPanel.h
-    CameraCalibrationPanel.cpp
-    CameraCalibrationList.h
-    NewManualCameraCalibrationDialog.h
-    NewManualCameraCalibrationDialog.cpp
-    NewCameraCalibrationDialog.h
-    NewCameraCalibrationDialog.cpp
-    CameraCalibrationOperation.h
-    CameraCalibrationOperation.cpp
-    ManualCameraCalibrationParameters.h
-    ManualCameraCalibrationParameters.cpp
-    ManualCameraCalibrationDialog.h
-    ManualCameraCalibrationDialog.cpp
-
-    RigCalibrationModel.h
-    RigCalibrationModel.cpp
-    RigCalibrationPanel.h
-    RigCalibrationPanel.cpp
-    RigCalibrationList.h
-    NewRigCalibrationDialog.h
-    NewRigCalibrationDialog.cpp
-    RigCalibrationOperation.h
-    RigCalibrationOperation.cpp
-
-    RecordingModel.h
-    RecordingModel.cpp
-    RecordingPanel.h
-    RecordingPanel.cpp
-    RecordingList.h
-    NewMonoRecordingDialog.h
-    NewMonoRecordingDialog.cpp
-    NewStereoRecordingDialog.h
-    NewStereoRecordingDialog.cpp
-    RecordingOperation.h
-    RecordingOperation.cpp
-    RecordingPlayerDialog.h
-    RecordingPlayerDialog.cpp
-
-    ReconstructionModel.h
-    ReconstructionModel.cpp
-    ReconstructionPanel.h
-    ReconstructionPanel.cpp
-    ReconstructionList.h
-    NewReconstructionDialog.h
-    NewReconstructionDialog.cpp
-    ReconstructionOperation.h
-    ReconstructionOperation.cpp
-
-    ViewerWidget.h
-    ViewerWidget.cpp
-    ReconstructionInspectorDialog.h
-    ReconstructionInspectorDialog.cpp
 )
 
 target_link_libraries(
     salma_ui
     PUBLIC
-    salma_uicommon
-    salma_calibration
-    salma_video
-    salma_slam
-    salma_target
+    salma_uicameracalibration
+    salma_uirigcalibration
+    salma_uirecording
+    salma_uireconstruction
     Qt5::Widgets
     Qt5::Sql
     opencv_calib3d
