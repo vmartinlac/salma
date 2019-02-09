@@ -44,10 +44,16 @@ add_library(
     CameraCalibrationPanel.h
     CameraCalibrationPanel.cpp
     CameraCalibrationList.h
+    NewManualCameraCalibrationDialog.h
+    NewManualCameraCalibrationDialog.cpp
     NewCameraCalibrationDialog.h
     NewCameraCalibrationDialog.cpp
     CameraCalibrationOperation.h
     CameraCalibrationOperation.cpp
+    ManualCameraCalibrationParameters.h
+    ManualCameraCalibrationParameters.cpp
+    ManualCameraCalibrationDialog.h
+    ManualCameraCalibrationDialog.cpp
 
     RigCalibrationModel.h
     RigCalibrationModel.cpp

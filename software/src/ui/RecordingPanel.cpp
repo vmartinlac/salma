@@ -1,4 +1,5 @@
 #include <QListWidget>
+#include <QToolButton>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QTextEdit>
@@ -28,9 +29,19 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
     mText->setReadOnly(true);
 
+    QAction* aNewMono = new QAction("Mono",this);
+    QAction* aNewStereo = new QAction("Stereo",this);
+
+    QToolButton* bNew = new QToolButton();
+    bNew->setText("New");
+    bNew->setPopupMode(QToolButton::InstantPopup);
+    bNew->addAction(aNewMono);
+    bNew->addAction(aNewStereo);
+
     QToolBar* tb = new QToolBar();
-    QAction* aNewMono = tb->addAction("New mono");
-    QAction* aNewStereo = tb->addAction("New stereo");
+    tb->addWidget(bNew);
+    //QAction* aNewMono = tb->addAction("New mono");
+    //QAction* aNewStereo = tb->addAction("New stereo");
     QAction* aPlay = tb->addAction("Play");
     QAction* aRename = tb->addAction("Rename");
     QAction* aDelete = tb->addAction("Delete");

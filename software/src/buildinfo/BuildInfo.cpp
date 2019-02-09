@@ -17,7 +17,16 @@ int BuildInfo::getVersionRevision()
 
 std::string BuildInfo::getBuildType()
 {
-    return std::string(BI_BUILD_TYPE);
+    std::string tmp(BI_BUILD_TYPE);
+
+    if(tmp.length() > 0)
+    {
+        return tmp;
+    }
+    else
+    {
+        return "N/A";
+    }
 }
 
 std::string BuildInfo::getCompilationDate()

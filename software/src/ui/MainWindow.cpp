@@ -52,9 +52,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     //
     QTabWidget* tab = new QTabWidget();
+    tab->addTab(new RecordingPanel(mProject), "Recording");
     tab->addTab(new CameraCalibrationPanel(mProject), "Camera Calibration");
     tab->addTab(new RigCalibrationPanel(mProject), "Rig Calibration");
-    tab->addTab(new RecordingPanel(mProject), "Recording");
     tab->addTab(new ReconstructionPanel(mProject), "Reconstruction");
     setCentralWidget(tab);
     //

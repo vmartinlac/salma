@@ -16,7 +16,8 @@ public:
 
 protected slots:
 
-    void onNew();
+    void onNewAutomatic();
+    void onNewManual();
     void onRename();
     void onDelete();
 

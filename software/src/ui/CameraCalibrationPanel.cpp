@@ -1,4 +1,5 @@
 #include <QToolBar>
+#include <QToolButton>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSplitter>
@@ -7,6 +8,8 @@
 #include "Project.h"
 #include "VideoSystem.h"
 #include "NewCameraCalibrationDialog.h"
+#include "NewManualCameraCalibrationDialog.h"
+#include "ManualCameraCalibrationDialog.h"
 #include "OperationDialog.h"
 #include "CameraCalibrationModel.h"
 
@@ -24,12 +27,23 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
 
     mText->setReadOnly(true);
 
+    QAction* aNewAutomatic = new QAction("Automatic", this);
+    QAction* aNewManual = new QAction("Manual", this);
+
+    QToolButton* bNew = new QToolButton();
+    bNew->setText("New");
+    bNew->setPopupMode(QToolButton::InstantPopup);
+    bNew->addAction(aNewAutomatic);
+    bNew->addAction(aNewManual);
+
     QToolBar* tb = new QToolBar();
-    QAction* aNew = tb->addAction("New");
+    //QAction* aNew = tb->addAction("New");
+    tb->addWidget(bNew);
     QAction* aRename = tb->addAction("Rename");
     QAction* aDelete = tb->addAction("Delete");
 
-    connect(aNew, SIGNAL(triggered()), this, SLOT(onNew()));
+    connect(aNewAutomatic, SIGNAL(triggered()), this, SLOT(onNewAutomatic()));
+    connect(aNewManual, SIGNAL(triggered()), this, SLOT(onNewManual()));
     connect(aRename, SIGNAL(triggered()), this, SLOT(onRename()));
     connect(aDelete, SIGNAL(triggered()), this, SLOT(onDelete()));
 
@@ -44,7 +58,35 @@ CameraCalibrationPanel::CameraCalibrationPanel(Project* project, QWidget* parent
     setLayout(lay);
 }
 
-void CameraCalibrationPanel::onNew()
+void CameraCalibrationPanel::onNewManual()
+{
+    RecordingList recs;
+    mProject->listRecordings(recs);
+
+    if(recs.empty())
+    {
+        QMessageBox::critical(this, "Error", "You need a recording!");
+    }
+    else
+    {
+        NewManualCameraCalibrationDialog* dlg = new NewManualCameraCalibrationDialog(mProject, this);
+
+        dlg->exec();
+
+        ManualCameraCalibrationParametersPtr params = dlg->getParameters();
+
+        delete dlg;
+
+        if(params)
+        {
+            ManualCameraCalibrationDialog* dlg2 = new ManualCameraCalibrationDialog(mProject, params, this);
+            dlg2->exec();
+            delete dlg2;
+        }
+    }
+}
+
+void CameraCalibrationPanel::onNewAutomatic()
 {
     if( VideoSystem::instance()->getNumberOfGenICamCameras() > 0 )
     {

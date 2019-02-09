@@ -28,7 +28,7 @@ int main(int num_args, char** args)
         exit(1);
     }
 
-    target::Tracker2 t;
+    target::Tracker t;
     t.setUnitLength(parser.value("unit-length").toDouble());
     t.track(image, (parser.value("absolute-orientation").toInt() != 0) );
 
