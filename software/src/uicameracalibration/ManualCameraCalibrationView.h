@@ -5,8 +5,6 @@
 #include "ManualCameraCalibrationParameters.h"
 #include "RecordingReader.h"
 
-class QPaintEvent;
-
 class ManualCameraCalibrationView : public QWidget
 {
     Q_OBJECT
@@ -26,7 +24,11 @@ public slots:
 
 protected:
 
-    void paintEvent(QPaintEvent* ev);
+    void mousePressEvent(QMouseEvent* ev) override;
+    void mouseReleaseEvent(QMouseEvent* ev) override;
+    void paintEvent(QPaintEvent* ev) override;
+    void wheelEvent(QWheelEvent* ev) override;
+    void mouseMoveEvent(QMouseEvent* ev) override;
 
 protected:
 
@@ -46,10 +48,12 @@ protected:
     ManualCameraCalibrationParametersPtr mParams;
     RecordingReaderPtr mReader;
 
-    std::map<int,cv::Point2f> mCorners;
-    std::vector< std::pair<int,int> > mEdges;
+    //std::map<int,cv::Point2f> mCorners;
+    //std::vector< std::pair<int,int> > mEdges;
 
     QImage mFrame;
     ZoomData mZoom;
+
+    QPoint mLastMousePosition;
 };
 
