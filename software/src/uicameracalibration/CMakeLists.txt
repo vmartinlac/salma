@@ -8,6 +8,8 @@ add_library(
     CameraCalibrationOperation.h
     CameraCalibrationPanel.cpp
     CameraCalibrationPanel.h
+    ManualCameraCalibrationView.cpp
+    ManualCameraCalibrationView.h
     ManualCameraCalibrationDialog.cpp
     ManualCameraCalibrationDialog.h
     ManualCameraCalibrationParameters.cpp

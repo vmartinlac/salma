@@ -80,6 +80,12 @@ void NewManualCameraCalibrationDialog::accept()
 
     if(ok)
     {
+        ok = (params->recording->num_views == 1);
+        err = "You must select a mono recording!";
+    }
+
+    if(ok)
+    {
         mParameters = std::move(params);
         QDialog::accept();
     }

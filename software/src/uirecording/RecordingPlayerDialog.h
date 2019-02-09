@@ -27,9 +27,6 @@ protected slots:
     void onLast();
     void onSliderValueChanged(int);
     void onTimeout();
-
-protected:
-
     void showFrame(int frame);
 
 protected:

@@ -6,8 +6,12 @@
 #include "Project.h"
 #include "ManualCameraCalibrationParameters.h"
 
+class ManualCameraCalibrationView;
+
 class ManualCameraCalibrationDialog : public QDialog
 {
+    Q_OBJECT
+
 public:
 
     ManualCameraCalibrationDialog(
@@ -17,10 +21,15 @@ public:
 
 protected:
 
+    void accept() override;
+
+protected:
+
     Project* mProject;
     ManualCameraCalibrationParametersPtr mParameters;
 
     QSlider* mSlider;
     QLabel* mLabelFrame;
+    ManualCameraCalibrationView* mView;
 };
 
