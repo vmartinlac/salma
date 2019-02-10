@@ -17,6 +17,7 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     mParameters = params;
 
     QToolBar* tb = new QToolBar();
+    QAction* aPropagate = tb->addAction("Propagate");
     QAction* aCorner = tb->addAction("Corner");
     QAction* aConnection = tb->addAction("Connection");
     QAction* aClear = tb->addAction("Clear");
@@ -63,6 +64,7 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aHome, SIGNAL(triggered()), mView, SLOT(home()));
     connect(aAutoDetect, SIGNAL(triggered()), mView, SLOT(autoDetect()));
+    connect(aPropagate, SIGNAL(triggered()), mView, SLOT(propagate()));
     connect(aClear, SIGNAL(triggered()), mView, SLOT(clear()));
 
     QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));

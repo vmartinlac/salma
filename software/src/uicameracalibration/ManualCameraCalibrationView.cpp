@@ -13,7 +13,9 @@ ManualCameraCalibrationView::ManualCameraCalibrationView(
     ManualCameraCalibrationParametersPtr params,
     QWidget* parent) : QWidget(parent)
 {
+    mMode = MODE_CORNER;
     mCurrentFrameId = -1;
+    mSelectedPoint = -1;
     mParams = params;
     mReader.reset(new RecordingReader(mParams->recording, true));
 
@@ -61,33 +63,114 @@ void ManualCameraCalibrationView::mousePressEvent(QMouseEvent* ev)
 {
     mLastMousePosition = ev->pos();
 
-    if(ev->button() == Qt::LeftButton)
+    if(mMode == MODE_CORNER)
     {
-        const int clicked_point = locatePoint( ev->pos() );
-
-        if(clicked_point >= 0)
+        if(ev->button() == Qt::LeftButton)
         {
-            removePoint(clicked_point);
+            const int clicked_point = locatePoint( ev->pos() );
 
-            update();
-        }
-        else
-        {
-            const cv::Point2f winpt( ev->pos().x(), ev->pos().y() );
-
-            const cv::Point2f halfwin( width()/2, height()/2 );
-
-            const cv::Point2f framept = mZoom.point + (winpt - halfwin) / mZoom.factor;
-
-            if( 0.0 <= framept.x && framept.x < mFrame.width() && 0.0 <= framept.y && framept.y < mFrame.height() )
+            if(clicked_point >= 0)
             {
-                addPoint(framept);
+                removePoint(clicked_point);
+
                 update();
+            }
+            else
+            {
+                const cv::Point2f winpt( ev->pos().x(), ev->pos().y() );
+
+                const cv::Point2f halfwin( width()/2, height()/2 );
+
+                const cv::Point2f framept = mZoom.point + (winpt - halfwin) / mZoom.factor;
+
+                if( 0.0 <= framept.x && framept.x < mFrame.width() && 0.0 <= framept.y && framept.y < mFrame.height() )
+                {
+                    addPoint(framept);
+                    update();
+                }
             }
         }
     }
+    else if(mMode == MODE_CONNECTION)
+    {
+        if(mSelectedPoint >= 0)
+        {
+            const int new_point = locatePoint( ev->pos() );
+
+            if( new_point >= 0 && new_point != mSelectedPoint && mFrameData[mCurrentFrameId].corners.find(mSelectedPoint) != mFrameData[mCurrentFrameId].corners.end() )
+            {
+                toggleConnection(mSelectedPoint, new_point);
+                //mFrameData[mCurrentFrameId].edges.push_back(std::pair<int,int>(mSelectedPoint, new_point));
+            }
+
+            mSelectedPoint = -1;
+
+        }
+        else
+        {
+            mSelectedPoint = locatePoint( ev->pos() );
+        }
+
+        update();
+    }
 
     ev->accept();
+}
+
+void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
+{
+    std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
+
+    if(it != mFrameData.end())
+    {
+        FrameData& fd = it->second;
+
+        std::map<int,FramePoint>::iterator it1 = fd.corners.find(corner1);
+        std::map<int,FramePoint>::iterator it2 = fd.corners.find(corner2);
+
+        if(it1 != fd.corners.end() && it2 != fd.corners.end())
+        {
+            FramePoint& pt1 = it1->second;
+            FramePoint& pt2 = it2->second;
+
+            if( std::find(pt1.neighbors.begin(), pt1.neighbors.end(), corner2) == pt1.neighbors.end() )
+            {
+                // add connection.
+
+                std::array<int,4>::iterator slot1 = std::find(pt1.neighbors.begin(), pt1.neighbors.end(), -1);
+                std::array<int,4>::iterator slot2 = std::find(pt2.neighbors.begin(), pt2.neighbors.end(), -1);
+
+                if(slot1 != pt1.neighbors.end() || slot2 != pt2.neighbors.end())
+                {
+                    if( slot1 == pt1.neighbors.end() || slot2 == pt2.neighbors.end() ) throw std::runtime_error("internal error");
+
+                    *slot1 = corner2;
+                    *slot2 = corner1;
+                }
+            }
+            else
+            {
+                // remove connection.
+
+                std::replace(
+                    pt1.neighbors.begin(),
+                    pt1.neighbors.end(),
+                    corner2,
+                    -1);
+
+                std::replace(
+                    pt2.neighbors.begin(),
+                    pt2.neighbors.end(),
+                    corner1,
+                    -1);
+            }
+        }
+    }
+}
+
+void ManualCameraCalibrationView::propagate()
+{
+    // TODO
 }
 
 void ManualCameraCalibrationView::removePoint(int id)
@@ -96,25 +179,29 @@ void ManualCameraCalibrationView::removePoint(int id)
 
     if( it != mFrameData.end() )
     {
-        // remove corner.
+        std::map<int,FramePoint>::iterator it2 = it->second.corners.find(id);
 
-        it->second.corners.erase(id);
-
-        // remove edges which reference this corner.
-
-        std::vector< std::pair<int,int> >::iterator it2 = it->second.edges.begin();
-
-        while( it2 != it->second.edges.end() )
+        if(it2 != it->second.corners.end())
         {
-            if( it2->first == id || it2->second == id )
+            // remove edges which reference this corner.
+
+            for(int other : it2->second.neighbors)
             {
-                *it2 = it->second.edges.back();
-                it->second.edges.pop_back();
+                std::map<int,FramePoint>::iterator it3 = it->second.corners.find(other);
+
+                if(it3 != it->second.corners.end())
+                {
+                    std::replace(
+                        it3->second.neighbors.begin(),
+                        it3->second.neighbors.end(),
+                        id,
+                        -1);
+                }
             }
-            else
-            {
-                it2++;
-            }
+
+            // remove corner.
+
+            it->second.corners.erase(it2);
         }
 
         // remove frame data is there are no corners left.
@@ -242,24 +329,28 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
 
             p.save();
             p.setPen(QPen(QColor(Qt::green), 2.0));
-            for(const std::pair<int,int>& edge : data.edges)
+            for(const std::pair<int,FramePoint>& pt : data.corners)
             {
-                if( edge.first == edge.second ) throw std::runtime_error("internal error");
-
-                const std::map<int,FramePoint>::iterator pta = data.corners.find(edge.first);
-                const std::map<int,FramePoint>::iterator ptb = data.corners.find(edge.second);
-
-                if(pta == data.corners.end() || ptb == data.corners.end()) throw std::runtime_error("internal error");
-
                 const QPointF ptapt(
-                    half_width + mZoom.factor*(pta->second.image_point.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pta->second.image_point.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(pt.second.image_point.x - mZoom.point.x),
+                    half_height + mZoom.factor*(pt.second.image_point.y - mZoom.point.y) );
 
-                const QPointF ptbpt(
-                    half_width + mZoom.factor*(ptb->second.image_point.x - mZoom.point.x),
-                    half_height + mZoom.factor*(ptb->second.image_point.y - mZoom.point.y) );
+                for(int other : pt.second.neighbors)
+                {
+                    if(other >= 0 && pt.first < other)
+                    {
+                        const std::map<int,FramePoint>::iterator ptb = data.corners.find(other);
 
-                p.drawLine(ptapt, ptbpt);
+                        if(ptb == data.corners.end()) throw std::runtime_error("internal error");
+
+                        const QPointF ptbpt(
+                            half_width + mZoom.factor*(ptb->second.image_point.x - mZoom.point.x),
+                            half_height + mZoom.factor*(ptb->second.image_point.y - mZoom.point.y) );
+
+                        p.drawLine(ptapt, ptbpt);
+                    }
+                }
+
             }
             p.restore();
 
@@ -269,7 +360,11 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
             p.setPen(QPen(QColor(Qt::black), 2.0));
             for(const std::pair<int,FramePoint>& pt : data.corners)
             {
-                if(pt.second.has_object_point)
+                if(mMode == MODE_CONNECTION && mSelectedPoint == pt.first)
+                {
+                    p.setBrush(QColor(Qt::yellow));
+                }
+                else if(pt.second.has_object_point)
                 {
                     p.setBrush(QColor(Qt::green));
                 }
@@ -306,7 +401,6 @@ void ManualCameraCalibrationView::autoDetect()
             FrameData& fd = mFrameData[mCurrentFrameId];
 
             fd.corners.clear();
-            fd.edges.clear();
 
             for(int i=0; i<tracker.objectPoints().size(); i++)
             {
@@ -315,6 +409,7 @@ void ManualCameraCalibrationView::autoDetect()
                 pt.has_object_point = true;
                 pt.image_point = tracker.imagePoints()[i];
                 pt.object_point = tracker.objectPoints()[i];
+                pt.integer_object_coords = tracker.integerObjectCoords()[i];
             }
 
             update();
@@ -376,9 +471,8 @@ bool ManualCameraCalibrationView::getCalibrationData(
 
 void ManualCameraCalibrationView::setMode(Mode mode)
 {
+    mSelectedPoint = -1;
     mMode = mode;
-
-    // TODO
 }
 
 void ManualCameraCalibrationView::setModeToCorner()
@@ -393,6 +487,8 @@ void ManualCameraCalibrationView::setModeToConnection()
 
 void ManualCameraCalibrationView::setFrame(int frame)
 {
+    mSelectedPoint = -1;
+
     mCurrentFrameId = frame;
 
     mReader->seek(frame);
@@ -462,5 +558,7 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
 ManualCameraCalibrationView::FramePoint::FramePoint()
 {
     has_object_point = false;
+
+    std::fill(neighbors.begin(), neighbors.end(), -1);
 }
 

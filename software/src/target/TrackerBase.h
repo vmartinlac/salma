@@ -24,6 +24,7 @@ namespace target
         bool found();
         const std::vector<cv::Point3f>& objectPoints();
         const std::vector<cv::Point2f>& imagePoints();
+        const std::vector<cv::Point2i>& integerObjectCoords();
         const std::vector<int>& pointIds();
 
         virtual void clear();
@@ -35,6 +36,7 @@ namespace target
         bool m_found;
         std::vector<cv::Point3f> m_object_points;
         std::vector<cv::Point2f> m_image_points;
+        std::vector<cv::Point2i> m_integer_object_coords;
         std::vector<int> m_point_ids;
     };
 

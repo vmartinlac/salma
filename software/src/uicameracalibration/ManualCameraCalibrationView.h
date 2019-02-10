@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <array>
 #include <opencv2/core.hpp>
 #include "ManualCameraCalibrationParameters.h"
 #include "RecordingReader.h"
@@ -39,6 +40,7 @@ public slots:
     void setModeToCorner();
     void setModeToConnection();
     void autoDetect();
+    void propagate();
 
 protected:
 
@@ -51,6 +53,7 @@ protected:
     void addPoint(const cv::Point2f& pt);
     void removePoint(int id);
     int locatePoint(const QPoint& pt);
+    void toggleConnection(int corner1, int corner2);
 
 protected:
 
@@ -72,12 +75,14 @@ protected:
         bool has_object_point;
         cv::Point2f image_point;;
         cv::Point3f object_point;
+        cv::Point2i integer_object_coords;
+
+        std::array<int,4> neighbors;
     };
 
     struct FrameData
     {
         std::map<int,FramePoint> corners;
-        std::vector< std::pair<int,int> > edges;
     };
 
 protected:
@@ -90,6 +95,7 @@ protected:
     cv::Mat mFrameOpenCV;
     ZoomData mZoom;
     Mode mMode;
+    int mSelectedPoint;
 
     QPoint mLastMousePosition;
 

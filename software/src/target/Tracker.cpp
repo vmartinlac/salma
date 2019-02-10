@@ -1191,6 +1191,7 @@ namespace target {
             m_object_points.resize(count);
             m_image_points.resize(count);
             m_point_ids.resize(count);
+            m_integer_object_coords.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -1206,6 +1207,9 @@ namespace target {
                         0.0 );
 
                     m_image_points[count] = pt.keypoint.pt;
+
+                    m_integer_object_coords[count].x = pt.coords2d[0];
+                    m_integer_object_coords[count].y = pt.coords2d[1];
 
                     m_point_ids[count] = computeZSquaredToN(pt.coords2d[0], pt.coords2d[1]);
                 }
