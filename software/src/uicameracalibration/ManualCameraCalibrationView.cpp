@@ -1,9 +1,11 @@
 #include <opencv2/imgproc.hpp>
 #include <iostream>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QWheelEvent>
 #include <QMouseEvent>
+#include "Tracker.h"
 #include "RecordingReader.h"
 #include "ManualCameraCalibrationView.h"
 
@@ -77,9 +79,11 @@ void ManualCameraCalibrationView::mousePressEvent(QMouseEvent* ev)
 
             const cv::Point2f framept = mZoom.point + (winpt - halfwin) / mZoom.factor;
 
-            addPoint(framept);
-
-            update();
+            if( 0.0 <= framept.x && framept.x < mFrame.width() && 0.0 <= framept.y && framept.y < mFrame.height() )
+            {
+                addPoint(framept);
+                update();
+            }
         }
     }
 
@@ -136,9 +140,9 @@ int ManualCameraCalibrationView::locatePoint(const QPoint& pt)
         const cv::Point2f winpt(pt.x(), pt.y());
         const cv::Point2f midwin( width()/2, height()/2 );
 
-        for( const std::pair<int,cv::Point2f>& corner : it->second.corners )
+        for( const std::pair<int,FramePoint>& corner : it->second.corners )
         {
-            const cv::Point2f winpt2 = midwin + mZoom.factor*(corner.second - mZoom.point);
+            const cv::Point2f winpt2 = midwin + mZoom.factor*(corner.second.image_point - mZoom.point);
 
             const cv::Point2f delta = winpt2 - winpt;
 
@@ -167,7 +171,7 @@ void ManualCameraCalibrationView::addPoint(const cv::Point2f& pt)
         i++;
     }
     
-    fd.corners[i] = pt;
+    fd.corners[i].image_point = pt;
 }
 
 void ManualCameraCalibrationView::mouseMoveEvent(QMouseEvent* ev)
@@ -242,18 +246,18 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
             {
                 if( edge.first == edge.second ) throw std::runtime_error("internal error");
 
-                const std::map<int,cv::Point2f>::iterator pta = data.corners.find(edge.first);
-                const std::map<int,cv::Point2f>::iterator ptb = data.corners.find(edge.second);
+                const std::map<int,FramePoint>::iterator pta = data.corners.find(edge.first);
+                const std::map<int,FramePoint>::iterator ptb = data.corners.find(edge.second);
 
                 if(pta == data.corners.end() || ptb == data.corners.end()) throw std::runtime_error("internal error");
 
                 const QPointF ptapt(
-                    half_width + mZoom.factor*(pta->second.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pta->second.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(pta->second.image_point.x - mZoom.point.x),
+                    half_height + mZoom.factor*(pta->second.image_point.y - mZoom.point.y) );
 
                 const QPointF ptbpt(
-                    half_width + mZoom.factor*(ptb->second.x - mZoom.point.x),
-                    half_height + mZoom.factor*(ptb->second.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(ptb->second.image_point.x - mZoom.point.x),
+                    half_height + mZoom.factor*(ptb->second.image_point.y - mZoom.point.y) );
 
                 p.drawLine(ptapt, ptbpt);
             }
@@ -262,13 +266,21 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
             // draw points.
 
             p.save();
-            p.setBrush(QColor(Qt::white));
             p.setPen(QPen(QColor(Qt::black), 2.0));
-            for(const std::pair<int,cv::Point2f>& pt : data.corners)
+            for(const std::pair<int,FramePoint>& pt : data.corners)
             {
+                if(pt.second.has_object_point)
+                {
+                    p.setBrush(QColor(Qt::green));
+                }
+                else
+                {
+                    p.setBrush(QColor(Qt::white));
+                }
+
                 const QPointF pt2(
-                    half_width + mZoom.factor*(pt.second.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pt.second.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(pt.second.image_point.x - mZoom.point.x),
+                    half_height + mZoom.factor*(pt.second.image_point.y - mZoom.point.y) );
 
                 p.drawEllipse(pt2, 7, 7);
             }
@@ -278,6 +290,88 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
     }
 
     ev->accept();
+}
+
+void ManualCameraCalibrationView::autoDetect()
+{
+    if( mFrameOpenCV.data )
+    {
+        target::Tracker tracker;
+        tracker.setUnitLength(mParams->scale);
+
+        const bool ret = tracker.track(mFrameOpenCV, false);
+
+        if(ret)
+        {
+            FrameData& fd = mFrameData[mCurrentFrameId];
+
+            fd.corners.clear();
+            fd.edges.clear();
+
+            for(int i=0; i<tracker.objectPoints().size(); i++)
+            {
+                FramePoint& pt = fd.corners[i];
+
+                pt.has_object_point = true;
+                pt.image_point = tracker.imagePoints()[i];
+                pt.object_point = tracker.objectPoints()[i];
+            }
+
+            update();
+        }
+        else
+        {
+            //mFrameData.erase(mCurrentFrameId);
+
+            //update();
+
+            QMessageBox::critical(this, "AutoDetect failed", "AutoDetect failed!");
+        }
+
+    }
+}
+
+bool ManualCameraCalibrationView::getCalibrationData(
+    std::vector< std::vector<cv::Point2f> >& image_points,
+    std::vector< std::vector<cv::Point3f> >& object_points,
+    cv::Size& size)
+{
+    bool ret = false;
+
+    if( mFrameOpenCV.data )
+    {
+        size = mFrameOpenCV.size();
+
+        image_points.clear();
+        object_points.clear();
+
+        for(const std::pair<int,FrameData>& fd : mFrameData)
+        {
+            std::vector<cv::Point2f> these_image_points;
+            std::vector<cv::Point3f> these_object_points;
+
+            for(const std::pair<int,FramePoint>& fp : fd.second.corners)
+            {
+                if(fp.second.has_object_point)
+                {
+                    these_image_points.push_back(fp.second.image_point);
+                    these_object_points.push_back(fp.second.object_point);
+                }
+            }
+
+            if(these_image_points.size() != these_object_points.size()) throw std::runtime_error("internal error");
+
+            if(these_image_points.empty() == false)
+            {
+                image_points.emplace_back( std::move(these_image_points) );
+                object_points.emplace_back( std::move(these_object_points) );
+            }
+        }
+
+        ret = true;
+    }
+
+    return ret;
 }
 
 void ManualCameraCalibrationView::setMode(Mode mode)
@@ -290,13 +384,11 @@ void ManualCameraCalibrationView::setMode(Mode mode)
 void ManualCameraCalibrationView::setModeToCorner()
 {
     setMode(MODE_CORNER);
-    std::cout << "corner" << std::endl;
 }
 
 void ManualCameraCalibrationView::setModeToConnection()
 {
     setMode(MODE_CONNECTION);
-    std::cout << "con" << std::endl;
 }
 
 void ManualCameraCalibrationView::setFrame(int frame)
@@ -312,17 +404,16 @@ void ManualCameraCalibrationView::setFrame(int frame)
 
     if(img.isValid())
     {
-        cv::Mat rgb;
-        cv::cvtColor(img.getFrame(), rgb, cv::COLOR_BGR2RGB);
+        cv::cvtColor(img.getFrame(), mFrameOpenCV, cv::COLOR_BGR2RGB);
 
-        QImage img(
-            rgb.data,
-            rgb.cols,
-            rgb.rows,
-            rgb.step,
+        mFrame = QImage(
+            mFrameOpenCV.data,
+            mFrameOpenCV.cols,
+            mFrameOpenCV.rows,
+            mFrameOpenCV.step,
             QImage::Format_RGB888);
 
-        mFrame = img.copy();
+        //mFrame = img.copy();
 
         if(mZoom.valid == false)
         {
@@ -333,6 +424,7 @@ void ManualCameraCalibrationView::setFrame(int frame)
     else
     {
         mFrame = QImage();
+        mFrameOpenCV = cv::Mat();
         std::cerr << "Invalid frame!" << std::endl;
     }
 
@@ -365,5 +457,10 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
     factor = 1.0;
     point.x = img.width() / 2;
     point.y = img.height() / 2;
+}
+
+ManualCameraCalibrationView::FramePoint::FramePoint()
+{
+    has_object_point = false;
 }
 

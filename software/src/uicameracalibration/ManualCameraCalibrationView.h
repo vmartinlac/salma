@@ -17,6 +17,11 @@ public:
 
     ~ManualCameraCalibrationView();
 
+    bool getCalibrationData(
+        std::vector< std::vector<cv::Point2f> >& image_points,
+        std::vector< std::vector<cv::Point3f> >& object_points,
+        cv::Size& size);
+
 public:
 
     enum Mode
@@ -33,6 +38,7 @@ public slots:
     void setMode(Mode mode);
     void setModeToCorner();
     void setModeToConnection();
+    void autoDetect();
 
 protected:
 
@@ -59,9 +65,18 @@ protected:
         cv::Point2f point;
     };
 
+    struct FramePoint
+    {
+        FramePoint();
+
+        bool has_object_point;
+        cv::Point2f image_point;;
+        cv::Point3f object_point;
+    };
+
     struct FrameData
     {
-        std::map<int,cv::Point2f> corners;
+        std::map<int,FramePoint> corners;
         std::vector< std::pair<int,int> > edges;
     };
 
@@ -72,6 +87,7 @@ protected:
 
     int mCurrentFrameId;
     QImage mFrame;
+    cv::Mat mFrameOpenCV;
     ZoomData mZoom;
     Mode mMode;
 

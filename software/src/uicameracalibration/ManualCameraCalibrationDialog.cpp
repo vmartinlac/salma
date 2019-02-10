@@ -1,8 +1,10 @@
 #include <QActionGroup>
+#include <QMessageBox>
 #include <QAction>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QVBoxLayout>
+#include <opencv2/calib3d.hpp>
 #include "ManualCameraCalibrationView.h"
 #include "ManualCameraCalibrationDialog.h"
 
@@ -19,6 +21,7 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     QAction* aConnection = tb->addAction("Connection");
     QAction* aClear = tb->addAction("Clear");
     QAction* aHome = tb->addAction("Home");
+    QAction* aAutoDetect = tb->addAction("AutoDetect");
     tb->addSeparator();
     QAction* aCancel = tb->addAction("Cancel");
     QAction* aDone = tb->addAction("Done");
@@ -59,6 +62,7 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aHome, SIGNAL(triggered()), mView, SLOT(home()));
+    connect(aAutoDetect, SIGNAL(triggered()), mView, SLOT(autoDetect()));
     connect(aClear, SIGNAL(triggered()), mView, SLOT(clear()));
 
     QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));
@@ -80,7 +84,97 @@ void ManualCameraCalibrationDialog::setFrame(int frame)
 
 void ManualCameraCalibrationDialog::accept()
 {
-    // TODO
-    QDialog::accept();
+    CameraCalibrationDataPtr calib(new CameraCalibrationData());
+    bool ok = true;
+    const char* err = "";
+    double projection_err = 0.0;
+
+    std::vector< std::vector<cv::Point2f> > image_points;
+    std::vector< std::vector<cv::Point3f> > object_points;
+
+    // Retrieve calibration data.
+
+    if(ok)
+    {
+        calib->name = mParameters->name.toStdString();
+
+        ok = mView->getCalibrationData(
+            image_points,
+            object_points,
+            calib->image_size);
+
+        err = "Internal error";
+    }
+
+    // Temove views on which there are not enough points.
+    // Then check that we have enough points for the calibration.
+
+    if(ok)
+    {
+        if(image_points.size() != object_points.size()) throw std::runtime_error("internal error");
+
+        {
+            int i = 0;
+
+            while(i<image_points.size())
+            {
+                if(image_points[i].size() != object_points[i].size()) throw std::runtime_error("internal error");
+
+                if(image_points[i].size() >= 3*3)
+                {
+                    i++;
+                }
+                else
+                {
+                    image_points[i] = std::move(image_points.back());
+                    object_points[i] = std::move(object_points.back());
+
+                    image_points.pop_back();
+                    object_points.pop_back();
+                }
+            }
+        }
+
+        ok = (image_points.size() >= 3);
+        err = "Not enough points or orientations of the target!";
+    }
+
+    // Call OpenCV for the calibration.
+
+    if(ok)
+    {
+        cv::Mat rvecs;
+        cv::Mat tvecs;
+
+        projection_err = cv::calibrateCamera(
+            object_points,
+            image_points,
+            calib->image_size, // TODO: set this beforehand!
+            calib->calibration_matrix,
+            calib->distortion_coefficients,
+            rvecs,
+            tvecs);
+    }
+
+    // Save calibration into the project.
+
+    if(ok)
+    {
+        int camera_id;
+        ok = mProject->saveCamera(calib, camera_id);
+        err = "Could not save camera!";
+    }
+
+    // Tell outcome to the user.
+
+    if(ok)
+    {
+        QMessageBox::information(this, "Success", "Successful calibration! Reprojection error is " + QString::number(projection_err));
+        QDialog::accept();
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", err);
+    }
 }
 

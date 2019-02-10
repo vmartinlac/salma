@@ -89,7 +89,8 @@ namespace target {
 
         detector->setMinDistance(double(m_image->cols)*20.0/1024.0); // 30.0
         detector->setMaxFeatures(700);
-        //detector->setBlockSize(21);
+        //detector->setBlockSize(11);
+        detector->setBlockSize(5);
 
         std::vector<cv::KeyPoint> keypoints;
         detector->detect(*m_image, keypoints);
