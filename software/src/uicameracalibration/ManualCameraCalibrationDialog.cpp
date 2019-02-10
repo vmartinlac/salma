@@ -1,3 +1,4 @@
+#include <QActionGroup>
 #include <QAction>
 #include <QStatusBar>
 #include <QToolBar>
@@ -14,16 +15,21 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     mParameters = params;
 
     QToolBar* tb = new QToolBar();
-    QAction* aBegin = tb->addAction("Begin");
-    QAction* aEnd = tb->addAction("End");
-    tb->addSeparator();
-    QAction* aPoint = tb->addAction("Point");
+    QAction* aCorner = tb->addAction("Corner");
     QAction* aConnection = tb->addAction("Connection");
     QAction* aClear = tb->addAction("Clear");
     QAction* aHome = tb->addAction("Home");
     tb->addSeparator();
     QAction* aCancel = tb->addAction("Cancel");
     QAction* aDone = tb->addAction("Done");
+
+    aCorner->setCheckable(true);
+    aConnection->setCheckable(true);
+    aCorner->setChecked(true);
+
+    QActionGroup* grp = new QActionGroup(this);
+    grp->addAction(aCorner);
+    grp->addAction(aConnection);
 
     mSlider = new QSlider;
     mSlider->setOrientation(Qt::Horizontal);
@@ -47,12 +53,29 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     setLayout(lay);
     setWindowTitle("Manual Camera Calibration");
 
-    connect(mSlider, SIGNAL(valueChanged(int)), mView, SLOT(setFrame(int)));
+    connect(aCorner, SIGNAL(triggered()), mView, SLOT(setModeToCorner()));
+    connect(aConnection, SIGNAL(triggered()), mView, SLOT(setModeToConnection()));
+    connect(mSlider, SIGNAL(valueChanged(int)), this, SLOT(setFrame(int)));
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aHome, SIGNAL(triggered()), mView, SLOT(home()));
+    connect(aClear, SIGNAL(triggered()), mView, SLOT(clear()));
 
-    QMetaObject::invokeMethod(mView, "setFrame", Q_ARG(int,0));
+    QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));
+}
+
+void ManualCameraCalibrationDialog::setFrame(int frame)
+{
+    if(0 <= frame && frame < mParameters->recording->num_frames)
+    {
+        mLabelFrame->setText( QString("Frame %1/%2").arg(frame+1).arg(mParameters->recording->num_frames) );
+    }
+    else
+    {
+        mLabelFrame->setText("N/A");
+    }
+
+    mView->setFrame(frame);
 }
 
 void ManualCameraCalibrationDialog::accept()

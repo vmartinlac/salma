@@ -88,7 +88,8 @@ namespace target {
         cv::Ptr<cv::GFTTDetector> detector = cv::GFTTDetector::create();
 
         detector->setMinDistance(double(m_image->cols)*20.0/1024.0); // 30.0
-        detector->setMaxFeatures(800);
+        detector->setMaxFeatures(700);
+        //detector->setBlockSize(21);
 
         std::vector<cv::KeyPoint> keypoints;
         detector->detect(*m_image, keypoints);
@@ -128,6 +129,7 @@ namespace target {
         if( m_thresh.type() != CV_8U) throw std::runtime_error("bad type of image");
 
         const float radius = float(m_image->cols)*20.0/2560.0;
+        //const float radius = float(m_image->cols)*30.0/1292.0;
 
         const float margin = 5.0;
 
@@ -292,6 +294,7 @@ namespace target {
     bool Tracker::filter_line(const cv::Point2f& A, const cv::Point2f& B, KindOfLine& kind)
     {
         //const double l = 10.0;
+        //const double l = double(m_image->cols)*30.0/1292.0;
         const double l = double(m_image->cols)*10.0/2560.0;
         const double alpha = 0.20;
         const double beta = 0.20;

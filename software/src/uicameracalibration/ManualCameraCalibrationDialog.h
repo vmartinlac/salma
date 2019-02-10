@@ -23,6 +23,10 @@ protected:
 
     void accept() override;
 
+protected slots:
+
+    void setFrame(int);
+
 protected:
 
     Project* mProject;
