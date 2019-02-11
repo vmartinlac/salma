@@ -73,11 +73,12 @@ protected:
         FramePoint();
 
         bool has_object_point;
-        cv::Point2f image_point;;
+        cv::Point2f image_point;
         cv::Point3f object_point;
         cv::Point2i integer_object_coords;
 
         std::array<int,4> neighbors;
+        bool visited;
     };
 
     struct FrameData

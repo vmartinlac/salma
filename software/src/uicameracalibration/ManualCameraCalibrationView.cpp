@@ -170,7 +170,34 @@ void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
 
 void ManualCameraCalibrationView::propagate()
 {
-    // TODO
+    auto has_four_neighbors = [] (const std::pair<int,FramePoint>& pt)
+    {
+        return
+            pt.second.neighbors[0] >= 0 &&
+            pt.second.neighbors[1] >= 0 &&
+            pt.second.neighbors[2] >= 0 &&
+            pt.second.neighbors[3] >= 0;
+    };
+
+    std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
+
+    if( mFrameData.end() != it )
+    {
+        FrameData& fd = it->second;
+
+        std::map<int,FramePoint>::iterator it = std::find_if(
+            fd.corners.begin(),
+            fd.corners.end(),
+            [] (const std::pair<int,FramePoint>& pt) { return pt.second.has_object_point; } );
+
+        if(it == fd.corners.end())
+        {
+        }
+        else
+        {
+            int seed_id = it->first;
+        }
+    }
 }
 
 void ManualCameraCalibrationView::removePoint(int id)
@@ -558,6 +585,8 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
 ManualCameraCalibrationView::FramePoint::FramePoint()
 {
     has_object_point = false;
+
+    visited = false;
 
     std::fill(neighbors.begin(), neighbors.end(), -1);
 }
