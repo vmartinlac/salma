@@ -170,32 +170,40 @@ void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
 
 void ManualCameraCalibrationView::propagate()
 {
-    auto has_four_neighbors = [] (const std::pair<int,FramePoint>& pt)
+    auto is_seed = [] (const std::pair<int,FramePoint>& pt)
     {
         return
+            pt.second.visited == false &&
+            pt.second.has_object_point &&
             pt.second.neighbors[0] >= 0 &&
             pt.second.neighbors[1] >= 0 &&
             pt.second.neighbors[2] >= 0 &&
             pt.second.neighbors[3] >= 0;
     };
 
-    std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
+    std::map<int,FrameData>::iterator itfd = mFrameData.find(mCurrentFrameId);
 
-    if( mFrameData.end() != it )
+    if( mFrameData.end() != itfd )
     {
-        FrameData& fd = it->second;
+        FrameData& fd = itfd->second;
 
-        std::map<int,FramePoint>::iterator it = std::find_if(
-            fd.corners.begin(),
-            fd.corners.end(),
-            [] (const std::pair<int,FramePoint>& pt) { return pt.second.has_object_point; } );
+        int global_seed = -1;
 
-        if(it == fd.corners.end())
+        for(std::map<int,FramePoint>::iterator it = fd.corners.begin(); it != fd.corners.end(); it++)
+        {
+            it->second.visited = false;
+
+            if(global_seed < 0 && is_seed(*it))
+            {
+                global_seed = it->first;
+            }
+        }
+
+        if(global_seed >=0)
         {
         }
         else
         {
-            int seed_id = it->first;
         }
     }
 }
@@ -585,8 +593,8 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
 ManualCameraCalibrationView::FramePoint::FramePoint()
 {
     has_object_point = false;
-
     visited = false;
+    component = -1;
 
     std::fill(neighbors.begin(), neighbors.end(), -1);
 }

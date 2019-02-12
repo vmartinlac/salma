@@ -78,7 +78,11 @@ protected:
         cv::Point2i integer_object_coords;
 
         std::array<int,4> neighbors;
+
+        // only for graph algorithms.
         bool visited;
+        int component;
+        cv::Point2i putative_coords;
     };
 
     struct FrameData
