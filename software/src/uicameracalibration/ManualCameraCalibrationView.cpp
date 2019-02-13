@@ -1,4 +1,5 @@
 #include <opencv2/imgproc.hpp>
+#include <queue>
 #include <iostream>
 #include <QMessageBox>
 #include <QPainter>
@@ -170,16 +171,41 @@ void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
 
 void ManualCameraCalibrationView::propagate()
 {
-    auto is_seed = [] (const std::pair<int,FramePoint>& pt)
+    cv::Point2i neighbors_delta[4];
+
+    neighbors_delta[0] = cv::Point2i(1,0);
+    neighbors_delta[1] = cv::Point2i(0,1);
+    neighbors_delta[2] = cv::Point2i(-1,0);
+    neighbors_delta[3] = cv::Point2i(0,-1);
+
+    auto is_seed_a = [] (const std::pair<int,FramePoint>& pt)
     {
         return
-            pt.second.visited == false &&
-            pt.second.has_object_point &&
+            pt.second.bfs_visited == false &&
+            pt.second.has_object_coords &&
             pt.second.neighbors[0] >= 0 &&
             pt.second.neighbors[1] >= 0 &&
             pt.second.neighbors[2] >= 0 &&
             pt.second.neighbors[3] >= 0;
     };
+
+    auto is_seed_b = [] (const std::pair<int,FramePoint>& pt)
+    {
+        return
+            pt.second.bfs_visited == false &&
+            pt.second.neighbors[0] >= 0 &&
+            pt.second.neighbors[1] >= 0 &&
+            pt.second.neighbors[2] >= 0 &&
+            pt.second.neighbors[3] >= 0;
+    };
+
+    auto pred_has_coords = [] (const std::pair<int,FramePoint>& pt)
+    {
+        return pt.second.has_object_coords;
+    };
+
+    bool ok = true;
+    const char* err = "";
 
     std::map<int,FrameData>::iterator itfd = mFrameData.find(mCurrentFrameId);
 
@@ -187,26 +213,114 @@ void ManualCameraCalibrationView::propagate()
     {
         FrameData& fd = itfd->second;
 
-        int global_seed = -1;
+        // find whether there is at least one corner with coordinates set.
+
+        bool some_corner_has_coords = std::any_of( fd.corners.begin(), fd.corners.end(), pred_has_coords );
+
+        // set all corners as not visited.
 
         for(std::map<int,FramePoint>::iterator it = fd.corners.begin(); it != fd.corners.end(); it++)
         {
-            it->second.visited = false;
-
-            if(global_seed < 0 && is_seed(*it))
-            {
-                global_seed = it->first;
-            }
+            it->second.bfs_visited = false;
         }
 
-        if(global_seed >=0)
+        if(some_corner_has_coords)
         {
+            // TODO
         }
         else
         {
+            /*
+            1/ Find one seed,
+            2/ Compute its connected component,
+            3/ Look for another seed. If we found one (i.e. there are more than one connected component) report an error to the user.
+            */
+
+            std::map<int,FramePoint>::iterator itseed = std::find_if(
+                fd.corners.begin(),
+                fd.corners.end(),
+                is_seed_b);
+
+            if( fd.corners.end() == itseed )
+            {
+                ok = false;
+                err = "No seed found! Please make at least one 4-neighbors corner!";
+            }
+            else
+            {
+                std::queue<int> queue;
+
+                // process seed.
+
+                {
+                    const int seed = itseed->first;
+
+                    itseed->second.bfs_visited = true;
+                    itseed->second.bfs_has_coords = true;
+                    itseed->second.bfs_coords.x = 0;
+                    itseed->second.bfs_coords.y = 0;
+
+                    // TODO: set orientation of neighbors.
+
+                    queue.push(seed);
+                }
+
+                while(queue.empty() == false)
+                {
+                    int current_id = queue.front();
+                    queue.pop();
+
+                    FramePoint& current = fd.corners.at(current_id);
+
+                    if(current.bfs_visited == false) throw std::logic_error("internal error");
+
+                    for(int neighbor_id : current.neighbors)
+                    {
+                        FramePoint& neighbor = fd.corners.at(neighbor_id);
+
+                        if(neighbor.bfs_visited == false)
+                        {
+                            // TODO
+
+                            neighbor.bfs_visited = true;
+                            queue.push(neighbor_id);
+                        }
+                    }
+                }
+
+                std::map<int,FramePoint>::iterator itseed2 = std::find_if(
+                    fd.corners.begin(),
+                    fd.corners.end(),
+                    is_seed_b);
+
+                if( fd.corners.end() != itseed2 )
+                {
+                    ok = false;
+                    err = "There are several connected components!";
+                }
+            }
+        }
+
+        if(ok)
+        {
+            QMessageBox::critical(this, "Error", err);
+        }
+        else
+        {
+            for(std::map<int,FramePoint>::iterator it = fd.corners.begin(); it != fd.corners.end(); it++)
+            {
+                it->second.has_object_coords = it->second.bfs_has_coords;
+                it->second.object_coords = it->second.bfs_coords;
+            }
         }
     }
 }
+
+/*
+void ManualCameraCalibrationView::propagateFromSeed(FrameData& fd)
+{
+}
+*/
 
 void ManualCameraCalibrationView::removePoint(int id)
 {
@@ -264,7 +378,7 @@ int ManualCameraCalibrationView::locatePoint(const QPoint& pt)
 
         for( const std::pair<int,FramePoint>& corner : it->second.corners )
         {
-            const cv::Point2f winpt2 = midwin + mZoom.factor*(corner.second.image_point - mZoom.point);
+            const cv::Point2f winpt2 = midwin + mZoom.factor*(corner.second.image_coords - mZoom.point);
 
             const cv::Point2f delta = winpt2 - winpt;
 
@@ -293,7 +407,7 @@ void ManualCameraCalibrationView::addPoint(const cv::Point2f& pt)
         i++;
     }
     
-    fd.corners[i].image_point = pt;
+    fd.corners[i].image_coords = pt;
 }
 
 void ManualCameraCalibrationView::mouseMoveEvent(QMouseEvent* ev)
@@ -367,8 +481,8 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
             for(const std::pair<int,FramePoint>& pt : data.corners)
             {
                 const QPointF ptapt(
-                    half_width + mZoom.factor*(pt.second.image_point.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pt.second.image_point.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(pt.second.image_coords.x - mZoom.point.x),
+                    half_height + mZoom.factor*(pt.second.image_coords.y - mZoom.point.y) );
 
                 for(int other : pt.second.neighbors)
                 {
@@ -379,8 +493,8 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
                         if(ptb == data.corners.end()) throw std::runtime_error("internal error");
 
                         const QPointF ptbpt(
-                            half_width + mZoom.factor*(ptb->second.image_point.x - mZoom.point.x),
-                            half_height + mZoom.factor*(ptb->second.image_point.y - mZoom.point.y) );
+                            half_width + mZoom.factor*(ptb->second.image_coords.x - mZoom.point.x),
+                            half_height + mZoom.factor*(ptb->second.image_coords.y - mZoom.point.y) );
 
                         p.drawLine(ptapt, ptbpt);
                     }
@@ -399,7 +513,7 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
                 {
                     p.setBrush(QColor(Qt::yellow));
                 }
-                else if(pt.second.has_object_point)
+                else if(pt.second.has_object_coords)
                 {
                     p.setBrush(QColor(Qt::green));
                 }
@@ -409,8 +523,8 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
                 }
 
                 const QPointF pt2(
-                    half_width + mZoom.factor*(pt.second.image_point.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pt.second.image_point.y - mZoom.point.y) );
+                    half_width + mZoom.factor*(pt.second.image_coords.x - mZoom.point.x),
+                    half_height + mZoom.factor*(pt.second.image_coords.y - mZoom.point.y) );
 
                 p.drawEllipse(pt2, 7, 7);
             }
@@ -441,10 +555,9 @@ void ManualCameraCalibrationView::autoDetect()
             {
                 FramePoint& pt = fd.corners[i];
 
-                pt.has_object_point = true;
-                pt.image_point = tracker.imagePoints()[i];
-                pt.object_point = tracker.objectPoints()[i];
-                pt.integer_object_coords = tracker.integerObjectCoords()[i];
+                pt.has_object_coords = true;
+                pt.image_coords = tracker.imagePoints()[i];
+                pt.object_coords = tracker.integerObjectCoords()[i];
             }
 
             update();
@@ -482,10 +595,15 @@ bool ManualCameraCalibrationView::getCalibrationData(
 
             for(const std::pair<int,FramePoint>& fp : fd.second.corners)
             {
-                if(fp.second.has_object_point)
+                if(fp.second.has_object_coords)
                 {
-                    these_image_points.push_back(fp.second.image_point);
-                    these_object_points.push_back(fp.second.object_point);
+                    cv::Point3f object_point(
+                        double(fp.second.object_coords.x)*mParams->scale,
+                        double(fp.second.object_coords.y)*mParams->scale,
+                        0.0);
+
+                    these_image_points.push_back(fp.second.image_coords);
+                    these_object_points.push_back(object_point);
                 }
             }
 
@@ -592,9 +710,10 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
 
 ManualCameraCalibrationView::FramePoint::FramePoint()
 {
-    has_object_point = false;
-    visited = false;
-    component = -1;
+    has_object_coords = false;
+
+    bfs_visited = false;
+    bfs_has_coords = false;
 
     std::fill(neighbors.begin(), neighbors.end(), -1);
 }

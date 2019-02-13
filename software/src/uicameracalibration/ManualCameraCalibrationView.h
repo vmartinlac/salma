@@ -72,17 +72,17 @@ protected:
     {
         FramePoint();
 
-        bool has_object_point;
-        cv::Point2f image_point;
-        cv::Point3f object_point;
-        cv::Point2i integer_object_coords;
+        cv::Point2f image_coords;
+
+        bool has_object_coords;
+        cv::Point2i object_coords;
 
         std::array<int,4> neighbors;
 
         // only for graph algorithms.
-        bool visited;
-        int component;
-        cv::Point2i putative_coords;
+        bool bfs_visited;
+        bool bfs_has_coords;
+        cv::Point2i bfs_coords;
     };
 
     struct FrameData
