@@ -36,7 +36,8 @@
      inkscape:window-height="703"
      inkscape:window-x="0"
      inkscape:window-y="0"
-     inkscape:window-maximized="1" />
+     inkscape:window-maximized="1"
+     inkscape:pagecheckerboard="true" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -54,6 +55,13 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,704.99998)">
+    <rect
+       id="rect1020"
+       width="1000"
+       height="1000"
+       x="0.1"
+       y="-703.10004"
+       style="fill:#ffffff;stroke-width:0.26653421" />
     <g
        id="g6702"
        transform="translate(-17.947355,0.87427232)">

@@ -16,9 +16,8 @@
 #include <QMenuBar>
 #include <QAction>
 #include "MainWindow.h"
-#include "CameraCalibrationPanel.h"
-#include "RigCalibrationPanel.h"
 #include "RecordingPanel.h"
+#include "CalibrationPanel.h"
 #include "ReconstructionPanel.h"
 #include "AboutDialog.h"
 
@@ -50,27 +49,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(aCameras, SIGNAL(triggered()), this, SLOT(showAvailableCameras()));
     connect(aAbout, SIGNAL(triggered()), this, SLOT(about()));
 
-    //
     QTabWidget* tab = new QTabWidget();
     tab->addTab(new RecordingPanel(mProject), "Recording");
-    tab->addTab(new CameraCalibrationPanel(mProject), "Camera Calibration");
-    tab->addTab(new RigCalibrationPanel(mProject), "Rig Calibration");
+    tab->addTab(new CalibrationPanel(mProject), "Calibration");
     tab->addTab(new ReconstructionPanel(mProject), "Reconstruction");
     setCentralWidget(tab);
-    //
-
-    /*
-    QTreeWidget* tree = new QTreeWidget();
-    tree->addTopLevelItem(new QTreeWidgetItem(QStringList{"Camera calibration"}));
-    tree->addTopLevelItem(new QTreeWidgetItem(QStringList{"Rig calibration"}));
-    tree->addTopLevelItem(new QTreeWidgetItem(QStringList{"Recording"}));
-    tree->addTopLevelItem(new QTreeWidgetItem(QStringList{"Reconstruction"}));
-
-    QSplitter* s = new QSplitter();
-    s->addWidget(tree);
-    s->addWidget(new QTextEdit());
-    setCentralWidget(s);
-    */
 
     //statusBar()->showMessage("SALMA v1.0");
 

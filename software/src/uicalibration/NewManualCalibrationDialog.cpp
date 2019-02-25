@@ -5,24 +5,22 @@
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QPushButton>
-#include "NewManualCameraCalibrationDialog.h"
+#include "NewManualCalibrationDialog.h"
+#include "ManualCalibrationParameters.h"
 #include "RecordingHeader.h"
 #include "VideoSystem.h"
-#include "CameraCalibrationOperation.h"
 #include "Project.h"
 
-NewManualCameraCalibrationDialog::NewManualCameraCalibrationDialog(Project* proj, QWidget* parent) : QDialog(parent)
+NewManualCalibrationDialog::NewManualCalibrationDialog(Project* proj, QWidget* parent) : QDialog(parent)
 {
     mProject = proj;
 
     mName = new QLineEdit();
     mRecording = new RecordingListWidget(mProject);
-    mTargetScale = new TargetScaleWidget();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Recording:", mRecording);
-    form->addRow("Target scale:", mTargetScale);
 
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
@@ -42,9 +40,9 @@ NewManualCameraCalibrationDialog::NewManualCameraCalibrationDialog(Project* proj
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));
 }
 
-void NewManualCameraCalibrationDialog::accept()
+void NewManualCalibrationDialog::accept()
 {
-    ManualCameraCalibrationParametersPtr params(new ManualCameraCalibrationParameters());
+    ManualCalibrationParametersPtr params(new ManualCalibrationParameters());
 
     int recording_id = -1;
 
@@ -56,12 +54,6 @@ void NewManualCameraCalibrationDialog::accept()
         params->name = mName->text();
         ok = (params->name.isEmpty() == false);
         err = "Incorrect name!";
-    }
-
-    if(ok)
-    {
-        params->scale = mTargetScale->getScale(ok);
-        err = "Incorrect target scale!";
     }
 
     if(ok)
@@ -80,8 +72,8 @@ void NewManualCameraCalibrationDialog::accept()
 
     if(ok)
     {
-        ok = (params->recording->num_views == 1);
-        err = "You must select a mono recording!";
+        ok = (params->recording->num_views == 2);
+        err = "You must select a stereo recording!";
     }
 
     if(ok)
@@ -95,7 +87,7 @@ void NewManualCameraCalibrationDialog::accept()
     }
 }
 
-ManualCameraCalibrationParametersPtr NewManualCameraCalibrationDialog::getParameters()
+ManualCalibrationParametersPtr NewManualCalibrationDialog::getParameters()
 {
     return mParameters;
 }

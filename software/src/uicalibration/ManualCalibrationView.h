@@ -3,20 +3,20 @@
 #include <QWidget>
 #include <array>
 #include <opencv2/core.hpp>
-#include "ManualCameraCalibrationParameters.h"
+#include "ManualCalibrationParameters.h"
 #include "RecordingReader.h"
 
-class ManualCameraCalibrationView : public QWidget
+class ManualCalibrationView : public QWidget
 {
     Q_OBJECT
 
 public:
 
-    ManualCameraCalibrationView(
-        ManualCameraCalibrationParametersPtr params,
+    ManualCalibrationView(
+        ManualCalibrationParametersPtr params,
         QWidget* parent=nullptr);
 
-    ~ManualCameraCalibrationView();
+    ~ManualCalibrationView();
 
     bool getCalibrationData(
         std::vector< std::vector<cv::Point2f> >& image_points,
@@ -27,8 +27,10 @@ public:
 
     enum Mode
     {
-        MODE_CORNER,
-        MODE_CONNECTION
+        MODE_LEFT,
+        MODE_RIGHT,
+        MODE_STEREO,
+        MODE_PHOTOMETRIC
     };
 
 public slots:
@@ -36,11 +38,9 @@ public slots:
     void home();
     void clear();
     void setFrame(int frame);
-    void setMode(Mode mode);
-    void setModeToCorner();
-    void setModeToConnection();
     void autoDetect();
     void propagate();
+    void setMode(Mode mode);
 
 protected:
 
@@ -92,7 +92,7 @@ protected:
 
 protected:
 
-    ManualCameraCalibrationParametersPtr mParams;
+    ManualCalibrationParametersPtr mParams;
     RecordingReaderPtr mReader;
 
     int mCurrentFrameId;

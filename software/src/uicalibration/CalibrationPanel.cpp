@@ -5,12 +5,13 @@
 #include <QSplitter>
 #include <QMessageBox>
 #include <QVBoxLayout>
-#include "RigCalibrationPanel.h"
+#include "CalibrationPanel.h"
 #include "OperationDialog.h"
 #include "VideoSystem.h"
-#include "NewRigCalibrationDialog.h"
+#include "NewManualCalibrationDialog.h"
+#include "ManualCalibrationDialog.h"
 
-RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
+CalibrationPanel::CalibrationPanel(Project* project, QWidget* parent)
 {
     mProject = project;
     mView = new QListView();
@@ -44,33 +45,35 @@ RigCalibrationPanel::RigCalibrationPanel(Project* project, QWidget* parent)
     setLayout(lay);
 }
 
-void RigCalibrationPanel::onNew()
+void CalibrationPanel::onNew()
 {
-    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= 2 )
+    RecordingList recs;
+    mProject->listRecordings(recs);
+
+    if(recs.empty())
     {
-        OperationPtr op;
-
-        NewRigCalibrationDialog* dlg = new NewRigCalibrationDialog(mProject, this);
-        dlg->exec();
-        op = dlg->getOperation();
-        delete dlg;
-
-        if(op)
-        {
-            OperationDialog* opdlg = new OperationDialog(mProject, op, this);
-            opdlg->exec();
-            delete opdlg;
-
-            //mProject->rigCalibrationModel()->refresh();
-        }
+        QMessageBox::critical(this, "Error", "You need at least one recording!");
     }
     else
     {
-        QMessageBox::critical(this, "Error", "You need at least two cameras!");
+        NewManualCalibrationDialog* dlg = new NewManualCalibrationDialog(mProject, this);
+
+        dlg->exec();
+
+        ManualCalibrationParametersPtr params = dlg->getParameters();
+
+        delete dlg;
+
+        if(params)
+        {
+            ManualCalibrationDialog* dlg2 = new ManualCalibrationDialog(mProject, params, this);
+            dlg2->exec();
+            delete dlg2;
+        }
     }
 }
 
-void RigCalibrationPanel::onRename()
+void CalibrationPanel::onRename()
 {
     QString text;
     int rig_id;
@@ -108,7 +111,7 @@ void RigCalibrationPanel::onRename()
     }
 }
 
-void RigCalibrationPanel::onDelete()
+void CalibrationPanel::onDelete()
 {
     bool is_mutable = false;
     int rig_id = -1;
@@ -153,7 +156,7 @@ void RigCalibrationPanel::onDelete()
     }
 }
 
-void RigCalibrationPanel::onSelect(const QModelIndex& ind)
+void CalibrationPanel::onSelect(const QModelIndex& ind)
 {
     QString text;
     int rig_id;
@@ -180,7 +183,7 @@ void RigCalibrationPanel::onSelect(const QModelIndex& ind)
     }
 }
 
-void RigCalibrationPanel::onModelChanged()
+void CalibrationPanel::onModelChanged()
 {
     mText->clear();
 }

@@ -11,9 +11,8 @@ add_library(
 target_link_libraries(
     salma_ui
     PUBLIC
-    salma_uicameracalibration
-    salma_uirigcalibration
     salma_uirecording
+    salma_uicalibration
     salma_uireconstruction
     Qt5::Widgets
     Qt5::Sql

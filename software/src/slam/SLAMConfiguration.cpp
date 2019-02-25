@@ -88,6 +88,6 @@ SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()
 SLAMConfigurationDenseReconstruction::SLAMConfigurationDenseReconstruction()
 {
     debug = true;
-    enabled = true;
+    enabled = false;
 }
 

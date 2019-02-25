@@ -8,15 +8,15 @@
 #include <QMouseEvent>
 #include "Tracker.h"
 #include "RecordingReader.h"
-#include "ManualCameraCalibrationView.h"
+#include "ManualCalibrationView.h"
 
-ManualCameraCalibrationView::ManualCameraCalibrationView(
-    ManualCameraCalibrationParametersPtr params,
+ManualCalibrationView::ManualCalibrationView(
+    ManualCalibrationParametersPtr params,
     QWidget* parent) : QWidget(parent)
 {
-    mMode = MODE_CORNER;
+    mMode = MODE_LEFT;
     mCurrentFrameId = -1;
-    mSelectedPoint = -1;
+    //mSelectedPoint = -1;
     mParams = params;
     mReader.reset(new RecordingReader(mParams->recording, true));
 
@@ -25,12 +25,12 @@ ManualCameraCalibrationView::ManualCameraCalibrationView(
     setMinimumSize(320, 200);
 }
 
-ManualCameraCalibrationView::~ManualCameraCalibrationView()
+ManualCalibrationView::~ManualCalibrationView()
 {
     mReader->close();
 }
 
-void ManualCameraCalibrationView::wheelEvent(QWheelEvent* ev)
+void ManualCalibrationView::wheelEvent(QWheelEvent* ev)
 {
     const double factor_max = 20.0;
     const double factor_min = 1.0/20.0;
@@ -53,18 +53,17 @@ void ManualCameraCalibrationView::wheelEvent(QWheelEvent* ev)
     ev->accept();
 }
 
-void ManualCameraCalibrationView::mouseReleaseEvent(QMouseEvent* ev)
+void ManualCalibrationView::mouseReleaseEvent(QMouseEvent* ev)
 {
     mLastMousePosition = ev->pos();
 
     ev->accept();
 }
 
-void ManualCameraCalibrationView::mousePressEvent(QMouseEvent* ev)
+void ManualCalibrationView::mousePressEvent(QMouseEvent* ev)
 {
-    mLastMousePosition = ev->pos();
 
-    if(mMode == MODE_CORNER)
+    /*
     {
         if(ev->button() == Qt::LeftButton)
         {
@@ -114,11 +113,13 @@ void ManualCameraCalibrationView::mousePressEvent(QMouseEvent* ev)
 
         update();
     }
+    */
 
+    mLastMousePosition = ev->pos();
     ev->accept();
 }
 
-void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
+void ManualCalibrationView::toggleConnection(int corner1, int corner2)
 {
     std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
 
@@ -169,7 +170,7 @@ void ManualCameraCalibrationView::toggleConnection(int corner1, int corner2)
     }
 }
 
-void ManualCameraCalibrationView::propagate()
+void ManualCalibrationView::propagate()
 {
     cv::Point2i neighbors_delta[4];
 
@@ -317,13 +318,14 @@ void ManualCameraCalibrationView::propagate()
 }
 
 /*
-void ManualCameraCalibrationView::propagateFromSeed(FrameData& fd)
+void ManualCalibrationView::propagateFromSeed(FrameData& fd)
 {
 }
 */
 
-void ManualCameraCalibrationView::removePoint(int id)
+void ManualCalibrationView::removePoint(int id)
 {
+/*
     std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
 
     if( it != mFrameData.end() )
@@ -360,14 +362,16 @@ void ManualCameraCalibrationView::removePoint(int id)
             mFrameData.erase(it);
         }
     }
+    */
 }
 
-int ManualCameraCalibrationView::locatePoint(const QPoint& pt)
+int ManualCalibrationView::locatePoint(const QPoint& pt)
 {
     const double radius = 10.0;
 
     int ret = -1;
 
+/*
     std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
 
     if( it != mFrameData.end() )
@@ -393,12 +397,14 @@ int ManualCameraCalibrationView::locatePoint(const QPoint& pt)
             }
         }
     }
+    */
 
     return ret;
 }
 
-void ManualCameraCalibrationView::addPoint(const cv::Point2f& pt)
+void ManualCalibrationView::addPoint(const cv::Point2f& pt)
 {
+/*
     FrameData& fd = mFrameData[mCurrentFrameId];
     
     int i = 0;
@@ -408,9 +414,10 @@ void ManualCameraCalibrationView::addPoint(const cv::Point2f& pt)
     }
     
     fd.corners[i].image_coords = pt;
+    */
 }
 
-void ManualCameraCalibrationView::mouseMoveEvent(QMouseEvent* ev)
+void ManualCalibrationView::mouseMoveEvent(QMouseEvent* ev)
 {
     if(ev->buttons() & Qt::RightButton)
     {
@@ -428,17 +435,19 @@ void ManualCameraCalibrationView::mouseMoveEvent(QMouseEvent* ev)
     ev->accept();
 }
 
-void ManualCameraCalibrationView::clear()
+void ManualCalibrationView::clear()
 {
+    /*
     std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
     if(it != mFrameData.end())
     {
         mFrameData.erase(it);
         update();
     }
+    */
 }
 
-void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
+void ManualCalibrationView::paintEvent(QPaintEvent* ev)
 {
     QPainter p(this);
 
@@ -509,11 +518,14 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
             p.setPen(QPen(QColor(Qt::black), 2.0));
             for(const std::pair<int,FramePoint>& pt : data.corners)
             {
+                /*
                 if(mMode == MODE_CONNECTION && mSelectedPoint == pt.first)
                 {
                     p.setBrush(QColor(Qt::yellow));
                 }
-                else if(pt.second.has_object_coords)
+                else
+                */
+                if(pt.second.has_object_coords)
                 {
                     p.setBrush(QColor(Qt::green));
                 }
@@ -536,12 +548,13 @@ void ManualCameraCalibrationView::paintEvent(QPaintEvent* ev)
     ev->accept();
 }
 
-void ManualCameraCalibrationView::autoDetect()
+void ManualCalibrationView::autoDetect()
 {
+    /*
     if( mFrameOpenCV.data )
     {
         target::Tracker tracker;
-        tracker.setUnitLength(mParams->scale);
+        tracker.setUnitLength(1.0); // TODO: ask the user by input dialog.
 
         const bool ret = tracker.track(mFrameOpenCV, false);
 
@@ -572,14 +585,16 @@ void ManualCameraCalibrationView::autoDetect()
         }
 
     }
+    */
 }
 
-bool ManualCameraCalibrationView::getCalibrationData(
+bool ManualCalibrationView::getCalibrationData(
     std::vector< std::vector<cv::Point2f> >& image_points,
     std::vector< std::vector<cv::Point3f> >& object_points,
     cv::Size& size)
 {
     bool ret = false;
+    /*
 
     if( mFrameOpenCV.data )
     {
@@ -598,8 +613,8 @@ bool ManualCameraCalibrationView::getCalibrationData(
                 if(fp.second.has_object_coords)
                 {
                     cv::Point3f object_point(
-                        double(fp.second.object_coords.x)*mParams->scale,
-                        double(fp.second.object_coords.y)*mParams->scale,
+                        double(fp.second.object_coords.x), // TODO
+                        double(fp.second.object_coords.y), // TODO
                         0.0);
 
                     these_image_points.push_back(fp.second.image_coords);
@@ -619,26 +634,17 @@ bool ManualCameraCalibrationView::getCalibrationData(
         ret = true;
     }
 
+*/
     return ret;
 }
 
-void ManualCameraCalibrationView::setMode(Mode mode)
+void ManualCalibrationView::setMode(Mode mode)
 {
     mSelectedPoint = -1;
     mMode = mode;
 }
 
-void ManualCameraCalibrationView::setModeToCorner()
-{
-    setMode(MODE_CORNER);
-}
-
-void ManualCameraCalibrationView::setModeToConnection()
-{
-    setMode(MODE_CONNECTION);
-}
-
-void ManualCameraCalibrationView::setFrame(int frame)
+void ManualCalibrationView::setFrame(int frame)
 {
     mSelectedPoint = -1;
 
@@ -680,7 +686,7 @@ void ManualCameraCalibrationView::setFrame(int frame)
     update();
 }
 
-void ManualCameraCalibrationView::home()
+void ManualCalibrationView::home()
 {
     if(mFrame.isNull())
     {
@@ -694,13 +700,13 @@ void ManualCameraCalibrationView::home()
     update();
 }
 
-ManualCameraCalibrationView::ZoomData::ZoomData()
+ManualCalibrationView::ZoomData::ZoomData()
 {
     valid = false;
     factor = 1.0;
 }
 
-void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
+void ManualCalibrationView::ZoomData::init(const QImage& img)
 {
     valid = true;
     factor = 1.0;
@@ -708,7 +714,7 @@ void ManualCameraCalibrationView::ZoomData::init(const QImage& img)
     point.y = img.height() / 2;
 }
 
-ManualCameraCalibrationView::FramePoint::FramePoint()
+ManualCalibrationView::FramePoint::FramePoint()
 {
     has_object_coords = false;
 

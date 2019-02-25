@@ -1,31 +1,48 @@
 #include <QActionGroup>
+#include <QSplitter>
 #include <QMessageBox>
 #include <QAction>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <opencv2/calib3d.hpp>
-#include "ManualCameraCalibrationView.h"
-#include "ManualCameraCalibrationDialog.h"
+#include "ManualCalibrationView.h"
+#include "ManualCalibrationDialog.h"
 
-ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
+ManualCalibrationDialog::ManualCalibrationDialog(
     Project* project,
-    ManualCameraCalibrationParametersPtr params,
+    ManualCalibrationParametersPtr params,
     QWidget* parent)
 {
     mProject = project;
     mParameters = params;
 
     QToolBar* tb = new QToolBar();
+    QAction* aModeLeft = tb->addAction("Left");
+    QAction* aModeRight = tb->addAction("Right");
+    QAction* aModeStereo = tb->addAction("Stereo");
+    QAction* aModePhotometric = tb->addAction("Photometric");
+    tb->addSeparator();
     QAction* aPropagate = tb->addAction("Propagate");
     QAction* aCorner = tb->addAction("Corner");
     QAction* aConnection = tb->addAction("Connection");
     QAction* aClear = tb->addAction("Clear");
-    QAction* aHome = tb->addAction("Home");
     QAction* aAutoDetect = tb->addAction("AutoDetect");
     tb->addSeparator();
+    QAction* aHome = tb->addAction("Home");
     QAction* aCancel = tb->addAction("Cancel");
-    QAction* aDone = tb->addAction("Done");
+    QAction* aDone = tb->addAction("Submit");
+
+    QActionGroup* grp_mode = new QActionGroup(this);
+    grp_mode->addAction(aModeLeft);
+    grp_mode->addAction(aModeRight);
+    grp_mode->addAction(aModeStereo);
+    grp_mode->addAction(aModePhotometric);
+
+    aModeLeft->setCheckable(true);
+    aModeRight->setCheckable(true);
+    aModeStereo->setCheckable(true);
+    aModePhotometric->setCheckable(true);
 
     aCorner->setCheckable(true);
     aConnection->setCheckable(true);
@@ -45,20 +62,30 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     QStatusBar* sb = new QStatusBar();
     sb->addPermanentWidget(mLabelFrame);
 
-    mView = new ManualCameraCalibrationView(mParameters, this);
+    mDataFrameList = new QListWidget();
+    mDataFrameList->addItem("Frame 1");
+
+    mView = new ManualCalibrationView(mParameters, this);
+
+    QSplitter* splitter = new QSplitter();
+    splitter->setChildrenCollapsible(false);
+    splitter->addWidget(mDataFrameList);
+    splitter->addWidget(mView);
 
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb, 0);
     lay->addWidget(mSlider, 0);
-    //lay->addWidget(new QScrollArea(), 1);
-    lay->addWidget(mView, 1);
+    lay->addWidget(splitter, 1);
     lay->addWidget(sb);
 
     setLayout(lay);
     setWindowTitle("Manual Camera Calibration");
 
-    connect(aCorner, SIGNAL(triggered()), mView, SLOT(setModeToCorner()));
-    connect(aConnection, SIGNAL(triggered()), mView, SLOT(setModeToConnection()));
+    connect(aModeLeft, SIGNAL(triggered()), mView, SLOT(setModeToLeft()));
+    connect(aModeRight, SIGNAL(triggered()), mView, SLOT(setModeToRight()));
+    connect(aModeStereo, SIGNAL(triggered()), mView, SLOT(setModeToStereo()));
+    connect(aModePhotometric, SIGNAL(triggered()), mView, SLOT(setModeToPhotometric()));
+
     connect(mSlider, SIGNAL(valueChanged(int)), this, SLOT(setFrame(int)));
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
@@ -70,7 +97,7 @@ ManualCameraCalibrationDialog::ManualCameraCalibrationDialog(
     QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));
 }
 
-void ManualCameraCalibrationDialog::setFrame(int frame)
+void ManualCalibrationDialog::setFrame(int frame)
 {
     if(0 <= frame && frame < mParameters->recording->num_frames)
     {
@@ -84,7 +111,7 @@ void ManualCameraCalibrationDialog::setFrame(int frame)
     mView->setFrame(frame);
 }
 
-void ManualCameraCalibrationDialog::accept()
+void ManualCalibrationDialog::accept()
 {
     CameraCalibrationDataPtr calib(new CameraCalibrationData());
     bool ok = true;
@@ -178,5 +205,25 @@ void ManualCameraCalibrationDialog::accept()
     {
         QMessageBox::critical(this, "Error", err);
     }
+}
+
+void ManualCalibrationDialog::setModeToLeft()
+{
+    mView->setMode(ManualCalibrationView::MODE_LEFT);
+}
+
+void ManualCalibrationDialog::setModeToRight()
+{
+    mView->setMode(ManualCalibrationView::MODE_RIGHT);
+}
+
+void ManualCalibrationDialog::setModeToStereo()
+{
+    mView->setMode(ManualCalibrationView::MODE_STEREO);
+}
+
+void ManualCalibrationDialog::setModeToPhotometric()
+{
+    mView->setMode(ManualCalibrationView::MODE_PHOTOMETRIC);
 }
 

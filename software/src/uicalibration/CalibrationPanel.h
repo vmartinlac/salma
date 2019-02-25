@@ -2,16 +2,17 @@
 
 #include <QWidget>
 #include <QListView>
+#include <QTextEdit>
 #include "Project.h"
 
 class Project;
 
-class RigCalibrationPanel : public QWidget
+class CalibrationPanel : public QWidget
 {
     Q_OBJECT
 public:
 
-    RigCalibrationPanel(Project* project, QWidget* parent=nullptr);
+    CalibrationPanel(Project* project, QWidget* parent=nullptr);
 
 protected slots:
 
