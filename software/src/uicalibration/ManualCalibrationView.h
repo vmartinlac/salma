@@ -23,6 +23,9 @@ public:
         std::vector< std::vector<cv::Point3f> >& object_points,
         cv::Size& size);
 
+    void enumerateFramesWithData(
+        std::vector<int>& list);
+
 public:
 
     enum Mode
@@ -33,13 +36,16 @@ public:
         MODE_PHOTOMETRIC
     };
 
+signals:
+
+    void listOfFramesWithDataChanged();
+
 public slots:
 
     void home();
     void clear();
     void setFrame(int frame);
     void autoDetect();
-    void propagate();
     void setMode(Mode mode);
 
 protected:
@@ -50,10 +56,12 @@ protected:
     void wheelEvent(QWheelEvent* ev) override;
     void mouseMoveEvent(QMouseEvent* ev) override;
 
+    /*
     void addPoint(const cv::Point2f& pt);
     void removePoint(int id);
     int locatePoint(const QPoint& pt);
     void toggleConnection(int corner1, int corner2);
+    */
 
 protected:
 
@@ -61,34 +69,34 @@ protected:
     {
         ZoomData();
 
-        void init(const QImage& img);
+        void init(QWidget* win, const QImage& img);
 
         bool valid;
         double factor;
         cv::Point2f point;
     };
 
-    struct FramePoint
+    struct CameraFrameData
     {
-        FramePoint();
-
-        cv::Point2f image_coords;
-
-        bool has_object_coords;
-        cv::Point2i object_coords;
-
-        std::array<int,4> neighbors;
-
-        // only for graph algorithms.
-        bool bfs_visited;
-        bool bfs_has_coords;
-        cv::Point2i bfs_coords;
+        std::vector<cv::Point2f> image_points;
+        std::vector<cv::Point3f> object_points;
     };
 
-    struct FrameData
+    typedef std::shared_ptr<CameraFrameData> CameraFrameDataPtr;
+
+    struct StereoFrameData
     {
-        std::map<int,FramePoint> corners;
+        std::vector< std::pair<cv::Point2f,cv::Point2f> > correspondances;
     };
+
+    typedef std::shared_ptr<StereoFrameData> StereoFrameDataPtr;
+
+    struct PhotometricFrameData
+    {
+        bool take;
+    };
+
+    typedef std::shared_ptr<PhotometricFrameData> PhotometricFrameDataPtr;
 
 protected:
 
@@ -96,14 +104,21 @@ protected:
     RecordingReaderPtr mReader;
 
     int mCurrentFrameId;
-    QImage mFrame;
-    cv::Mat mFrameOpenCV;
+
+    Image mCurrentImage;
+    QImage mCurrentImageQt;
+    cv::Rect mLeftROI;
+    cv::Rect mRightROI;
+
     ZoomData mZoom;
+
     Mode mMode;
-    int mSelectedPoint;
 
     QPoint mLastMousePosition;
 
-    std::map<int,FrameData> mFrameData;
+    std::map<int,CameraFrameDataPtr> mLeftCameraData;
+    std::map<int,CameraFrameDataPtr> mRightCameraData;
+    std::map<int,StereoFrameDataPtr> mStereoData;
+    std::map<int,PhotometricFrameDataPtr> mPhotometricData;
 };
 

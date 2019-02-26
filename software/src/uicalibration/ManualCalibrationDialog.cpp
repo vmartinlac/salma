@@ -71,6 +71,7 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     splitter->setChildrenCollapsible(false);
     splitter->addWidget(mDataFrameList);
     splitter->addWidget(mView);
+    splitter->setSizes({width()/4, 3*width()/4});
 
     QVBoxLayout* lay = new QVBoxLayout();
     lay->addWidget(tb, 0);
@@ -81,18 +82,21 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     setLayout(lay);
     setWindowTitle("Manual Camera Calibration");
 
-    connect(aModeLeft, SIGNAL(triggered()), mView, SLOT(setModeToLeft()));
-    connect(aModeRight, SIGNAL(triggered()), mView, SLOT(setModeToRight()));
-    connect(aModeStereo, SIGNAL(triggered()), mView, SLOT(setModeToStereo()));
-    connect(aModePhotometric, SIGNAL(triggered()), mView, SLOT(setModeToPhotometric()));
+    connect(aModeLeft, SIGNAL(triggered()), this, SLOT(setModeToLeft()));
+    connect(aModeRight, SIGNAL(triggered()), this, SLOT(setModeToRight()));
+    connect(aModeStereo, SIGNAL(triggered()), this, SLOT(setModeToStereo()));
+    connect(aModePhotometric, SIGNAL(triggered()), this, SLOT(setModeToPhotometric()));
 
     connect(mSlider, SIGNAL(valueChanged(int)), this, SLOT(setFrame(int)));
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aHome, SIGNAL(triggered()), mView, SLOT(home()));
     connect(aAutoDetect, SIGNAL(triggered()), mView, SLOT(autoDetect()));
-    connect(aPropagate, SIGNAL(triggered()), mView, SLOT(propagate()));
     connect(aClear, SIGNAL(triggered()), mView, SLOT(clear()));
+
+    connect(mView, SIGNAL(listOfFramesWithDataChanged()), this, SLOT(updateListOfFramesWithData()));
+
+    connect(mDataFrameList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(frameWithDataClicked(QListWidgetItem*)));
 
     QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));
 }
@@ -210,20 +214,61 @@ void ManualCalibrationDialog::accept()
 void ManualCalibrationDialog::setModeToLeft()
 {
     mView->setMode(ManualCalibrationView::MODE_LEFT);
+    //updateListOfFramesWithData();
 }
 
 void ManualCalibrationDialog::setModeToRight()
 {
     mView->setMode(ManualCalibrationView::MODE_RIGHT);
+    //updateListOfFramesWithData();
 }
 
 void ManualCalibrationDialog::setModeToStereo()
 {
     mView->setMode(ManualCalibrationView::MODE_STEREO);
+    //updateListOfFramesWithData();
 }
 
 void ManualCalibrationDialog::setModeToPhotometric()
 {
     mView->setMode(ManualCalibrationView::MODE_PHOTOMETRIC);
+    //updateListOfFramesWithData();
+}
+
+void ManualCalibrationDialog::updateListOfFramesWithData()
+{
+    std::vector<int> list;
+    mView->enumerateFramesWithData(list);
+
+    mDataFrameList->clear();
+
+    for(int id : list)
+    {
+        QListWidgetItem* item = new QListWidgetItem(QString("Frame %1").arg(id));
+        item->setData(Qt::UserRole, id);
+        mDataFrameList->addItem(item);
+    }
+}
+
+void ManualCalibrationDialog::frameWithDataClicked(QListWidgetItem* item)
+{
+    bool ok = false;
+
+    const int id = item->data(Qt::UserRole).toInt(&ok);
+
+
+    if(ok)
+    {
+        ok = (0 <= id && id < mParameters->recording->num_frames);
+    }
+
+    if(ok)
+    {
+        mView->setFrame(id);
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", "Incorrect frame!");
+    }
 }
 

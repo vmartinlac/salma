@@ -57,7 +57,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     //statusBar()->showMessage("SALMA v1.0");
 
-    setWindowTitle("Salma");
+    setWindowTitle("SALMA");
 }
 
 void MainWindow::about()

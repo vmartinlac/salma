@@ -2,6 +2,7 @@
 
 #include <QLabel>
 #include <QDialog>
+#include <QListWidgetItem>
 #include <QSlider>
 #include <QListWidget>
 #include "Project.h"
@@ -31,6 +32,8 @@ protected slots:
     void setModeToRight();
     void setModeToStereo();
     void setModeToPhotometric();
+    void updateListOfFramesWithData();
+    void frameWithDataClicked(QListWidgetItem* item);
 
 protected:
 
