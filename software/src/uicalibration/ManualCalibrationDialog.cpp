@@ -23,11 +23,8 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     QAction* aModeStereo = tb->addAction("Stereo");
     QAction* aModePhotometric = tb->addAction("Photometric");
     tb->addSeparator();
-    QAction* aPropagate = tb->addAction("Propagate");
-    QAction* aCorner = tb->addAction("Corner");
-    QAction* aConnection = tb->addAction("Connection");
     QAction* aClear = tb->addAction("Clear");
-    QAction* aAutoDetect = tb->addAction("AutoDetect");
+    QAction* aTake = tb->addAction("Take");
     tb->addSeparator();
     QAction* aHome = tb->addAction("Home");
     QAction* aCancel = tb->addAction("Cancel");
@@ -43,14 +40,6 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     aModeRight->setCheckable(true);
     aModeStereo->setCheckable(true);
     aModePhotometric->setCheckable(true);
-
-    aCorner->setCheckable(true);
-    aConnection->setCheckable(true);
-    aCorner->setChecked(true);
-
-    QActionGroup* grp = new QActionGroup(this);
-    grp->addAction(aCorner);
-    grp->addAction(aConnection);
 
     mSlider = new QSlider;
     mSlider->setOrientation(Qt::Horizontal);
@@ -91,8 +80,8 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
     connect(aDone, SIGNAL(triggered()), this, SLOT(accept()));
     connect(aHome, SIGNAL(triggered()), mView, SLOT(home()));
-    connect(aAutoDetect, SIGNAL(triggered()), mView, SLOT(autoDetect()));
-    connect(aClear, SIGNAL(triggered()), mView, SLOT(clear()));
+    connect(aTake, SIGNAL(triggered()), mView, SLOT(doTake()));
+    connect(aClear, SIGNAL(triggered()), mView, SLOT(doClear()));
 
     connect(mView, SIGNAL(listOfFramesWithDataChanged()), this, SLOT(updateListOfFramesWithData()));
 
@@ -244,7 +233,7 @@ void ManualCalibrationDialog::updateListOfFramesWithData()
 
     for(int id : list)
     {
-        QListWidgetItem* item = new QListWidgetItem(QString("Frame %1").arg(id));
+        QListWidgetItem* item = new QListWidgetItem(QString("Frame %1").arg(id+1));
         item->setData(Qt::UserRole, id);
         mDataFrameList->addItem(item);
     }
@@ -264,7 +253,8 @@ void ManualCalibrationDialog::frameWithDataClicked(QListWidgetItem* item)
 
     if(ok)
     {
-        mView->setFrame(id);
+        //mView->setFrame(id);
+        mSlider->setValue(id);
     }
     else
     {

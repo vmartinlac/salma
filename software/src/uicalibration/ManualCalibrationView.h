@@ -43,10 +43,10 @@ signals:
 public slots:
 
     void home();
-    void clear();
     void setFrame(int frame);
-    void autoDetect();
     void setMode(Mode mode);
+    void doClear();
+    void doTake();
 
 protected:
 
@@ -93,7 +93,8 @@ protected:
 
     struct PhotometricFrameData
     {
-        bool take;
+        cv::Mat left_data;
+        cv::Mat right_data;
     };
 
     typedef std::shared_ptr<PhotometricFrameData> PhotometricFrameDataPtr;
@@ -115,6 +116,8 @@ protected:
     Mode mMode;
 
     QPoint mLastMousePosition;
+
+    double mLastTargetScale;
 
     std::map<int,CameraFrameDataPtr> mLeftCameraData;
     std::map<int,CameraFrameDataPtr> mRightCameraData;
