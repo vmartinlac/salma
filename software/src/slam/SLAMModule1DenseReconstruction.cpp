@@ -29,8 +29,6 @@ bool SLAMModule1DenseReconstruction::init()
 {
     SLAMContextPtr con = context();
 
-    mCameras[0] = con->calibration->cameras[0].calibration;
-    mCameras[1] = con->calibration->cameras[1].calibration;
     mStereoRig = con->calibration;
 
     const Sophus::SE3d left_to_right = mStereoRig->cameras[1].camera_to_rig.inverse() * mStereoRig->cameras[0].camera_to_rig;
@@ -39,11 +37,11 @@ bool SLAMModule1DenseReconstruction::init()
     cv::eigen2cv( left_to_right.translation(), mRectification.T );
 
     cv::stereoRectify(
-        mCameras[0]->calibration_matrix,
-        mCameras[0]->distortion_coefficients,
-        mCameras[1]->calibration_matrix,
-        mCameras[1]->distortion_coefficients,
-        mCameras[0]->image_size,
+        mStereoRig->cameras[0].calibration_matrix,
+        mStereoRig->cameras[0].distortion_coefficients,
+        mStereoRig->cameras[1].calibration_matrix,
+        mStereoRig->cameras[1].distortion_coefficients,
+        mStereoRig->cameras[0].image_size,
         mRectification.R,
         mRectification.T,
         mRectification.cameras[0].R,
@@ -57,11 +55,11 @@ bool SLAMModule1DenseReconstruction::init()
     for(int i=0; i<2; i++)
     {
         cv::initUndistortRectifyMap(
-            mCameras[i]->calibration_matrix,
-            mCameras[i]->distortion_coefficients,
+            mStereoRig->cameras[i].calibration_matrix,
+            mStereoRig->cameras[i].distortion_coefficients,
             cv::Mat(), //mRectification.cameras[i].R,
             mRectification.cameras[i].P,
-            mCameras[i]->image_size,
+            mStereoRig->cameras[i].image_size,
             CV_32FC1,
             mRectification.cameras[i].map0,
             mRectification.cameras[i].map1 );
@@ -174,8 +172,8 @@ void SLAMModule1DenseReconstruction::computeDisparity(
         int levels = 0;
 
         cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(
-            mCameras[0]->image_size.width,
-            mCameras[0]->image_size.height,
+            mStereoRig->cameras[0].image_size.width,
+            mStereoRig->cameras[0].image_size.height,
             ndisp,
             iters,
             levels);

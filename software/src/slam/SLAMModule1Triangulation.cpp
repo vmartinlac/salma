@@ -17,8 +17,6 @@ bool SLAMModule1Triangulation::init()
 {
     SLAMContextPtr con = context();
 
-    mLeftCamera = con->calibration->cameras[0].calibration;
-    mRightCamera = con->calibration->cameras[1].calibration;
     mRig = con->calibration;
 
     mEssentialMatrix = mRig->computeEssentialMatrix(1, 0);
@@ -192,8 +190,17 @@ bool SLAMModule1Triangulation::triangulateInRigFrame(
     std::vector<cv::Point2f> normalized_left_arr;
     std::vector<cv::Point2f> normalized_right_arr;
 
-    cv::undistortPoints(distorted_left, normalized_left_arr, mLeftCamera->calibration_matrix, mLeftCamera->distortion_coefficients);
-    cv::undistortPoints(distorted_right, normalized_right_arr, mRightCamera->calibration_matrix, mRightCamera->distortion_coefficients);
+    cv::undistortPoints(
+        distorted_left,
+        normalized_left_arr,
+        mRig->cameras[0].calibration_matrix,
+        mRig->cameras[0].distortion_coefficients);
+
+    cv::undistortPoints(
+        distorted_right,
+        normalized_right_arr,
+        mRig->cameras[1].calibration_matrix,
+        mRig->cameras[1].distortion_coefficients);
 
     Eigen::Vector3d normalized_left;
     normalized_left.x() = normalized_left_arr.front().x;
@@ -302,16 +309,16 @@ bool SLAMModule1Triangulation::triangulateInRigFrame(
                 in_left_camera_arr,
                 cv::Mat::zeros(3,1,CV_64F),
                 cv::Mat::zeros(3,1,CV_64F),
-                mLeftCamera->calibration_matrix,
-                mLeftCamera->distortion_coefficients,
+                mRig->cameras[0].calibration_matrix,
+                mRig->cameras[0].distortion_coefficients,
                 projected_left);
 
             cv::projectPoints(
                 in_right_camera_arr,
                 cv::Mat::zeros(3,1,CV_64F),
                 cv::Mat::zeros(3,1,CV_64F),
-                mRightCamera->calibration_matrix,
-                mRightCamera->distortion_coefficients,
+                mRig->cameras[1].calibration_matrix,
+                mRig->cameras[1].distortion_coefficients,
                 projected_right);
 
             const double error_left = cv::norm( projected_left.front() - distorted_left.front() );

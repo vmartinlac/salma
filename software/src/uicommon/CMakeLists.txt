@@ -6,24 +6,12 @@ add_library(
 
     AboutDialog.cpp
     AboutDialog.h
-    CameraCalibrationList.h
-    CameraCalibrationListWidget.cpp
-    CameraCalibrationListWidget.h
-    CameraCalibrationModel.cpp
-    CameraCalibrationModel.h
-    ReconstructionModel.cpp
-    ReconstructionModel.h
-    RigCalibrationModel.cpp
-    RigCalibrationModel.h
-    RecordingModel.cpp
-    RecordingModel.h
+    CalibrationListWidget.cpp
+    CalibrationListWidget.h
     CameraList.cpp
     CameraList.h
-    db.qrc
     FrameRateWidget.cpp
     FrameRateWidget.h
-    Model.cpp
-    Model.h
     NewOperationDialog.cpp
     NewOperationDialog.h
     Operation.cpp
@@ -38,15 +26,8 @@ add_library(
     PathWidget.h
     Port.cpp
     Port.h
-    Project.cpp
-    Project.h
-    RecordingList.h
     RecordingListWidget.cpp
     RecordingListWidget.h
-    ReconstructionList.h
-    RigCalibrationList.h
-    RigCalibrationListWidget.cpp
-    RigCalibrationListWidget.h
     StatsWidget.cpp
     StatsWidget.h
     TargetScaleWidget.cpp
@@ -59,15 +40,14 @@ add_library(
 
 target_link_libraries(
     salma_uicommon
+
     PUBLIC
+
     salma_buildinfo
-    salma_video
-    salma_slam
-    salma_calibration
+    salma_persistence
     openscenegraph
     Qt5::Widgets
     Qt5::Sql
-    Sophus::Sophus
 )
 
 target_include_directories(salma_uicommon INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

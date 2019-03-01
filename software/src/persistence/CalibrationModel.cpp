@@ -1,11 +1,11 @@
-#include "RigCalibrationModel.h"
+#include "CalibrationModel.h"
 #include "Project.h"
 
-RigCalibrationModel::RigCalibrationModel(Project* parent) : Model(parent)
+CalibrationModel::CalibrationModel(Project* parent) : Model(parent)
 {
 }
 
-int RigCalibrationModel::rowCount(const QModelIndex& parent) const
+int CalibrationModel::rowCount(const QModelIndex& parent) const
 {
     int ret = 0;
 
@@ -17,7 +17,7 @@ int RigCalibrationModel::rowCount(const QModelIndex& parent) const
     return ret;
 }
 
-QVariant RigCalibrationModel::data(const QModelIndex& index, int role) const
+QVariant CalibrationModel::data(const QModelIndex& index, int role) const
 {
     QVariant ret;
 
@@ -39,15 +39,15 @@ QVariant RigCalibrationModel::data(const QModelIndex& index, int role) const
     return ret;
 }
 
-void RigCalibrationModel::refresh()
+void CalibrationModel::refresh()
 {
     beginResetModel();
     mRigs.clear();
-    project()->listRigs(mRigs);
+    project()->listCalibrations(mRigs);
     endResetModel();
 }
 
-int RigCalibrationModel::indexToId(const QModelIndex& index)
+int CalibrationModel::indexToId(const QModelIndex& index)
 {
     const int ind2 = convertIndex(index);
 
@@ -61,7 +61,7 @@ int RigCalibrationModel::indexToId(const QModelIndex& index)
     }
 }
 
-int RigCalibrationModel::convertIndex(const QModelIndex& ind) const
+int CalibrationModel::convertIndex(const QModelIndex& ind) const
 {
     if( ind.isValid() && 0 <= ind.row() && ind.row() < mRigs.size() && ind.parent().isValid() == false )
     {

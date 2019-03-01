@@ -3,12 +3,12 @@
 #include <QString>
 #include <vector>
 
-struct CameraCalibrationListItem
+struct CalibrationListItem
 {
     int id;
     QString name;
     QString date;
 };
 
-typedef std::vector<CameraCalibrationListItem> CameraCalibrationList;
+typedef std::vector<CalibrationListItem> CalibrationList;
 

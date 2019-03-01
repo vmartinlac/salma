@@ -3,7 +3,7 @@
 
 #include <QLineEdit>
 #include "NewOperationDialog.h"
-#include "RigCalibrationListWidget.h"
+#include "CalibrationListWidget.h"
 #include "RecordingListWidget.h"
 
 class NewReconstructionDialog : public NewOperationDialog
@@ -27,6 +27,6 @@ protected:
 
     QLineEdit* mName;
     RecordingListWidget* mRecording;
-    RigCalibrationListWidget* mCalibration;
+    CalibrationListWidget* mCalibration;
 };
 

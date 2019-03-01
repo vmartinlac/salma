@@ -20,7 +20,7 @@ bool SLAMModule1Features::init()
     const int patch_size = con->configuration->features.patch_size;
     const int fast_threshold = con->configuration->features.fast_threshold;
 
-    const int reference_image_width = con->calibration->cameras[0].calibration->image_size.width;
+    const int reference_image_width = con->calibration->cameras[0].image_size.width;
 
     const int num_levels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(scale_factor) );
 

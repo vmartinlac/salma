@@ -29,8 +29,6 @@ bool SLAMModule1StereoMatcher::init()
     mCheckEpipolar = con->configuration->stereo_matcher.check_epipolar;
     mEpipolarThreshold = con->configuration->stereo_matcher.epipolar_threshold;
 
-    mCameraCalibration[0] = con->calibration->cameras[0].calibration;
-    mCameraCalibration[1] = con->calibration->cameras[1].calibration;
     mStereoRigCalibration = con->calibration;
 
     mFundamentalMatrices[0] = con->calibration->computeFundamentalMatrix(0, 1);
@@ -214,13 +212,10 @@ SLAMModuleResult SLAMModule1StereoMatcher::operator()()
             cv::undistortPoints(
                 tmp,
                 mUndistortedPoints[k], 
-                mCameraCalibration[k]->calibration_matrix,
-                mCameraCalibration[k]->distortion_coefficients,
-
-                //
+                mStereoRigCalibration->cameras[k].calibration_matrix,
+                mStereoRigCalibration->cameras[k].distortion_coefficients,
                 cv::noArray(),
-                mCameraCalibration[k]->calibration_matrix);
-                //
+                mStereoRigCalibration->cameras[k].calibration_matrix);
         }
     }
 

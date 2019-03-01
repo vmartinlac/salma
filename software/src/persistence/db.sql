@@ -11,11 +11,18 @@ CREATE TABLE 'poses'
     'z' FLOAT
 );
 
-CREATE TABLE 'camera_parameters'
+CREATE TABLE 'rigs'
 (
     'id' INTEGER PRIMARY KEY,
     'name' TEXT,
     'date' DATE,
+);
+
+CREATE TABLE 'cameras'
+(
+    'id' INTEGER PRIMARY KEY,
+    'rig_id' INTEGER,
+    'rank_in_rig' INTEGER,
     'image_width' INTEGER,
     'image_height' INTEGER,
     'fx' FLOAT,
@@ -23,6 +30,15 @@ CREATE TABLE 'camera_parameters'
     'cx' FLOAT,
     'cy' FLOAT,
     'distortion_model' INTEGER
+    'camera_to_rig' INTEGER,
+);
+
+CREATE TABLE 'photometric_luts'
+(
+    'id' INTEGER PRIMARY KEY,
+    'camera_id' INTEGER,
+    'rank' INTEGER,
+    'value' FLOAT
 );
 
 CREATE TABLE 'distortion_coefficients'
@@ -31,23 +47,6 @@ CREATE TABLE 'distortion_coefficients'
     'camera_id' INTEGER,
     'rank' INTEGER,
     'value' FLOAT
-);
-
-CREATE TABLE 'rig_parameters'
-(
-    'id' INTEGER PRIMARY KEY,
-    'name' TEXT,
-    'date' DATE,
-    'number_of_cameras' INTEGER
-);
-
-CREATE TABLE 'rig_cameras'
-(
-    'id' INTEGER PRIMARY KEY,
-    'rig_id' INTEGER,
-    'rank' INTEGER,
-    'camera_to_rig' INTEGER,
-    'camera_id' INTEGER
 );
 
 CREATE TABLE 'recordings'

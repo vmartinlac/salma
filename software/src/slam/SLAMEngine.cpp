@@ -18,7 +18,7 @@ SLAMEngine::~SLAMEngine()
 }
 
 bool SLAMEngine::initialize(
-    StereoRigCalibrationDataPtr calibration,
+    StereoRigCalibrationPtr calibration,
     SLAMConfigurationPtr configuration)
 {
     bool ok = true;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SLAMDataStructures.h"
-#include "StereoRigCalibrationData.h"
+#include "StereoRigCalibration.h"
 #include "SLAMConfiguration.h"
 #include "SLAMModule.h"
 #include "Image.h"
@@ -15,7 +15,7 @@ public:
     ~SLAMEngine();
 
     bool initialize(
-        StereoRigCalibrationDataPtr calibration,
+        StereoRigCalibrationPtr calibration,
         SLAMConfigurationPtr configuration);
 
     bool processFrame(int rank_in_recording, Image& image);

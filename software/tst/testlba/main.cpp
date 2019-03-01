@@ -17,18 +17,17 @@ int main(int num_args, char** args)
 
     // create camera and rig calibration.
 
-    CameraCalibrationDataPtr camera(new CameraCalibrationData());
-    camera->calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
-    camera->calibration_matrix.at<double>(0,0) = 2200.0;
-    camera->calibration_matrix.at<double>(0,2) = 650.0;
-    camera->calibration_matrix.at<double>(1,1) = 2200.0;
-    camera->calibration_matrix.at<double>(1,2) = 460.0;
-    camera->calibration_matrix.at<double>(2,2) = 1.0;
+    cv::Mat calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
+    calibration_matrix.at<double>(0,0) = 2200.0;
+    calibration_matrix.at<double>(0,2) = 650.0;
+    calibration_matrix.at<double>(1,1) = 2200.0;
+    calibration_matrix.at<double>(1,2) = 460.0;
+    calibration_matrix.at<double>(2,2) = 1.0;
 
-    StereoRigCalibrationDataPtr rig(new StereoRigCalibrationData());
-    rig->cameras[0].calibration = camera;
+    StereoRigCalibrationPtr rig(new StereoRigCalibration());
+    rig->cameras[0].calibration_matrix = calibration_matrix;
     rig->cameras[0].camera_to_rig.translation() = Eigen::Vector3d(-2.0, 0.0, 0.0);
-    rig->cameras[1].calibration = camera;
+    rig->cameras[1].calibration_matrix = calibration_matrix;
     rig->cameras[1].camera_to_rig.translation() = Eigen::Vector3d(2.0, 0.0, 0.0);
 
     // create context.
@@ -109,8 +108,8 @@ int main(int num_args, char** args)
                         to_project,
                         cv::Mat::zeros(3,1,CV_64F),
                         cv::Mat::zeros(3,1,CV_64F),
-                        rig->cameras[j].calibration->calibration_matrix,
-                        rig->cameras[j].calibration->distortion_coefficients,
+                        rig->cameras[j].calibration_matrix,
+                        rig->cameras[j].distortion_coefficients,
                         projected);
 
                     cv::KeyPoint kpt;

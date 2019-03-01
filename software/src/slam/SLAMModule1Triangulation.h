@@ -28,9 +28,7 @@ protected:
     Eigen::Matrix2d mEssentialMatrixTilde;
     Eigen::Matrix<double, 2, 3> mS;
 
-    CameraCalibrationDataPtr mLeftCamera;
-    CameraCalibrationDataPtr mRightCamera;
-    StereoRigCalibrationDataPtr mRig;
+    StereoRigCalibrationPtr mRig;
     double mMinAngleBetweenRays;
     double mPerpendicularMaxLength;
     bool mCheckPerpendicularLength;

@@ -137,7 +137,7 @@ void ReconstructionOperation::uiafter(QWidget* parent, Project* project)
             mReconstruction->id = -1;
             mReconstruction->name = mReconstructionName;
             mReconstruction->recording = mRecordingHeader;
-            mReconstruction->rig = mCalibration;
+            mReconstruction->calibration = mCalibration;
 
             ok = project->saveReconstruction(mReconstruction, reconstruction_id);
         }

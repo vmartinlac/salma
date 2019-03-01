@@ -10,7 +10,7 @@ Right is index 1.
 #include <opencv2/core.hpp>
 #include <sophus/se3.hpp>
 #include <Eigen/Eigen>
-#include "StereoRigCalibrationData.h"
+#include "StereoRigCalibration.h"
 #include "RecordingHeader.h"
 
 class SLAMMapPoint
@@ -96,7 +96,7 @@ public:
     std::string date;
 
     RecordingHeaderPtr recording;
-    StereoRigCalibrationDataPtr rig;
+    StereoRigCalibrationPtr calibration;
 
     std::vector<SLAMFramePtr> frames;
 

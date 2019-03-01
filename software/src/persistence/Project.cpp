@@ -2,22 +2,16 @@
 #include <QSqlError>
 #include <QFileInfo>
 #include "Project.h"
-#include "CameraCalibrationData.h"
-#include "StereoRigCalibrationData.h"
-#include "CameraCalibrationList.h"
-#include "RigCalibrationList.h"
 
 #define PROJECT_DATABASE_NAME "db.sqlite"
 
 Project::Project(QObject* parent) : QObject(parent)
 {
-    mCameraCalibrationModel = new CameraCalibrationModel(this);
-    mRigCalibrationModel = new RigCalibrationModel(this);
+    mCalibrationModel = new CalibrationModel(this);
     mRecordingModel = new RecordingModel(this);
     mReconstructionModel = new ReconstructionModel(this);
 
-    connect(this, SIGNAL(cameraCalibrationModelChanged()), mCameraCalibrationModel, SLOT(refresh()));
-    connect(this, SIGNAL(rigCalibrationModelChanged()), mRigCalibrationModel, SLOT(refresh()));
+    connect(this, SIGNAL(rigCalibrationModelChanged()), mCalibrationModel, SLOT(refresh()));
     connect(this, SIGNAL(recordingModelChanged()), mRecordingModel, SLOT(refresh()));
     connect(this, SIGNAL(reconstructionModelChanged()), mReconstructionModel, SLOT(refresh()));
 
@@ -219,14 +213,9 @@ void Project::close()
     changed();
 }
 
-CameraCalibrationModel* Project::cameraCalibrationModel()
+CalibrationModel* Project::calibrationModel()
 {
-    return mCameraCalibrationModel;
-}
-
-RigCalibrationModel* Project::rigCalibrationModel()
-{
-    return mRigCalibrationModel;
+    return mCalibrationModel;
 }
 
 RecordingModel* Project::recordingModel()
@@ -241,7 +230,8 @@ ReconstructionModel* Project::reconstructionModel()
 
 // CAMERA CALIBRATION
 
-bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
+/*
+bool Project::saveCamera(CameraCalibration& camera, int& id)
 {
     bool has_transaction = false;
     bool ok = isOpen();
@@ -318,7 +308,9 @@ bool Project::saveCamera(CameraCalibrationDataPtr camera, int& id)
 
     return ok;
 }
+*/
 
+/*
 bool Project::describeCamera(int id, QString& descr)
 {
     bool ok = isOpen();
@@ -373,64 +365,12 @@ bool Project::describeCamera(int id, QString& descr)
 
     return ok;
 }
+*/
 
-bool Project::renameCamera(int id, const QString& new_name)
+/*
+bool Project::loadCamera(int id, CameraCalibration& camera)
 {
     bool ok = isOpen();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("UPDATE camera_parameters SET name=? WHERE id=?");
-        q.addBindValue(new_name);
-        q.addBindValue(id);
-
-        ok = q.exec() && (q.numRowsAffected() >= 1);
-    }
-
-    cameraCalibrationModelChanged();
-
-    return ok;
-}
-
-bool Project::listCameras(CameraCalibrationList& list)
-{
-    bool ok = isOpen();
-
-    list.clear();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.setForwardOnly(true);
-        ok = q.exec("SELECT id, name, date FROM camera_parameters");
-
-        if(ok)
-        {
-            while(q.next())
-            {
-                CameraCalibrationListItem item;
-                item.id = q.value(0).toInt();
-                item.name = q.value(1).toString();
-                item.date = q.value(2).toString();
-                list.push_back(item);
-            }
-        }
-    }
-
-    if(ok == false)
-    {
-        list.clear();
-    }
-
-    return ok;
-}
-
-bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
-{
-    bool ok = isOpen();
-
-    camera.reset(new CameraCalibrationData());
 
     if(ok)
     {
@@ -503,7 +443,9 @@ bool Project::loadCamera(int id, CameraCalibrationDataPtr& camera)
 
     return ok;
 }
+*/
 
+/*
 bool Project::isCameraMutable(int id, bool& ismutable)
 {
     bool ok = true;
@@ -545,69 +487,7 @@ bool Project::isCameraMutable(int id, bool& ismutable)
 
     return ok;
 }
-
-bool Project::removeCamera(int id)
-{
-    bool ok = true;
-    bool has_transaction = false;
-
-    // check whether the camera can be removed or not.
-
-    if(ok)
-    {
-        bool ismutable;
-        ok = ( isCameraMutable(id, ismutable) && ismutable );
-    }
-
-    // create transaction.
-
-    if(ok)
-    {
-        ok = mDB.transaction();
-        if(ok)
-        {
-            has_transaction = true;
-        }
-    }
-
-    // delete distortion coefficients.
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("DELETE FROM distortion_coefficients WHERE camera_id=?");
-        q.addBindValue(id);
-        ok = q.exec();
-    }
-
-    // delete camera.
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("DELETE FROM camera_parameters WHERE id=?");
-        q.addBindValue(id);
-        ok = q.exec();
-    }
-
-    // commit or rollback transaction.
-
-    if(has_transaction)
-    {
-        if(ok)
-        {
-            mDB.commit();
-        }
-        else
-        {
-            mDB.rollback();
-        }
-    }
-
-    cameraCalibrationModelChanged();
-
-    return ok;
-}
+*/
 
 // POSE
 
@@ -682,7 +562,8 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
 
 // RIG CALIBRATION
 
-bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
+/*
+bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
 {
     bool has_transaction = false;
     bool ok = true;
@@ -754,8 +635,10 @@ bool Project::saveRig(StereoRigCalibrationDataPtr rig, int& id)
 
     return ok;
 }
+*/
 
-bool Project::describeRig(int id, QString& descr)
+/*
+bool Project::describeCalibration(int id, QString& descr)
 {
     bool ok = isOpen();
 
@@ -765,7 +648,7 @@ bool Project::describeRig(int id, QString& descr)
 
     if(ok)
     {
-        ok = loadRig(id, rig) && bool(rig);
+        ok = loadCalibration(id, rig) && bool(rig);
     }
 
     if(ok)
@@ -802,8 +685,10 @@ bool Project::describeRig(int id, QString& descr)
 
     return ok;
 }
+*/
 
-bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
+/*
+bool Project::loadCalibration(int id, StereoRigCalibrationDataPtr& rig)
 {
     bool ok = isOpen();
 
@@ -887,8 +772,9 @@ bool Project::loadRig(int id, StereoRigCalibrationDataPtr& rig)
 
     return ok;
 }
+*/
 
-bool Project::renameRig(int id, const QString& new_name)
+bool Project::renameCalibration(int id, const QString& new_name)
 {
     bool ok = isOpen();
 
@@ -907,7 +793,8 @@ bool Project::renameRig(int id, const QString& new_name)
     return ok;
 }
 
-bool Project::removeRig(int id)
+/*
+bool Project::removeCalibration(int id)
 {
     bool ok = true;
     bool has_transaction = false;
@@ -979,8 +866,10 @@ bool Project::removeRig(int id)
 
     return ok;
 }
+*/
 
-bool Project::isRigMutable(int id, bool& ismutable)
+/*
+bool Project::isCalibrationMutable(int id, bool& ismutable)
 {
     bool ok = true;
 
@@ -1021,8 +910,9 @@ bool Project::isRigMutable(int id, bool& ismutable)
 
     return ok;
 }
+*/
 
-bool Project::listRigs(RigCalibrationList& list)
+bool Project::listCalibrations(CalibrationList& list)
 {
     bool ok = isOpen();
 
@@ -1038,7 +928,7 @@ bool Project::listRigs(RigCalibrationList& list)
         {
             while(q.next())
             {
-                RigCalibrationListItem item;
+                CalibrationListItem item;
                 item.id = q.value(0).toInt();
                 item.name = q.value(1).toString();
                 item.date = q.value(2).toString();
@@ -1837,7 +1727,7 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 
     if(ok)
     {
-        ok = ( rec->id < 0 && rec->recording->id >= 0 && rec->rig->id >= 0 );
+        ok = ( rec->id < 0 && rec->recording->id >= 0 && rec->calibration->id >= 0 );
     }
 
     if(ok)
@@ -1854,7 +1744,7 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO reconstructions(name, date, rig_id, recording_id) VALUES(?, DATETIME('now'), ?, ?)");
         q.addBindValue(rec->name.c_str());
-        q.addBindValue(rec->rig->id);
+        q.addBindValue(rec->calibration->id);
         q.addBindValue(rec->recording->id);
         ok = q.exec();
 
@@ -2072,7 +1962,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 
     if(ok)
     {
-        ok = loadRig(rig_id, rec->rig);
+        ok = loadCalibration(rig_id, rec->calibration);
     }
 
     if(ok)

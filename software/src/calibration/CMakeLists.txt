@@ -2,12 +2,10 @@
 add_library(
     salma_calibration
     SHARED
-    Serialization.h
-    Serialization.cpp
-    CameraCalibrationData.h
-    CameraCalibrationData.cpp
-    StereoRigCalibrationData.h
-    StereoRigCalibrationData.cpp
+    CameraCalibration.h
+    CameraCalibration.cpp
+    StereoRigCalibration.h
+    StereoRigCalibration.cpp
 )
 
 target_include_directories(salma_calibration INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -40,7 +40,7 @@ QWidget* NewReconstructionDialog::createNameAndInputTab()
 {
     mName = new QLineEdit();
     mRecording = new RecordingListWidget(project());
-    mCalibration = new RigCalibrationListWidget(project());
+    mCalibration = new CalibrationListWidget(project());
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
@@ -63,7 +63,7 @@ void NewReconstructionDialog::accept()
     QString name;
     int calibration_id = -1;
     int recording_id = -1;
-    StereoRigCalibrationDataPtr calibration;
+    StereoRigCalibrationPtr calibration;
     RecordingHeaderPtr recording;
 
     OperationPtr op;
@@ -79,7 +79,7 @@ void NewReconstructionDialog::accept()
 
     if(ok)
     {
-        calibration_id = mCalibration->getRigCalibrationId();
+        calibration_id = mCalibration->getCalibrationId();
         ok = (calibration_id >= 0);
         err = "Incorrect rig calibration!";
     }
@@ -93,7 +93,7 @@ void NewReconstructionDialog::accept()
 
     if(ok)
     {
-        ok = project()->loadRig(calibration_id, calibration);
+        ok = project()->loadCalibration(calibration_id, calibration);
         err = "Could not load rig calibration!";
     }
 

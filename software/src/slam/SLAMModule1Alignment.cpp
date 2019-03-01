@@ -28,7 +28,7 @@ SLAMModuleResult SLAMModule1Alignment::operator()()
 {
     std::cout << "   ALIGNMENT" << std::endl;
 
-    StereoRigCalibrationDataPtr rig = context()->calibration;
+    StereoRigCalibrationPtr rig = context()->calibration;
 
     SLAMReconstructionPtr reconstr = context()->reconstruction;
 
@@ -45,8 +45,8 @@ SLAMModuleResult SLAMModule1Alignment::operator()()
 
         for(int i=0; i<2; i++)
         {
-            views[i].calibration_matrix = rig->cameras[i].calibration->calibration_matrix;
-            views[i].distortion_coefficients = rig->cameras[i].calibration->distortion_coefficients;
+            views[i].calibration_matrix = rig->cameras[i].calibration_matrix;
+            views[i].distortion_coefficients = rig->cameras[i].distortion_coefficients;
             views[i].rig_to_camera = rig->cameras[i].camera_to_rig.inverse();
 
             SLAMView& v = current_frame->views[i];

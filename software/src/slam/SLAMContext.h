@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StereoRigCalibrationData.h"
+#include "StereoRigCalibration.h"
 #include "SLAMConfiguration.h"
 #include "SLAMDataStructures.h"
 #include "SLAMDebug.h"
@@ -11,7 +11,7 @@ public:
 
     SLAMContext();
 
-    StereoRigCalibrationDataPtr calibration;
+    StereoRigCalibrationPtr calibration;
     SLAMConfigurationPtr configuration;
     SLAMReconstructionPtr reconstruction;
     SLAMDebugPtr debug;

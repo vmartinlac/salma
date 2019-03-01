@@ -106,7 +106,8 @@ void ManualCalibrationDialog::setFrame(int frame)
 
 void ManualCalibrationDialog::accept()
 {
-    CameraCalibrationDataPtr calib(new CameraCalibrationData());
+    /*
+    CameraCalibrationPtr calib(new CameraCalibration());
     bool ok = true;
     const char* err = "";
     double projection_err = 0.0;
@@ -198,6 +199,8 @@ void ManualCalibrationDialog::accept()
     {
         QMessageBox::critical(this, "Error", err);
     }
+    */
+    std::cout << "To be implemented!" << std::endl;
 }
 
 void ManualCalibrationDialog::setModeToLeft()

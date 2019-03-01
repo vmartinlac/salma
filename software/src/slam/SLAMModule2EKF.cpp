@@ -649,7 +649,7 @@ void SLAMModule2EKF::compute_h(
     Eigen::VectorXd& h,
     Eigen::SparseMatrix<double>& J)
 {
-    StereoRigCalibrationDataPtr calibration = context()->calibration;;
+    StereoRigCalibrationPtr calibration = context()->calibration;;
 
     SLAMFramePtr frame = mCurrentFrame;
 
@@ -705,8 +705,8 @@ void SLAMModule2EKF::compute_h(
             mappoint_in_camera_frame_cv,
             cv::Mat::zeros(3, 1, CV_64F),
             cv::Mat::zeros(3, 1, CV_64F),
-            calibration->cameras[vpt.view].calibration->calibration_matrix,
-            calibration->cameras[vpt.view].calibration->distortion_coefficients,
+            calibration->cameras[vpt.view].calibration_matrix,
+            calibration->cameras[vpt.view].distortion_coefficients,
             proj,
             J_proj_cv);
 

@@ -44,8 +44,7 @@ protected:
 
 protected:
 
-    CameraCalibrationDataPtr mCameras[2];
-    StereoRigCalibrationDataPtr mStereoRig;
+    StereoRigCalibrationPtr mStereoRig;
 
     RectificationParameters mRectification;
 };

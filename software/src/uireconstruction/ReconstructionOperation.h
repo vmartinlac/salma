@@ -31,7 +31,7 @@ public:
 
     std::string mReconstructionName;
     RecordingHeaderPtr mRecordingHeader;
-    StereoRigCalibrationDataPtr mCalibration;
+    StereoRigCalibrationPtr mCalibration;
     SLAMConfigurationPtr mConfiguration;
 
 protected:

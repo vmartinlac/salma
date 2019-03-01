@@ -7,18 +7,17 @@
 
 int main(int num_args, char** args)
 {
-    CameraCalibrationDataPtr camera(new CameraCalibrationData());
-    camera->calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
-    camera->calibration_matrix.at<double>(0,0) = 2200.0;
-    camera->calibration_matrix.at<double>(0,2) = 650.0;
-    camera->calibration_matrix.at<double>(1,1) = 2200.0;
-    camera->calibration_matrix.at<double>(1,2) = 460.0;
-    camera->calibration_matrix.at<double>(2,2) = 1.0;
+    cv::Mat calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
+    calibration_matrix.at<double>(0,0) = 2200.0;
+    calibration_matrix.at<double>(0,2) = 650.0;
+    calibration_matrix.at<double>(1,1) = 2200.0;
+    calibration_matrix.at<double>(1,2) = 460.0;
+    calibration_matrix.at<double>(2,2) = 1.0;
 
-    StereoRigCalibrationDataPtr rig(new StereoRigCalibrationData());
-    rig->cameras[0].calibration = camera;
+    StereoRigCalibrationPtr rig(new StereoRigCalibration());
+    rig->cameras[0].calibration_matrix = calibration_matrix;
     rig->cameras[0].camera_to_rig.translation() = Eigen::Vector3d(-2.0, 0.0, 0.0);
-    rig->cameras[1].calibration = camera;
+    rig->cameras[1].calibration_matrix = calibration_matrix;
     rig->cameras[1].camera_to_rig.translation() = Eigen::Vector3d(2.0, 0.0, 0.0);
 
     SLAMContextPtr con(new SLAMContext());
@@ -44,7 +43,7 @@ int main(int num_args, char** args)
         X << -2.0, -2.0, 10;
 
         Eigen::Matrix3d K;
-        cv::cv2eigen(camera->calibration_matrix, K);
+        cv::cv2eigen(calibration_matrix, K);
 
         for(int i=0; i<2; i++)
         {

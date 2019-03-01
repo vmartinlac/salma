@@ -90,8 +90,8 @@ void ViewerWidget::buildScene()
     if(go_on)
     {
         mRigNode = createRigNode(
-            mReconstruction->rig->cameras[0].camera_to_rig,
-            mReconstruction->rig->cameras[1].camera_to_rig);
+            mReconstruction->calibration->cameras[0].camera_to_rig,
+            mReconstruction->calibration->cameras[1].camera_to_rig);
         go_on = (mRigNode != nullptr);
     }
 
@@ -187,8 +187,8 @@ osg::ref_ptr<osg::Node> ViewerWidget::createTrajectoryNode(SLAMSegment& seg)
     int count = 0;
     for(SLAMFramePtr f : seg.frames)
     {
-        const Sophus::SE3d left_camera_to_world = f->frame_to_world * mReconstruction->rig->cameras[0].camera_to_rig;
-        const Sophus::SE3d right_camera_to_world = f->frame_to_world * mReconstruction->rig->cameras[1].camera_to_rig;
+        const Sophus::SE3d left_camera_to_world = f->frame_to_world * mReconstruction->calibration->cameras[0].camera_to_rig;
+        const Sophus::SE3d right_camera_to_world = f->frame_to_world * mReconstruction->calibration->cameras[1].camera_to_rig;
 
         vertices->push_back( osg::Vec3(
             left_camera_to_world.translation().x(),

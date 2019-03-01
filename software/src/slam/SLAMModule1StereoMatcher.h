@@ -4,8 +4,8 @@
 #include <Eigen/Eigen>
 #include <utility>
 #include <vector>
-#include "CameraCalibrationData.h"
-#include "StereoRigCalibrationData.h"
+#include "CameraCalibration.h"
+#include "StereoRigCalibration.h"
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
 
@@ -32,8 +32,7 @@ protected:
     double mEpipolarThreshold;
     double mLoweRatio;
 
-    CameraCalibrationDataPtr mCameraCalibration[2];
-    StereoRigCalibrationDataPtr mStereoRigCalibration;
+    StereoRigCalibrationPtr mStereoRigCalibration;
 
     Eigen::Matrix3d mFundamentalMatrices[2];
     std::vector<cv::Point2f> mUndistortedPoints[2];

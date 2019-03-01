@@ -14,7 +14,7 @@ void EdgeProjectP2R::setView(int view)
     mView = view;
 }
 
-void EdgeProjectP2R::setRigCalibration(StereoRigCalibrationDataPtr rig)
+void EdgeProjectP2R::setRigCalibration(StereoRigCalibrationPtr rig)
 {
     mRigCalibration = std::move(rig);
 }
@@ -76,8 +76,8 @@ void EdgeProjectP2R::computeError()
         to_project,
         cv::Mat::zeros(3,1,CV_64F),
         cv::Mat::zeros(3,1,CV_64F),
-        mRigCalibration->cameras[mView].calibration->calibration_matrix,
-        mRigCalibration->cameras[mView].calibration->distortion_coefficients,
+        mRigCalibration->cameras[mView].calibration_matrix,
+        mRigCalibration->cameras[mView].distortion_coefficients,
         projected);
 
     if(projected.size() != 1) throw std::logic_error("internal error");
@@ -108,8 +108,8 @@ void EdgeProjectP2R::linearizeOplus()
         to_project,
         cv::Mat::zeros(3,1,CV_64F),
         cv::Mat::zeros(3,1,CV_64F),
-        mRigCalibration->cameras[mView].calibration->calibration_matrix,
-        mRigCalibration->cameras[mView].calibration->distortion_coefficients,
+        mRigCalibration->cameras[mView].calibration_matrix,
+        mRigCalibration->cameras[mView].distortion_coefficients,
         projected,
         J);
 

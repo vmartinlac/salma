@@ -17,9 +17,9 @@ CalibrationPanel::CalibrationPanel(Project* project, QWidget* parent)
     mView = new QListView();
     mText = new QTextEdit();
 
-    connect(project, SIGNAL(rigCalibrationModelChanged()), this, SLOT(onModelChanged()));
+    connect(project, SIGNAL(calibrationModelChanged()), this, SLOT(onModelChanged()));
 
-    mView->setModel(mProject->rigCalibrationModel());
+    mView->setModel(mProject->calibrationModel());
 
     connect(mView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(onSelect(const QModelIndex&)));
 
@@ -81,7 +81,7 @@ void CalibrationPanel::onRename()
 
     if(ok)
     {
-        rig_id = mProject->rigCalibrationModel()->indexToId(mView->currentIndex());
+        rig_id = mProject->calibrationModel()->indexToId(mView->currentIndex());
         ok = (rig_id >= 0);
     }
 
@@ -100,14 +100,14 @@ void CalibrationPanel::onRename()
 
     if(ok)
     {
-        ok = mProject->renameRig(rig_id, text);
+        ok = mProject->renameCalibration(rig_id, text);
 
         if(ok == false)
         {
             QMessageBox::critical(this, "Error", "Could not rename camera calibration!");
         }
 
-        //mProject->rigCalibrationModel()->refresh();
+        //mProject->calibrationModel()->refresh();
     }
 }
 
@@ -119,13 +119,13 @@ void CalibrationPanel::onDelete()
 
     if(ok)
     {
-        rig_id = mProject->rigCalibrationModel()->indexToId(mView->currentIndex());
+        rig_id = mProject->calibrationModel()->indexToId(mView->currentIndex());
         ok = (rig_id >= 0);
     }
 
     if(ok)
     {
-        ok = mProject->isRigMutable(rig_id, is_mutable);
+        ok = mProject->isCalibrationMutable(rig_id, is_mutable);
 
         if(ok == false)
         {
@@ -141,7 +141,7 @@ void CalibrationPanel::onDelete()
 
             if(ret == QMessageBox::Yes)
             {
-                const bool removal_status = mProject->removeRig(rig_id);
+                const bool removal_status = mProject->removeCalibration(rig_id);
 
                 if(removal_status == false)
                 {
@@ -164,13 +164,13 @@ void CalibrationPanel::onSelect(const QModelIndex& ind)
 
     if(ok)
     {
-        rig_id = mProject->rigCalibrationModel()->indexToId(ind);
+        rig_id = mProject->calibrationModel()->indexToId(ind);
         ok = (rig_id >= 0);
     }
 
     if(ok)
     {
-        ok = mProject->describeRig(rig_id, text);
+        ok = mProject->describeCalibration(rig_id, text);
     }
 
     if(ok)

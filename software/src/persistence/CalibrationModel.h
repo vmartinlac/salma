@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Model.h"
-#include "CameraCalibrationList.h"
+#include "CalibrationList.h"
 
-class CameraCalibrationModel : public Model
+class CalibrationModel : public Model
 {
     Q_OBJECT
 
 public:
 
-    CameraCalibrationModel(Project* parent);
+    CalibrationModel(Project* parent);
 
     int rowCount(const QModelIndex& parent=QModelIndex()) const override;
 
@@ -27,6 +27,6 @@ protected:
 
 protected:
 
-    CameraCalibrationList mCameras;
+    CalibrationList mRigs;
 };
 

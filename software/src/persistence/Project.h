@@ -4,14 +4,11 @@
 #include <QSqlDatabase>
 #include <QDir>
 #include <sophus/se3.hpp>
-#include "CameraCalibrationModel.h"
-#include "RigCalibrationModel.h"
 #include "RecordingModel.h"
+#include "CalibrationModel.h"
 #include "ReconstructionModel.h"
-#include "CameraCalibrationData.h"
-#include "StereoRigCalibrationData.h"
-#include "CameraCalibrationList.h"
-#include "RigCalibrationList.h"
+#include "StereoRigCalibration.h"
+#include "CalibrationList.h"
 #include "RecordingList.h"
 #include "RecordingHeader.h"
 #include "SLAMDataStructures.h"
@@ -30,26 +27,9 @@ public:
     void close();
     bool isOpen();
 
-    CameraCalibrationModel* cameraCalibrationModel();
-    RigCalibrationModel* rigCalibrationModel();
     RecordingModel* recordingModel();
+    CalibrationModel* calibrationModel();
     ReconstructionModel* reconstructionModel();
-
-    bool saveCamera(CameraCalibrationDataPtr camera, int& id);
-    bool loadCamera(int id, CameraCalibrationDataPtr& data);
-    bool listCameras(CameraCalibrationList& list);
-    bool isCameraMutable(int id, bool& mut);
-    bool describeCamera(int id, QString& descr);
-    bool renameCamera(int id, const QString& new_name);
-    bool removeCamera(int id);
-
-    bool saveRig(StereoRigCalibrationDataPtr rig, int& id);
-    bool loadRig(int id, StereoRigCalibrationDataPtr& rig);
-    bool listRigs(RigCalibrationList& list);
-    bool isRigMutable(int id, bool& mut);
-    bool describeRig(int id, QString& descr);
-    bool renameRig(int id, const QString& new_name);
-    bool removeRig(int id);
 
     bool saveRecording(RecordingHeaderPtr rec, int& id);
     bool loadRecording(int id, RecordingHeaderPtr& rec);
@@ -59,6 +39,14 @@ public:
     bool renameRecording(int id, const QString& new_name);
     bool removeRecording(int id);
     bool createRecordingDirectory(QDir& dir);
+
+    bool saveCalibration(StereoRigCalibrationPtr rig, int& id);
+    bool loadCalibration(int id, StereoRigCalibrationPtr& rig);
+    bool listCalibrations(CalibrationList& list);
+    bool isCalibrationMutable(int id, bool& mut);
+    bool describeCalibration(int id, QString& descr);
+    bool renameCalibration(int id, const QString& new_name);
+    bool removeCalibration(int id);
 
     bool saveReconstruction(SLAMReconstructionPtr rec, int& id);
     bool loadReconstruction(int id, SLAMReconstructionPtr& rec);
@@ -80,12 +68,14 @@ protected:
 
     bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
 
+    bool saveCamera(CameraCalibration& camera, int& id);
+    bool loadCamera(int id, CameraCalibration& camera);
+
     static std::string htmlEscape(const std::string& from);
 
 signals:
     
     void changed();
-    void cameraCalibrationModelChanged();
     void rigCalibrationModelChanged();
     void recordingModelChanged();
     void reconstructionModelChanged();
@@ -94,9 +84,9 @@ protected:
 
     QDir mDir;
     QSqlDatabase mDB;
-    CameraCalibrationModel* mCameraCalibrationModel;
-    RigCalibrationModel* mRigCalibrationModel;
+
     RecordingModel* mRecordingModel;
+    CalibrationModel* mCalibrationModel;
     ReconstructionModel* mReconstructionModel;
 
     std::map<int,int> mMapPointToDB;

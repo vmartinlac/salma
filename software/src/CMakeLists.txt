@@ -12,4 +12,5 @@ add_subdirectory(uicalibration)
 add_subdirectory(uireconstruction)
 add_subdirectory(ui)
 add_subdirectory(video)
+add_subdirectory(persistence)
 
