@@ -242,11 +242,12 @@ void ManualCalibrationView::doTake()
 
             if(ok)
             {
-                const double scale = QInputDialog::getDouble(this, "Target scale", "Size of a square on the target?", mLastTargetScale, 0.0, 100000.0, 5, &ok);
+                double scale = 1.0;
+
+                ok = askScale(scale);
 
                 if(ok)
                 {
-                    mLastTargetScale = scale;
                     tracker.setUnitLength(scale);
                 }
             }
@@ -312,13 +313,14 @@ void ManualCalibrationView::doTake()
 
             if(ok)
             {
-                const double scale = QInputDialog::getDouble(this, "Target scale", "Size of a square on the target?", mLastTargetScale, 0.0, 100000.0, 5, &ok);
+                double target_scale = 1.0;
+
+                ok = askScale(target_scale);
 
                 if(ok)
                 {
-                    mLastTargetScale = scale;
-                    left_tracker.setUnitLength(scale);
-                    right_tracker.setUnitLength(scale);
+                    left_tracker.setUnitLength(target_scale);
+                    right_tracker.setUnitLength(target_scale);
                 }
             }
 
@@ -740,5 +742,19 @@ void ManualCalibrationView::enumerateFramesWithData(std::vector<int>& list)
     {
         throw std::runtime_error("internal error");
     }
+}
+
+bool ManualCalibrationView::askScale(double& scale)
+{
+    bool ok = true;
+
+    scale = QInputDialog::getDouble(this, "Target scale", "Size of a square on the target?", mLastTargetScale, 0.0, 100000.0, 5, &ok);
+
+    if(ok)
+    {
+        mLastTargetScale = scale;
+    }
+
+    return ok;
 }
 

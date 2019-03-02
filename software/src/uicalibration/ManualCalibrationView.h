@@ -102,6 +102,8 @@ protected:
     void wheelEvent(QWheelEvent* ev) override;
     void mouseMoveEvent(QMouseEvent* ev) override;
 
+    bool askScale(double& scale);
+
     static bool extractCameraData(
         const std::map<int,CameraFrameDataPtr> data,
         std::vector< std::vector<cv::Point3f> >& object_points,
