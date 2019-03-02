@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QJsonValue>
 #include <sophus/se3.hpp>
 #include <memory>
 #include <string>
@@ -10,16 +11,20 @@ class StereoRigCalibration
 {
 public:
 
-    StereoRigCalibration();
-
     int id;
     std::string name;
     std::string date;
 
     std::array<CameraCalibration,2> cameras;
 
-    Eigen::Matrix3d computeFundamentalMatrix(int from, int to);
-    Eigen::Matrix3d computeEssentialMatrix(int from, int to);
+public:
+
+    StereoRigCalibration();
+
+    Eigen::Matrix3d computeFundamentalMatrix(int from, int to) const;
+    Eigen::Matrix3d computeEssentialMatrix(int from, int to) const;
+
+    QJsonValue toJson() const;
 
 protected:
 

@@ -28,7 +28,7 @@ Eigen::Matrix3d StereoRigCalibration::vectorialProductMatrix(const Eigen::Vector
     return ret;
 }
 
-Eigen::Matrix3d StereoRigCalibration::computeFundamentalMatrix(int from, int to)
+Eigen::Matrix3d StereoRigCalibration::computeFundamentalMatrix(int from, int to) const
 {
     /*
     Return F such that transpose(left_image_point) * F * right_image_point is zero.
@@ -69,7 +69,7 @@ Eigen::Matrix3d StereoRigCalibration::computeFundamentalMatrix(int from, int to)
     return F;
 }
 
-Eigen::Matrix3d StereoRigCalibration::computeEssentialMatrix(int from, int to)
+Eigen::Matrix3d StereoRigCalibration::computeEssentialMatrix(int from, int to) const
 {
     /*
     Return E such that transpose(left_image_point) * E * right_image_point is zero.
@@ -85,5 +85,18 @@ Eigen::Matrix3d StereoRigCalibration::computeEssentialMatrix(int from, int to)
     const Eigen::Matrix3d E = vectorialProductMatrix( t ) * R;
 
     return E;
+}
+
+QJsonValue StereoRigCalibration::toJson() const
+{
+    QJsonArray camarr;
+    camarr.push_back(cameras[0].toJson());
+    camarr.push_back(cameras[1].toJson());
+
+    QJsonObject obj;
+    obj["name"] = name.c_str();
+    obj["cameras"] = camarr;
+
+    return obj;
 }
 

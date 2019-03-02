@@ -1,6 +1,12 @@
+#include <Eigen/Eigen>
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/calib3d.hpp>
 #include <queue>
 #include <iostream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QByteArray>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QPainter>
@@ -172,8 +178,10 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
                 p.setPen(QPen(QColor(Qt::black), 2.0));
                 p.setBrush(QColor(Qt::white));
 
-                for(cv::Point2f pt : it->second->image_points)
+                for(MonoCorrespondance& corr : it->second->points)
                 {
+                    const cv::Point2f pt = corr.image_point;
+
                     const QPointF pt2(
                         half_width + mZoom.factor * (ROI.x + pt.x - mZoom.point.x),
                         half_height + mZoom.factor * (ROI.y + pt.y - mZoom.point.y) );
@@ -194,15 +202,15 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
                 p.setPen(QPen(QColor(Qt::black), 2.0));
                 p.setBrush(QColor(Qt::white));
 
-                for( std::pair<cv::Point2f,cv::Point2f> pair : it->second->correspondances)
+                for( StereoCorrespondance& corr : it->second->points)
                 {
                     const QPointF pt_left(
-                        half_width + mZoom.factor * (mLeftROI.x + pair.first.x - mZoom.point.x),
-                        half_height + mZoom.factor * (mLeftROI.y + pair.first.y - mZoom.point.y) );
+                        half_width + mZoom.factor * (mLeftROI.x + corr.left_image_point.x - mZoom.point.x),
+                        half_height + mZoom.factor * (mLeftROI.y + corr.left_image_point.y - mZoom.point.y) );
 
                     const QPointF pt_right(
-                        half_width + mZoom.factor * (mRightROI.x + pair.second.x - mZoom.point.x),
-                        half_height + mZoom.factor * (mRightROI.y + pair.second.y - mZoom.point.y) );
+                        half_width + mZoom.factor * (mRightROI.x + corr.right_image_point.x - mZoom.point.x),
+                        half_height + mZoom.factor * (mRightROI.y + corr.right_image_point.y - mZoom.point.y) );
 
                     p.drawEllipse(pt_left, 7, 7);
                     p.drawEllipse(pt_right, 7, 7);
@@ -268,8 +276,15 @@ void ManualCalibrationView::doTake()
             {
                 CameraFrameDataPtr data(new CameraFrameData());
 
-                data->object_points = tracker.objectPoints();
-                data->image_points = tracker.imagePoints();
+                const int N = tracker.objectPoints().size();
+                for(int i=0; i<N; i++)
+                {
+                    data->points.emplace_back();
+                    MonoCorrespondance& corr = data->points.back();
+
+                    corr.image_point = tracker.imagePoints()[i];
+                    corr.object_point = tracker.objectPoints()[i];
+                }
 
                 if( mMode == MODE_LEFT )
                 {
@@ -292,7 +307,7 @@ void ManualCalibrationView::doTake()
         {
             target::Tracker left_tracker;
             target::Tracker right_tracker;
-            std::vector< std::pair<cv::Point2f,cv::Point2f> > correspondances;
+            std::vector<StereoCorrespondance> correspondances;
             bool ok = true;
 
             if(ok)
@@ -329,10 +344,11 @@ void ManualCalibrationView::doTake()
 
                     if(j < N_right)
                     {
-                        correspondances.push_back(std::pair<cv::Point2f,cv::Point2f>(
-                            left_tracker.imagePoints()[i],
-                            right_tracker.imagePoints()[j]
-                        ));
+                        correspondances.emplace_back();
+                        StereoCorrespondance& corr = correspondances.back();
+                        corr.left_image_point = left_tracker.imagePoints()[i];
+                        corr.right_image_point = right_tracker.imagePoints()[j];
+                        corr.object_point = left_tracker.objectPoints()[i];
                     }
                 }
 
@@ -343,7 +359,7 @@ void ManualCalibrationView::doTake()
             {
                 StereoFrameDataPtr data(new StereoFrameData());
 
-                data->correspondances.swap(correspondances);
+                data->points.swap(correspondances);
 
                 mStereoData[mCurrentFrameId] = data;
 
@@ -361,166 +377,249 @@ void ManualCalibrationView::doTake()
     }
 }
 
+bool ManualCalibrationView::extractCameraData(
+    const std::map<int,CameraFrameDataPtr> data,
+    std::vector< std::vector<cv::Point3f> >& object_points,
+    std::vector< std::vector<cv::Point2f> >& image_points)
+{
+    const int min_num_points_per_view = 10;
+    const int min_num_views = 4;
+
+    image_points.clear();
+    object_points.clear();
+
+    for(std::pair<int,CameraFrameDataPtr> item : data)
+    {
+        if( item.second->points.size() >= min_num_points_per_view )
+        {
+            object_points.emplace_back();
+            image_points.emplace_back();
+
+            std::transform(
+                item.second->points.begin(),
+                item.second->points.end(),
+                std::back_inserter(image_points.back()),
+                [] ( const MonoCorrespondance& corr ) { return corr.image_point; });
+
+            std::transform(
+                item.second->points.begin(),
+                item.second->points.end(),
+                std::back_inserter(object_points.back()),
+                [] ( const MonoCorrespondance& corr ) { return corr.object_point; });
+
+            if( object_points.back().size() != image_points.back().size() ) throw std::logic_error("internal error");
+        }
+    }
+
+    if( object_points.size() != image_points.size() ) throw std::logic_error("internal error");
+
+    if( image_points.size() >= min_num_views )
+    {
+        return true;
+    }
+    else
+    {
+        image_points.clear();
+        object_points.clear();
+
+        return false;
+    }
+}
+
+bool ManualCalibrationView::extractStereoData(
+    std::map<int,StereoFrameDataPtr> data,
+    std::vector< std::vector<cv::Point3f> >& object_points,
+    std::vector< std::vector<cv::Point2f> >& left_points,
+    std::vector< std::vector<cv::Point2f> >& right_points)
+{
+    const int min_num_points_per_view = 8;
+    const int min_num_views = 4;
+
+    object_points.clear();
+    left_points.clear();
+    right_points.clear();
+
+    for(std::pair<int,StereoFrameDataPtr> item : data )
+    {
+        if( item.second->points.size() >= min_num_points_per_view )
+        {
+            object_points.emplace_back();
+            left_points.emplace_back();
+            right_points.emplace_back();
+
+            std::transform(
+                item.second->points.begin(),
+                item.second->points.end(),
+                std::back_inserter(object_points.back()),
+                [] ( const StereoCorrespondance& corr ) { return corr.object_point; });
+
+            std::transform(
+                item.second->points.begin(),
+                item.second->points.end(),
+                std::back_inserter(left_points.back()),
+                [] ( const StereoCorrespondance& corr ) { return corr.left_image_point; });
+
+            std::transform(
+                item.second->points.begin(),
+                item.second->points.end(),
+                std::back_inserter(right_points.back()),
+                [] ( const StereoCorrespondance& corr ) { return corr.right_image_point; });
+
+            if( object_points.back().size() != left_points.back().size() || object_points.back().size() != right_points.back().size() ) throw std::logic_error("internal error");
+        }
+    }
+
+    if( object_points.size() != left_points.size() || object_points.size() != right_points.size() ) throw std::logic_error("internal error");
+
+    if( object_points.size() >= min_num_views )
+    {
+        return true;
+    }
+    else
+    {
+        object_points.clear();
+        left_points.clear();
+        right_points.clear();
+
+        return false;
+    }
+}
+
 bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
 {
-    bool ret = false;
-
-    //
     calib.reset(new StereoRigCalibration());
+    bool ok = true;
+
     calib->id = -1;
     calib->name = mParams->name.toStdString();
     calib->date.clear();
 
-    calib->cameras[0].calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
-    calib->cameras[0].calibration_matrix.at<double>(0,0) = 1070.0;
-    calib->cameras[0].calibration_matrix.at<double>(1,1) = 1070.0;
-    calib->cameras[0].calibration_matrix.at<double>(0,2) = 512.0;
-    calib->cameras[0].calibration_matrix.at<double>(1,2) = 384.0;
-    calib->cameras[0].image_size = cv::Size(1024, 768);
-    calib->cameras[0].photometric_lut = cv::Mat(1, 256, CV_32FC3);
+    std::vector< std::vector<cv::Point3f> > left_object_points;
+    std::vector< std::vector<cv::Point2f> > left_image_points;
 
-    calib->cameras[1] = calib->cameras[0];
-    calib->cameras[1].camera_to_rig.translation() << 0.0, 10.0, 0.0;
+    std::vector< std::vector<cv::Point3f> > right_object_points;
+    std::vector< std::vector<cv::Point2f> > right_image_points;
 
-    return true;
-    //
-    /*
-
-    if( mFrameOpenCV.data )
-    {
-        size = mFrameOpenCV.size();
-
-        image_points.clear();
-        object_points.clear();
-
-        for(const std::pair<int,FrameData>& fd : mFrameData)
-        {
-            std::vector<cv::Point2f> these_image_points;
-            std::vector<cv::Point3f> these_object_points;
-
-            for(const std::pair<int,FramePoint>& fp : fd.second.corners)
-            {
-                if(fp.second.has_object_coords)
-                {
-                    cv::Point3f object_point(
-                        double(fp.second.object_coords.x), // TODO
-                        double(fp.second.object_coords.y), // TODO
-                        0.0);
-
-                    these_image_points.push_back(fp.second.image_coords);
-                    these_object_points.push_back(object_point);
-                }
-            }
-
-            if(these_image_points.size() != these_object_points.size()) throw std::runtime_error("internal error");
-
-            if(these_image_points.empty() == false)
-            {
-                image_points.emplace_back( std::move(these_image_points) );
-                object_points.emplace_back( std::move(these_object_points) );
-            }
-        }
-
-        ret = true;
-    }
-*/
-
-    /*
-    CameraCalibrationPtr calib(new CameraCalibration());
-    bool ok = true;
-    const char* err = "";
-    double projection_err = 0.0;
-
-    std::vector< std::vector<cv::Point2f> > image_points;
-    std::vector< std::vector<cv::Point3f> > object_points;
-
-    // Retrieve calibration data.
+    std::vector< std::vector<cv::Point3f> > stereo_object_points;
+    std::vector< std::vector<cv::Point2f> > stereo_left_points;
+    std::vector< std::vector<cv::Point2f> > stereo_right_points;
 
     if(ok)
     {
-        calib->name = mParameters->name.toStdString();
-
-        ok = mView->getCalibrationData(
-            image_points,
-            object_points,
-            calib->image_size);
-
-        err = "Internal error";
+        ok = mCurrentImage.isValid();
     }
-
-    // Temove views on which there are not enough points.
-    // Then check that we have enough points for the calibration.
 
     if(ok)
     {
-        if(image_points.size() != object_points.size()) throw std::runtime_error("internal error");
-
-        {
-            int i = 0;
-
-            while(i<image_points.size())
-            {
-                if(image_points[i].size() != object_points[i].size()) throw std::runtime_error("internal error");
-
-                if(image_points[i].size() >= 3*3)
-                {
-                    i++;
-                }
-                else
-                {
-                    image_points[i] = std::move(image_points.back());
-                    object_points[i] = std::move(object_points.back());
-
-                    image_points.pop_back();
-                    object_points.pop_back();
-                }
-            }
-        }
-
-        ok = (image_points.size() >= 3);
-        err = "Not enough points or orientations of the target!";
+        calib->cameras[0].image_size = mCurrentImage.getFrame(0).size();
+        calib->cameras[1].image_size = mCurrentImage.getFrame(1).size();
+        calib->cameras[0].photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
+        calib->cameras[1].photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
     }
-
-    // Call OpenCV for the calibration.
 
     if(ok)
     {
-        cv::Mat rvecs;
-        cv::Mat tvecs;
-
-        projection_err = cv::calibrateCamera(
-            object_points,
-            image_points,
-            calib->image_size, // TODO: set this beforehand!
-            calib->calibration_matrix,
-            calib->distortion_coefficients,
-            rvecs,
-            tvecs);
+        ok = extractCameraData(mLeftCameraData, left_object_points, left_image_points);
     }
-
-    // Save calibration into the project.
 
     if(ok)
     {
-        int camera_id;
-        ok = mProject->saveCamera(calib, camera_id);
-        err = "Could not save camera!";
+        ok = extractCameraData(mRightCameraData, right_object_points, right_image_points);
     }
-
-    // Tell outcome to the user.
 
     if(ok)
     {
-        QMessageBox::information(this, "Success", "Successful calibration! Reprojection error is " + QString::number(projection_err));
-        QDialog::accept();
+        ok = extractStereoData(mStereoData, stereo_object_points, stereo_left_points, stereo_right_points);
+    }
+
+    if(ok)
+    {
+        cv::Mat rvec;
+        cv::Mat tvec;
+
+        const double err = cv::calibrateCamera(
+            left_object_points,
+            left_image_points,
+            calib->cameras[0].image_size,
+            calib->cameras[0].calibration_matrix,
+            calib->cameras[0].distortion_coefficients,
+            rvec,
+            tvec);
+
+        std::cout << "left calibration error = " << err << std::endl;
+    }
+
+    if(ok)
+    {
+        cv::Mat rvec;
+        cv::Mat tvec;
+
+        const double err = cv::calibrateCamera(
+            right_object_points,
+            right_image_points,
+            calib->cameras[1].image_size,
+            calib->cameras[1].calibration_matrix,
+            calib->cameras[1].distortion_coefficients,
+            rvec,
+            tvec);
+
+        std::cout << "right calibration error = " << err << std::endl;
+    }
+
+    if(ok)
+    {
+        cv::Mat mat_R;
+        cv::Mat mat_T;
+        cv::Mat mat_E;
+        cv::Mat mat_F;
+
+        Eigen::Matrix3d Rbis;
+        Eigen::Vector3d Tbis;
+
+        const double err = cv::stereoCalibrate(
+            stereo_object_points,
+            stereo_left_points,
+            stereo_right_points,
+            calib->cameras[0].calibration_matrix,
+            calib->cameras[0].distortion_coefficients,
+            calib->cameras[1].calibration_matrix,
+            calib->cameras[1].distortion_coefficients,
+            calib->cameras[0].image_size,
+            mat_R,
+            mat_T,
+            mat_E,
+            mat_F,
+            cv::CALIB_FIX_INTRINSIC);
+
+        cv::cv2eigen<double,3,3>(mat_R, Rbis);
+        cv::cv2eigen<double,3,1>(mat_T, Tbis);
+
+        calib->cameras[0].camera_to_rig = Sophus::SE3d();
+        calib->cameras[1].camera_to_rig.setRotationMatrix(Rbis.transpose());
+        calib->cameras[1].camera_to_rig.translation() = -Rbis.transpose() * Tbis;
+
+        std::cout << "stereo calibration error = " << err << std::endl;
+
+        // TODO compare OpenCV and own essential and fundamental matrices.
+    }
+
+    if(ok)
+    {
+        // TODO: photometric calibration.
+    }
+
+    if(ok)
+    {
+        QJsonDocument doc(calib->toJson().toObject());
+
+        std::cout << doc.toJson().data() << std::endl;
     }
     else
     {
-        QMessageBox::critical(this, "Error", err);
+        calib.reset();
     }
-    */
 
-    return ret;
+    return ok;
 }
 
 void ManualCalibrationView::setMode(Mode mode)

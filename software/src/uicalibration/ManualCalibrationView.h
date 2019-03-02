@@ -48,21 +48,6 @@ public slots:
 
 protected:
 
-    void mousePressEvent(QMouseEvent* ev) override;
-    void mouseReleaseEvent(QMouseEvent* ev) override;
-    void paintEvent(QPaintEvent* ev) override;
-    void wheelEvent(QWheelEvent* ev) override;
-    void mouseMoveEvent(QMouseEvent* ev) override;
-
-    /*
-    void addPoint(const cv::Point2f& pt);
-    void removePoint(int id);
-    int locatePoint(const QPoint& pt);
-    void toggleConnection(int corner1, int corner2);
-    */
-
-protected:
-
     struct ZoomData
     {
         ZoomData();
@@ -74,17 +59,29 @@ protected:
         cv::Point2f point;
     };
 
+    struct MonoCorrespondance
+    {
+        cv::Point3f object_point;
+        cv::Point2f image_point;
+    };
+
     struct CameraFrameData
     {
-        std::vector<cv::Point2f> image_points;
-        std::vector<cv::Point3f> object_points;
+        std::vector<MonoCorrespondance> points;
     };
 
     typedef std::shared_ptr<CameraFrameData> CameraFrameDataPtr;
 
+    struct StereoCorrespondance
+    {
+        cv::Point3f object_point;
+        cv::Point2f left_image_point;
+        cv::Point2f right_image_point;
+    };
+
     struct StereoFrameData
     {
-        std::vector< std::pair<cv::Point2f,cv::Point2f> > correspondances;
+        std::vector<StereoCorrespondance> points;
     };
 
     typedef std::shared_ptr<StereoFrameData> StereoFrameDataPtr;
@@ -96,6 +93,25 @@ protected:
     };
 
     typedef std::shared_ptr<PhotometricFrameData> PhotometricFrameDataPtr;
+
+protected:
+
+    void mousePressEvent(QMouseEvent* ev) override;
+    void mouseReleaseEvent(QMouseEvent* ev) override;
+    void paintEvent(QPaintEvent* ev) override;
+    void wheelEvent(QWheelEvent* ev) override;
+    void mouseMoveEvent(QMouseEvent* ev) override;
+
+    static bool extractCameraData(
+        const std::map<int,CameraFrameDataPtr> data,
+        std::vector< std::vector<cv::Point3f> >& object_points,
+        std::vector< std::vector<cv::Point2f> >& image_points);
+
+    static bool extractStereoData(
+        const std::map<int,StereoFrameDataPtr> data,
+        std::vector< std::vector<cv::Point3f> >& object_points,
+        std::vector< std::vector<cv::Point2f> >& left_points,
+        std::vector< std::vector<cv::Point2f> >& right_points);
 
 protected:
 

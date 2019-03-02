@@ -2,6 +2,7 @@
 
 #include <Eigen/Eigen>
 #include <opencv2/core.hpp>
+#include <QJsonValue>
 #include <sophus/se3.hpp>
 #include <string>
 #include <memory>
@@ -9,8 +10,6 @@
 class CameraCalibration
 {
 public:
-
-    CameraCalibration();
 
     cv::Mat calibration_matrix;
     cv::Mat distortion_coefficients;
@@ -20,8 +19,12 @@ public:
 
 public:
 
-    Eigen::Matrix3d inverseOfCalibrationMatrix();
-    Eigen::Matrix3d calibrationMatrix();
+    CameraCalibration();
+
+    Eigen::Matrix3d inverseOfCalibrationMatrix() const;
+    Eigen::Matrix3d calibrationMatrix() const;
+
+    QJsonValue toJson() const;
 };
 
 typedef std::shared_ptr<CameraCalibration> CameraCalibrationPtr;

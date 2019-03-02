@@ -10,7 +10,7 @@ CameraCalibration::CameraCalibration()
 {
 }
 
-Eigen::Matrix3d CameraCalibration::inverseOfCalibrationMatrix()
+Eigen::Matrix3d CameraCalibration::inverseOfCalibrationMatrix() const
 {
     const double fx = calibration_matrix.at<double>(0,0);
     const double fy = calibration_matrix.at<double>(1,1);
@@ -27,7 +27,7 @@ Eigen::Matrix3d CameraCalibration::inverseOfCalibrationMatrix()
     return inv;
 }
 
-Eigen::Matrix3d CameraCalibration::calibrationMatrix()
+Eigen::Matrix3d CameraCalibration::calibrationMatrix() const
 {
     Eigen::Matrix3d ret;
 
@@ -40,5 +40,34 @@ Eigen::Matrix3d CameraCalibration::calibrationMatrix()
     }
 
     return ret;
+}
+
+QJsonValue CameraCalibration::toJson() const
+{
+    QJsonArray distarr;
+    for(int i=0; i<distortion_coefficients.cols; i++)
+    {
+        distarr.push_back(distortion_coefficients.at<double>(0,i));
+    }
+
+    QJsonObject obj;
+    obj["image_width"] = image_size.width;
+    obj["image_height"] = image_size.height;
+    obj["fx"] = calibration_matrix.at<double>(0,0);
+    obj["fy"] = calibration_matrix.at<double>(1,1);
+    obj["cx"] = calibration_matrix.at<double>(0,2);
+    obj["cy"] = calibration_matrix.at<double>(1,2);
+    obj["distortion_coefficients"] = distarr;
+    obj["camera_to_rig_tx"] = camera_to_rig.translation().x();
+    obj["camera_to_rig_ty"] = camera_to_rig.translation().y();
+    obj["camera_to_rig_tz"] = camera_to_rig.translation().z();
+    obj["camera_to_rig_qx"] = camera_to_rig.unit_quaternion().x();
+    obj["camera_to_rig_qy"] = camera_to_rig.unit_quaternion().y();
+    obj["camera_to_rig_qz"] = camera_to_rig.unit_quaternion().z();
+    obj["camera_to_rig_qw"] = camera_to_rig.unit_quaternion().w();
+
+    // TODO: photometric LUT.
+
+    return obj;
 }
 
