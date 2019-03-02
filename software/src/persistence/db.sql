@@ -37,9 +37,10 @@ CREATE TABLE 'photometric_luts'
 (
     'id' INTEGER PRIMARY KEY,
     'camera_id' INTEGER,
-    'channel' INTEGER,
     'level' INTEGER,
-    'value' FLOAT
+    'red_value' FLOAT,
+    'green_value' FLOAT,
+    'blue_value' FLOAT
 );
 
 CREATE TABLE 'distortion_coefficients'

@@ -406,12 +406,19 @@ bool Project::describeCalibration(int id, QString& descr)
             s << "</table>" << std::endl;
 
             s << "<h4>Lens distortion model</h4>" << std::endl;
-            s << "<table>" << std::endl;
-            for(int i=0; i<cam.distortion_coefficients.cols; i++)
+            if( cam.distortion_coefficients.cols == 0 )
             {
-                s << "<tr><th>" << i << "</th><td>" << cam.distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
+                s << "<p>No distortion.</p>" << std::endl;
             }
-            s << "</table>" << std::endl;
+            else
+            {
+                s << "<table>" << std::endl;
+                for(int i=0; i<cam.distortion_coefficients.cols; i++)
+                {
+                    s << "<tr><th>" << i << "</th><td>" << cam.distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
+                }
+                s << "</table>" << std::endl;
+            }
 
             s << "<h4>Photometric LUT</h4>" << std::endl;
             s << "<p>Present</p>" << std::endl;
@@ -431,6 +438,8 @@ bool Project::describeCalibration(int id, QString& descr)
             s << "<tr><th>camera_to_rig_tx</th><td>" << cam.camera_to_rig.translation().x() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_ty</th><td>" << cam.camera_to_rig.translation().y() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_tz</th><td>" << cam.camera_to_rig.translation().z() << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+            s << "<table>" << std::endl;
             s << "<tr><th>camera_to_rig_qx</th><td>" << cam.camera_to_rig.unit_quaternion().x() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_qy</th><td>" << cam.camera_to_rig.unit_quaternion().y() << "</td></tr>" << std::endl;
             s << "<tr><th>camera_to_rig_qz</th><td>" << cam.camera_to_rig.unit_quaternion().z() << "</td></tr>" << std::endl;
@@ -562,7 +571,27 @@ bool Project::removeCalibration(int id)
         ok = q.exec();
     }
 
-    // delete rig cameras.
+    // delete distortion coefficients.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM distortion_coefficients WHERE camera_id IN (SELECT id FROM cameras WHERE rig_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete photometric LUTs.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("DELETE FROM photometric_luts WHERE camera_id IN (SELECT id FROM cameras WHERE rig_id=?)");
+        q.addBindValue(id);
+        ok = q.exec();
+    }
+
+    // delete cameras.
 
     if(ok)
     {
@@ -712,23 +741,21 @@ bool Project::saveCamera(CameraCalibration& camera, int rig_id, int rank, int& i
     {
         const cv::Mat lut = camera.photometric_lut;
 
-        if( lut.cols != 256 || lut.rows != 1 || lut.depth() != CV_32FC3 ) throw std::runtime_error("internal error");
+        if( lut.cols != 256 || lut.rows != 1 || lut.type() != CV_32FC3 ) throw std::runtime_error("internal error");
 
         for(int j=0; ok && j<256; j++)
         {
             const cv::Vec3f value = lut.at<cv::Vec3f>(0, j);
 
-            for(int i=0; ok && i<3; i++)
-            {
-                QSqlQuery q(mDB);
-                q.prepare("INSERT INTO photometric_luts (camera_id, channel, level, value) VALUES (?,?,?,?)");
-                q.addBindValue(id);
-                q.addBindValue(i);
-                q.addBindValue(j);
-                q.addBindValue(value[i]);
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO photometric_luts (camera_id, level, red_value, green_value, blue_value) VALUES (?,?,?,?,?)");
+            q.addBindValue(id);
+            q.addBindValue(j);
+            q.addBindValue(value[2]);
+            q.addBindValue(value[1]);
+            q.addBindValue(value[0]);
 
-                ok = q.exec();
-            }
+            ok = q.exec();
         }
     }
 
@@ -800,7 +827,7 @@ bool Project::loadCamera(int id, CameraCalibration& camera)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT channel, level, value FROM photometric_luts WHERE camera_id=? ORDER BY channel ASC, level ASC");
+        q.prepare("SELECT level, red_value, green_value, blue_value FROM photometric_luts WHERE camera_id=? ORDER BY level ASC");
         q.addBindValue(id);
         q.setForwardOnly(true);
 
@@ -812,18 +839,19 @@ bool Project::loadCamera(int id, CameraCalibration& camera)
 
             while(ok && q.next())
             {
-                const int channel = q.value(0).toInt();
-                const int level = q.value(1).toInt();
-                const float value = q.value(2).toFloat();
+                const int level = q.value(0).toInt();
+                const float red_value = q.value(1).toFloat();
+                const float green_value = q.value(2).toFloat();
+                const float blue_value = q.value(3).toFloat();
 
                 if(ok)
                 {
-                    ok = (0 <= channel && channel < 3 && 0 <= level && level < 256);
+                    ok = (0 <= level && level < 256);
                 }
 
                 if(ok)
                 {
-                    camera.photometric_lut.at<cv::Vec3f>(0, level)[level] = value;
+                    camera.photometric_lut.at<cv::Vec3f>(0, level) = cv::Vec3f(blue_value, green_value, red_value);
                 }
             }
         }

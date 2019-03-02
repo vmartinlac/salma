@@ -18,7 +18,6 @@ ManualCalibrationView::ManualCalibrationView(
     mLastTargetScale = 1.0;
     mMode = MODE_LEFT;
     mCurrentFrameId = -1;
-    //mSelectedPoint = -1;
     mParams = params;
     mReader.reset(new RecordingReader(mParams->recording, true));
 
@@ -58,121 +57,14 @@ void ManualCalibrationView::wheelEvent(QWheelEvent* ev)
 void ManualCalibrationView::mouseReleaseEvent(QMouseEvent* ev)
 {
     mLastMousePosition = ev->pos();
-
     ev->accept();
 }
 
 void ManualCalibrationView::mousePressEvent(QMouseEvent* ev)
 {
-
-    /*
-    {
-        if(ev->button() == Qt::LeftButton)
-        {
-            const int clicked_point = locatePoint( ev->pos() );
-
-            if(clicked_point >= 0)
-            {
-                removePoint(clicked_point);
-
-                update();
-            }
-            else
-            {
-                const cv::Point2f winpt( ev->pos().x(), ev->pos().y() );
-
-                const cv::Point2f halfwin( width()/2, height()/2 );
-
-                const cv::Point2f framept = mZoom.point + (winpt - halfwin) / mZoom.factor;
-
-                if( 0.0 <= framept.x && framept.x < mFrame.width() && 0.0 <= framept.y && framept.y < mFrame.height() )
-                {
-                    addPoint(framept);
-                    update();
-                }
-            }
-        }
-    }
-    else if(mMode == MODE_CONNECTION)
-    {
-        if(mSelectedPoint >= 0)
-        {
-            const int new_point = locatePoint( ev->pos() );
-
-            if( new_point >= 0 && new_point != mSelectedPoint && mFrameData[mCurrentFrameId].corners.find(mSelectedPoint) != mFrameData[mCurrentFrameId].corners.end() )
-            {
-                toggleConnection(mSelectedPoint, new_point);
-                //mFrameData[mCurrentFrameId].edges.push_back(std::pair<int,int>(mSelectedPoint, new_point));
-            }
-
-            mSelectedPoint = -1;
-
-        }
-        else
-        {
-            mSelectedPoint = locatePoint( ev->pos() );
-        }
-
-        update();
-    }
-    */
-
     mLastMousePosition = ev->pos();
     ev->accept();
 }
-
-/*
-void ManualCalibrationView::toggleConnection(int corner1, int corner2)
-{
-    std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
-
-    if(it != mFrameData.end())
-    {
-        FrameData& fd = it->second;
-
-        std::map<int,FramePoint>::iterator it1 = fd.corners.find(corner1);
-        std::map<int,FramePoint>::iterator it2 = fd.corners.find(corner2);
-
-        if(it1 != fd.corners.end() && it2 != fd.corners.end())
-        {
-            FramePoint& pt1 = it1->second;
-            FramePoint& pt2 = it2->second;
-
-            if( std::find(pt1.neighbors.begin(), pt1.neighbors.end(), corner2) == pt1.neighbors.end() )
-            {
-                // add connection.
-
-                std::array<int,4>::iterator slot1 = std::find(pt1.neighbors.begin(), pt1.neighbors.end(), -1);
-                std::array<int,4>::iterator slot2 = std::find(pt2.neighbors.begin(), pt2.neighbors.end(), -1);
-
-                if(slot1 != pt1.neighbors.end() || slot2 != pt2.neighbors.end())
-                {
-                    if( slot1 == pt1.neighbors.end() || slot2 == pt2.neighbors.end() ) throw std::runtime_error("internal error");
-
-                    *slot1 = corner2;
-                    *slot2 = corner1;
-                }
-            }
-            else
-            {
-                // remove connection.
-
-                std::replace(
-                    pt1.neighbors.begin(),
-                    pt1.neighbors.end(),
-                    corner2,
-                    -1);
-
-                std::replace(
-                    pt2.neighbors.begin(),
-                    pt2.neighbors.end(),
-                    corner1,
-                    -1);
-            }
-        }
-    }
-}
-*/
 
 void ManualCalibrationView::mouseMoveEvent(QMouseEvent* ev)
 {
@@ -326,68 +218,6 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
         {
             throw std::runtime_error("internal error");
         }
-
-        /*
-        std::map<int,FrameData>::iterator it = mFrameData.find(mCurrentFrameId);
-
-        if(it != mFrameData.end())
-        {
-            FrameData& data = it->second;
-
-            // draw edges.
-
-            p.save();
-            p.setPen(QPen(QColor(Qt::green), 2.0));
-            for(const std::pair<int,FramePoint>& pt : data.corners)
-            {
-                const QPointF ptapt(
-                    half_width + mZoom.factor*(pt.second.image_coords.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pt.second.image_coords.y - mZoom.point.y) );
-
-                for(int other : pt.second.neighbors)
-                {
-                    if(other >= 0 && pt.first < other)
-                    {
-                        const std::map<int,FramePoint>::iterator ptb = data.corners.find(other);
-
-                        if(ptb == data.corners.end()) throw std::runtime_error("internal error");
-
-                        const QPointF ptbpt(
-                            half_width + mZoom.factor*(ptb->second.image_coords.x - mZoom.point.x),
-                            half_height + mZoom.factor*(ptb->second.image_coords.y - mZoom.point.y) );
-
-                        p.drawLine(ptapt, ptbpt);
-                    }
-                }
-
-            }
-            p.restore();
-
-            // draw points.
-
-            p.save();
-            p.setPen(QPen(QColor(Qt::black), 2.0));
-            for(const std::pair<int,FramePoint>& pt : data.corners)
-            {
-                if(pt.second.has_object_coords)
-                {
-                    p.setBrush(QColor(Qt::green));
-                }
-                else
-                {
-                    p.setBrush(QColor(Qt::white));
-                }
-
-                const QPointF pt2(
-                    half_width + mZoom.factor*(pt.second.image_coords.x - mZoom.point.x),
-                    half_height + mZoom.factor*(pt.second.image_coords.y - mZoom.point.y) );
-
-                p.drawEllipse(pt2, 7, 7);
-            }
-
-            p.restore();
-        }
-        */
     }
 
     ev->accept();
@@ -506,7 +336,7 @@ void ManualCalibrationView::doTake()
                     }
                 }
 
-                ok = (correspondances.size() >= 10);
+                ok = (correspondances.size() >= 8);
             }
 
             if(ok)
@@ -529,51 +359,31 @@ void ManualCalibrationView::doTake()
             throw std::runtime_error("internal error");
         }
     }
-
-    /*
-    if( mFrameOpenCV.data )
-    {
-        target::Tracker tracker;
-        tracker.setUnitLength(1.0); // TODO: ask the user by input dialog.
-
-        const bool ret = tracker.track(mFrameOpenCV, false);
-
-        if(ret)
-        {
-            FrameData& fd = mFrameData[mCurrentFrameId];
-
-            fd.corners.clear();
-
-            for(int i=0; i<tracker.objectPoints().size(); i++)
-            {
-                FramePoint& pt = fd.corners[i];
-
-                pt.has_object_coords = true;
-                pt.image_coords = tracker.imagePoints()[i];
-                pt.object_coords = tracker.integerObjectCoords()[i];
-            }
-
-            update();
-        }
-        else
-        {
-            //mFrameData.erase(mCurrentFrameId);
-
-            //update();
-
-            QMessageBox::critical(this, "AutoDetect failed", "AutoDetect failed!");
-        }
-
-    }
-    */
 }
 
-bool ManualCalibrationView::getCalibrationData(
-    std::vector< std::vector<cv::Point2f> >& image_points,
-    std::vector< std::vector<cv::Point3f> >& object_points,
-    cv::Size& size)
+bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
 {
     bool ret = false;
+
+    //
+    calib.reset(new StereoRigCalibration());
+    calib->id = -1;
+    calib->name = mParams->name.toStdString();
+    calib->date.clear();
+
+    calib->cameras[0].calibration_matrix = cv::Mat::zeros(3,3,CV_64F);
+    calib->cameras[0].calibration_matrix.at<double>(0,0) = 1070.0;
+    calib->cameras[0].calibration_matrix.at<double>(1,1) = 1070.0;
+    calib->cameras[0].calibration_matrix.at<double>(0,2) = 512.0;
+    calib->cameras[0].calibration_matrix.at<double>(1,2) = 384.0;
+    calib->cameras[0].image_size = cv::Size(1024, 768);
+    calib->cameras[0].photometric_lut = cv::Mat(1, 256, CV_32FC3);
+
+    calib->cameras[1] = calib->cameras[0];
+    calib->cameras[1].camera_to_rig.translation() << 0.0, 10.0, 0.0;
+
+    return true;
+    //
     /*
 
     if( mFrameOpenCV.data )
@@ -613,8 +423,103 @@ bool ManualCalibrationView::getCalibrationData(
 
         ret = true;
     }
-
 */
+
+    /*
+    CameraCalibrationPtr calib(new CameraCalibration());
+    bool ok = true;
+    const char* err = "";
+    double projection_err = 0.0;
+
+    std::vector< std::vector<cv::Point2f> > image_points;
+    std::vector< std::vector<cv::Point3f> > object_points;
+
+    // Retrieve calibration data.
+
+    if(ok)
+    {
+        calib->name = mParameters->name.toStdString();
+
+        ok = mView->getCalibrationData(
+            image_points,
+            object_points,
+            calib->image_size);
+
+        err = "Internal error";
+    }
+
+    // Temove views on which there are not enough points.
+    // Then check that we have enough points for the calibration.
+
+    if(ok)
+    {
+        if(image_points.size() != object_points.size()) throw std::runtime_error("internal error");
+
+        {
+            int i = 0;
+
+            while(i<image_points.size())
+            {
+                if(image_points[i].size() != object_points[i].size()) throw std::runtime_error("internal error");
+
+                if(image_points[i].size() >= 3*3)
+                {
+                    i++;
+                }
+                else
+                {
+                    image_points[i] = std::move(image_points.back());
+                    object_points[i] = std::move(object_points.back());
+
+                    image_points.pop_back();
+                    object_points.pop_back();
+                }
+            }
+        }
+
+        ok = (image_points.size() >= 3);
+        err = "Not enough points or orientations of the target!";
+    }
+
+    // Call OpenCV for the calibration.
+
+    if(ok)
+    {
+        cv::Mat rvecs;
+        cv::Mat tvecs;
+
+        projection_err = cv::calibrateCamera(
+            object_points,
+            image_points,
+            calib->image_size, // TODO: set this beforehand!
+            calib->calibration_matrix,
+            calib->distortion_coefficients,
+            rvecs,
+            tvecs);
+    }
+
+    // Save calibration into the project.
+
+    if(ok)
+    {
+        int camera_id;
+        ok = mProject->saveCamera(calib, camera_id);
+        err = "Could not save camera!";
+    }
+
+    // Tell outcome to the user.
+
+    if(ok)
+    {
+        QMessageBox::information(this, "Success", "Successful calibration! Reprojection error is " + QString::number(projection_err));
+        QDialog::accept();
+    }
+    else
+    {
+        QMessageBox::critical(this, "Error", err);
+    }
+    */
+
     return ret;
 }
 

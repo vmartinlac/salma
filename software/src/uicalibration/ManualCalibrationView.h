@@ -4,6 +4,7 @@
 #include <array>
 #include <opencv2/core.hpp>
 #include "ManualCalibrationParameters.h"
+#include "StereoRigCalibration.h"
 #include "RecordingReader.h"
 
 class ManualCalibrationView : public QWidget
@@ -18,10 +19,7 @@ public:
 
     ~ManualCalibrationView();
 
-    bool getCalibrationData(
-        std::vector< std::vector<cv::Point2f> >& image_points,
-        std::vector< std::vector<cv::Point3f> >& object_points,
-        cv::Size& size);
+    bool doCalibrate(StereoRigCalibrationPtr& calibration);
 
     void enumerateFramesWithData(
         std::vector<int>& list);
