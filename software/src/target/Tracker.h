@@ -143,8 +143,6 @@ namespace target
 
     protected:
 
-        double m_unit_length;
-
         const cv::Mat* m_image; // the original input image.
         cv::Mat m_greyscale; // the input image converted to greyscale.
         cv::Mat m_thresh; // thresholded input image where we can discriminate colors of chessboard.

@@ -4,8 +4,6 @@
 #include <opencv2/calib3d.hpp>
 #include <queue>
 #include <iostream>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QByteArray>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -242,13 +240,12 @@ void ManualCalibrationView::doTake()
 
             if(ok)
             {
-                double scale = 1.0;
-
-                ok = askScale(scale);
+                ok = askScale();
 
                 if(ok)
                 {
-                    tracker.setUnitLength(scale);
+                    //std::cout << mLastTargetScale << std::endl;
+                    tracker.setUnitLength(mLastTargetScale);
                 }
             }
 
@@ -313,14 +310,13 @@ void ManualCalibrationView::doTake()
 
             if(ok)
             {
-                double target_scale = 1.0;
-
-                ok = askScale(target_scale);
+                ok = askScale();
 
                 if(ok)
                 {
-                    left_tracker.setUnitLength(target_scale);
-                    right_tracker.setUnitLength(target_scale);
+                    //std::cout << mLastTargetScale << std::endl;
+                    left_tracker.setUnitLength(mLastTargetScale);
+                    right_tracker.setUnitLength(mLastTargetScale);
                 }
             }
 
@@ -487,7 +483,9 @@ bool ManualCalibrationView::extractStereoData(
     }
 }
 
-bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
+bool ManualCalibrationView::doCalibrate(
+    StereoRigCalibrationPtr& calib,
+    CalibrationResiduals& residuals)
 {
     calib.reset(new StereoRigCalibration());
     bool ok = true;
@@ -539,7 +537,7 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
         cv::Mat rvec;
         cv::Mat tvec;
 
-        const double err = cv::calibrateCamera(
+        residuals.left_camera_calibration = cv::calibrateCamera(
             left_object_points,
             left_image_points,
             calib->cameras[0].image_size,
@@ -547,8 +545,6 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
             calib->cameras[0].distortion_coefficients,
             rvec,
             tvec);
-
-        std::cout << "left calibration error = " << err << std::endl;
     }
 
     if(ok)
@@ -556,7 +552,7 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
         cv::Mat rvec;
         cv::Mat tvec;
 
-        const double err = cv::calibrateCamera(
+        residuals.right_camera_calibration = cv::calibrateCamera(
             right_object_points,
             right_image_points,
             calib->cameras[1].image_size,
@@ -564,8 +560,6 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
             calib->cameras[1].distortion_coefficients,
             rvec,
             tvec);
-
-        std::cout << "right calibration error = " << err << std::endl;
     }
 
     if(ok)
@@ -578,7 +572,7 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
         Eigen::Matrix3d Rbis;
         Eigen::Vector3d Tbis;
 
-        const double err = cv::stereoCalibrate(
+        residuals.stereo_calibration = cv::stereoCalibrate(
             stereo_object_points,
             stereo_left_points,
             stereo_right_points,
@@ -600,8 +594,6 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
         calib->cameras[1].camera_to_rig.setRotationMatrix(Rbis.transpose());
         calib->cameras[1].camera_to_rig.translation() = -Rbis.transpose() * Tbis;
 
-        std::cout << "stereo calibration error = " << err << std::endl;
-
         // TODO compare OpenCV and own essential and fundamental matrices.
     }
 
@@ -610,13 +602,7 @@ bool ManualCalibrationView::doCalibrate(StereoRigCalibrationPtr& calib)
         // TODO: photometric calibration.
     }
 
-    if(ok)
-    {
-        QJsonDocument doc(calib->toJson().toObject());
-
-        std::cout << doc.toJson().data() << std::endl;
-    }
-    else
+    if(ok == false)
     {
         calib.reset();
     }
@@ -744,11 +730,11 @@ void ManualCalibrationView::enumerateFramesWithData(std::vector<int>& list)
     }
 }
 
-bool ManualCalibrationView::askScale(double& scale)
+bool ManualCalibrationView::askScale()
 {
     bool ok = true;
 
-    scale = QInputDialog::getDouble(this, "Target scale", "Size of a square on the target?", mLastTargetScale, 0.0, 100000.0, 5, &ok);
+    const double scale = QInputDialog::getDouble(this, "Target scale", "Size of a square on the target?", mLastTargetScale, 0.0, 100000.0, 5, &ok);
 
     if(ok)
     {

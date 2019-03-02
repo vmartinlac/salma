@@ -4,6 +4,10 @@ add_library(
 
     STATIC
 
+    CalibrationResiduals.cpp
+    CalibrationResiduals.h
+    CalibrationAcceptationDialog.cpp
+    CalibrationAcceptationDialog.h
     CalibrationPanel.cpp
     CalibrationPanel.h
     ManualCalibrationDialog.cpp

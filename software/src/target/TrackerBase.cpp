@@ -35,11 +35,6 @@ const std::vector<int>& target::TrackerBase::pointIds()
     return m_point_ids;
 }
 
-const std::vector<cv::Point2i>& target::TrackerBase::integerObjectCoords()
-{
-    return m_integer_object_coords;
-}
-
 void target::TrackerBase::clear()
 {
     m_found = false;

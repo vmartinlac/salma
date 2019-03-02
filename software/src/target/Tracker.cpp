@@ -17,8 +17,6 @@ namespace target {
 
     Tracker::Tracker() : m_kpl_adapter(&m_points)
     {
-        m_unit_length = 1.0;
-        m_found = false;
     }
 
     bool Tracker::track( const cv::Mat& image, bool absolute_pose )
@@ -89,8 +87,7 @@ namespace target {
 
         detector->setMinDistance(double(m_image->cols)*20.0/1024.0); // 30.0
         detector->setMaxFeatures(700);
-        //detector->setBlockSize(11);
-        detector->setBlockSize(5);
+        detector->setBlockSize(3);
 
         std::vector<cv::KeyPoint> keypoints;
         detector->detect(*m_image, keypoints);
@@ -112,6 +109,7 @@ namespace target {
                 m_points.emplace_back(kp);
             }
         }
+
 #ifdef TARGET_DETECTOR_DEBUG
         {
             const int radius = 4*m_image->cols/640;
@@ -1191,7 +1189,6 @@ namespace target {
             m_object_points.resize(count);
             m_image_points.resize(count);
             m_point_ids.resize(count);
-            m_integer_object_coords.resize(count);
 
             for(SamplePoint& pt : m_points)
             {
@@ -1208,8 +1205,10 @@ namespace target {
 
                     m_image_points[count] = pt.keypoint.pt;
 
+                    /*
                     m_integer_object_coords[count].x = pt.coords2d[0];
                     m_integer_object_coords[count].y = pt.coords2d[1];
+                    */
 
                     m_point_ids[count] = computeZSquaredToN(pt.coords2d[0], pt.coords2d[1]);
                 }
@@ -1218,7 +1217,7 @@ namespace target {
             if(count != 0) throw std::logic_error("internal error");
 
             cv::TermCriteria term_criteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS, 20, 1.0e-3);
-            cv::cornerSubPix(m_greyscale, m_image_points, cv::Size(5, 5), cv::Size(-1, -1), term_criteria);
+            cv::cornerSubPix(m_greyscale, m_image_points, cv::Size(7, 7), cv::Size(-1, -1), term_criteria);
 
             ret = true;
         }
@@ -1226,6 +1225,7 @@ namespace target {
         {
             m_image_points.clear();
             m_object_points.clear();
+            m_point_ids.clear();
 
             ret = false;
         }

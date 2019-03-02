@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <array>
 #include <opencv2/core.hpp>
+#include "CalibrationResiduals.h"
 #include "ManualCalibrationParameters.h"
 #include "StereoRigCalibration.h"
 #include "RecordingReader.h"
@@ -19,7 +20,9 @@ public:
 
     ~ManualCalibrationView();
 
-    bool doCalibrate(StereoRigCalibrationPtr& calibration);
+    bool doCalibrate(
+        StereoRigCalibrationPtr& calibration,
+        CalibrationResiduals& residuals);
 
     void enumerateFramesWithData(
         std::vector<int>& list);
@@ -102,7 +105,7 @@ protected:
     void wheelEvent(QWheelEvent* ev) override;
     void mouseMoveEvent(QMouseEvent* ev) override;
 
-    bool askScale(double& scale);
+    bool askScale();
 
     static bool extractCameraData(
         const std::map<int,CameraFrameDataPtr> data,

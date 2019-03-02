@@ -6,6 +6,7 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <opencv2/calib3d.hpp>
+#include "CalibrationAcceptationDialog.h"
 #include "ManualCalibrationView.h"
 #include "ManualCalibrationDialog.h"
 
@@ -108,31 +109,40 @@ void ManualCalibrationDialog::setFrame(int frame)
 
 void ManualCalibrationDialog::accept()
 {
-    bool ok = true;
-    const char* err = "";
     StereoRigCalibrationPtr calib;
-    int rig_id = -1;
+    CalibrationResiduals residuals;
 
-    if(ok)
-    {
-        ok = mView->doCalibrate(calib);
-        err = "Calibration failed!";
-    }
+    const bool calib_ok = mView->doCalibrate(calib, residuals);
 
-    if(ok)
+    if(calib_ok)
     {
-        ok = mProject->saveCalibration(calib, rig_id);
-        err = "Failed to save the calibration!";
-    }
+        CalibrationAcceptationDialog* dlg = new CalibrationAcceptationDialog(this);
 
-    if(ok)
-    {
-        QMessageBox::information(this, "Calibration", "Successful calibration!");
-        QDialog::accept();
+        dlg->setData( calib, residuals );
+
+        const int dlg_ret = dlg->exec();
+
+        delete dlg;
+
+        if(dlg_ret == QDialog::Accepted)
+        {
+            int rig_id = -1;
+            const bool db_ok = mProject->saveCalibration(calib, rig_id);
+
+            if(db_ok)
+            {
+                QMessageBox::information(this, "Calibration", "Successful calibration!");
+                QDialog::accept();
+            }
+            else
+            {
+                QMessageBox::critical(this, "Error", "Could not save calibration into database!");
+            }
+        }
     }
     else
     {
-        QMessageBox::critical(this, "Error", err);
+        QMessageBox::critical(this, "Error", "Calibration failed!");
     }
 }
 
