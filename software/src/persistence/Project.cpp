@@ -11,13 +11,12 @@ Project::Project(QObject* parent) : QObject(parent)
     mRecordingModel = new RecordingModel(this);
     mReconstructionModel = new ReconstructionModel(this);
 
-    connect(this, SIGNAL(rigCalibrationModelChanged()), mCalibrationModel, SLOT(refresh()));
     connect(this, SIGNAL(recordingModelChanged()), mRecordingModel, SLOT(refresh()));
+    connect(this, SIGNAL(calibrationModelChanged()), mCalibrationModel, SLOT(refresh()));
     connect(this, SIGNAL(reconstructionModelChanged()), mReconstructionModel, SLOT(refresh()));
 
-    connect(this, SIGNAL(changed()), this, SIGNAL(cameraCalibrationModelChanged()));
-    connect(this, SIGNAL(changed()), this, SIGNAL(rigCalibrationModelChanged()));
     connect(this, SIGNAL(changed()), this, SIGNAL(recordingModelChanged()));
+    connect(this, SIGNAL(changed()), this, SIGNAL(calibrationModelChanged()));
     connect(this, SIGNAL(changed()), this, SIGNAL(reconstructionModelChanged()));
 }
 
@@ -165,10 +164,10 @@ bool Project::clear()
     {
         QSqlQuery q(mDB);
         ok = ok && q.exec("DELETE FROM `poses`");
-        ok = ok && q.exec("DELETE FROM `camera_parameters`");
+        ok = ok && q.exec("DELETE FROM `cameras`");
         ok = ok && q.exec("DELETE FROM `distortion_coefficients`");
-        ok = ok && q.exec("DELETE FROM `rig_parameters`");
-        ok = ok && q.exec("DELETE FROM `rig_cameras`");
+        ok = ok && q.exec("DELETE FROM `photometric_luts`");
+        ok = ok && q.exec("DELETE FROM `rigs`");
         ok = ok && q.exec("DELETE FROM `recordings`");
         ok = ok && q.exec("DELETE FROM `recording_frames`");
         ok = ok && q.exec("DELETE FROM `recording_views`");
@@ -227,267 +226,6 @@ ReconstructionModel* Project::reconstructionModel()
 {
     return mReconstructionModel;
 }
-
-// CAMERA CALIBRATION
-
-/*
-bool Project::saveCamera(CameraCalibration& camera, int& id)
-{
-    bool has_transaction = false;
-    bool ok = isOpen();
-
-    if(ok)
-    {
-        ok = (camera->id < 0);
-    }
-
-    if(ok)
-    {
-        ok = mDB.transaction();
-        if(ok)
-        {
-            has_transaction = true;
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO `camera_parameters` (`name`,`date`,`fx`,`fy`,`cx`,`cy`,`distortion_model`, `image_width`, `image_height`) VALUES (?, DATETIME('NOW'), ?, ?, ?, ?, 0, ?, ?)");
-        q.addBindValue(camera->name.c_str());
-        q.addBindValue(camera->calibration_matrix.at<double>(0,0));
-        q.addBindValue(camera->calibration_matrix.at<double>(1,1));
-        q.addBindValue(camera->calibration_matrix.at<double>(0,2));
-        q.addBindValue(camera->calibration_matrix.at<double>(1,2));
-        q.addBindValue(camera->image_size.width);
-        q.addBindValue(camera->image_size.height);
-
-        const bool ok = q.exec();
-
-        if(ok)
-        {
-            id = q.lastInsertId().toInt();
-            camera->id = id;
-        }
-    }
-
-    if(ok)
-    {
-        const cv::Mat dist = camera->distortion_coefficients;
-
-        for(int j=0; ok && j<dist.cols; j++)
-        {
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO `distortion_coefficients` (`camera_id`, `rank`, `value`) VALUES (?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(j);
-            q.addBindValue(dist.at<double>(0, j));
-
-            ok = q.exec();
-        }
-    }
-
-    if(has_transaction)
-    {
-        if(ok)
-        {
-            mDB.commit();
-        }
-        else
-        {
-            mDB.rollback();
-        }
-    }
-
-    if(ok == false)
-    {
-        camera->id = -1;
-    }
-
-    cameraCalibrationModelChanged();
-
-    return ok;
-}
-*/
-
-/*
-bool Project::describeCamera(int id, QString& descr)
-{
-    bool ok = isOpen();
-
-    CameraCalibrationDataPtr camera;
-
-    descr.clear();
-
-    if(ok)
-    {
-        ok = loadCamera(id, camera) && bool(camera);
-    }
-
-    if(ok)
-    {
-        std::stringstream s;
-        s << "<html><head></head><body>" << std::endl;
-
-        s << "<h3>Metadata</h3>" << std::endl;
-        s << "<table>" << std::endl;
-        s << "<tr><th>id</th><td>" << id << "</td></tr>" << std::endl;
-        s << "<tr><th>name</th><td>" << htmlEscape(camera->name) << "</td></tr>" << std::endl;
-        s << "<tr><th>date</th><td>" << htmlEscape(camera->date) << "</td></tr>" << std::endl;
-        s << "</table>" << std::endl;
-
-        s << "<h3>Image resolution</h3>" << std::endl;
-        s << "<table>" << std::endl;
-        s << "<tr><th>width</th><td>" << camera->image_size.width << "</td></tr>" << std::endl;
-        s << "<tr><th>height</th><td>" << camera->image_size.height << "</td></tr>" << std::endl;
-        s << "</table>" << std::endl;
-
-        s << "<h3>Pinhole model</h3>" << std::endl;
-        s << "<table>" << std::endl;
-        s << "<tr><th>fx</th><td>" << camera->calibration_matrix.at<double>(0,0) << "</td></tr>" << std::endl;
-        s << "<tr><th>fy</th><td>" << camera->calibration_matrix.at<double>(1,1) << "</td></tr>" << std::endl;
-        s << "<tr><th>cx</th><td>" << camera->calibration_matrix.at<double>(0,2) << "</td></tr>" << std::endl;
-        s << "<tr><th>cy</th><td>" << camera->calibration_matrix.at<double>(1,2) << "</td></tr>" << std::endl;
-        s << "</table>" << std::endl;
-
-        s << "<h3>Lens distortion model</h3>" << std::endl;
-        s << "<table>" << std::endl;
-        for(int i=0; i<camera->distortion_coefficients.cols; i++)
-        {
-            s << "<tr><th>" << i << "</th><td>" << camera->distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
-        }
-        s << "</table>" << std::endl;
-
-        s << "</body></html>" << std::endl;
-
-        descr = s.str().c_str();
-    }
-
-    return ok;
-}
-*/
-
-/*
-bool Project::loadCamera(int id, CameraCalibration& camera)
-{
-    bool ok = isOpen();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `fx`, `fy`, `cx`, `cy`, `distortion_model`, `image_width`, `image_height` FROM `camera_parameters` WHERE id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        bool ok = q.exec() && q.next();
-
-        if(ok)
-        {
-            camera->id = id;
-
-            camera->name = q.value(0).toString().toStdString();
-            camera->date = q.value(1).toString().toStdString();
-
-            camera->image_size.width = q.value(7).toInt();
-            camera->image_size.height = q.value(8).toInt();
-
-            camera->calibration_matrix.create(3, 3, CV_64F);
-            camera->calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
-            camera->calibration_matrix.at<double>(0,1) = 0.0;
-            camera->calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
-            camera->calibration_matrix.at<double>(1,0) = 0.0;
-            camera->calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
-            camera->calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
-            camera->calibration_matrix.at<double>(2,0) = 0.0;
-            camera->calibration_matrix.at<double>(2,1) = 0.0;
-            camera->calibration_matrix.at<double>(2,2) = 1.0;
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT `rank`, `value` FROM `distortion_coefficients` WHERE `camera_id`=? ORDER BY `rank` ASC");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        std::vector<double> values;
-
-        ok = q.exec();
-
-        if(ok)
-        {
-            while(ok && q.next())
-            {
-                const int rank = q.value(0).toInt();
-                ok = (values.size() == rank);
-                values.push_back( q.value(1).toDouble() );
-            }
-        }
-
-        if(ok)
-        {
-            camera->distortion_coefficients.create(1, values.size(), CV_64F);
-
-            for(size_t j=0; j<values.size(); j++)
-            {
-                camera->distortion_coefficients.at<double>(0, j) = values[j];
-            }
-        }
-    }
-
-    if(ok == false)
-    {
-        camera.reset();
-    }
-
-    return ok;
-}
-*/
-
-/*
-bool Project::isCameraMutable(int id, bool& ismutable)
-{
-    bool ok = true;
-
-    ismutable = true;
-
-    // check that there is such camera in the databse.
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT id FROM camera_parameters WHERE id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-        ok = q.exec() && q.next();
-    }
-
-    // check whether some rig is referencing the camera.
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT COUNT(DISTINCT rig_parameters.id) FROM rig_parameters, rig_cameras WHERE rig_cameras.rig_id=rig_parameters.id AND rig_cameras.camera_id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        ok = q.exec() && q.next();
-
-        if(ok)
-        {
-            ismutable = (q.value(0).toInt() == 0);
-        }
-    }
-
-    if(ok == false)
-    {
-        ismutable = false;
-    }
-
-    return ok;
-}
-*/
 
 // POSE
 
@@ -560,9 +298,8 @@ bool Project::loadPose(int id, Sophus::SE3d& pose)
     return ok;
 }
 
-// RIG CALIBRATION
+// CALIBRATION
 
-/*
 bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
 {
     bool has_transaction = false;
@@ -585,7 +322,7 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO `rig_parameters` (`name`, `date`, `number_of_cameras`) VALUES (?, DATETIME('NOW'), 2)");
+        q.prepare("INSERT INTO `rigs` (`name`, `date`) VALUES (?, DATETIME('NOW'))");
         q.addBindValue(rig->name.c_str());
 
         ok = q.exec();
@@ -593,30 +330,13 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
         if(ok)
         {
             id = q.lastInsertId().toInt();
-            rig->id = id;
         }
     }
 
-    for(int i=0; ok && i<2; i++)
+    for(int i=0; ok && i<rig->cameras.size(); i++)
     {
-        int pose_id = -1;
-
-        if(ok)
-        {
-            ok = savePose(rig->cameras[i].camera_to_rig, pose_id);
-        }
-
-        if(ok)
-        {
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO `rig_cameras` (`rig_id`, `rank`, `camera_to_rig`, `camera_id`) VALUES(?,?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(i);
-            q.addBindValue(pose_id);
-            q.addBindValue(rig->cameras[i].calibration->id);
-
-            ok = q.exec();
-        }
+        int camera_id = -1;
+        ok = saveCamera(rig->cameras[i], id, i, camera_id);
     }
 
     if(has_transaction)
@@ -631,18 +351,21 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
         }
     }
 
-    rigCalibrationModelChanged();
+    if(ok)
+    {
+        rig->id = id;
+    }
+
+    calibrationModelChanged();
 
     return ok;
 }
-*/
 
-/*
 bool Project::describeCalibration(int id, QString& descr)
 {
     bool ok = isOpen();
 
-    StereoRigCalibrationDataPtr rig;
+    StereoRigCalibrationPtr rig;
 
     descr.clear();
 
@@ -663,19 +386,58 @@ bool Project::describeCalibration(int id, QString& descr)
         s << "<tr><th>date</th><td>" << htmlEscape(rig->date) << "</td></tr>" << std::endl;
         s << "</table>" << std::endl;
 
-        for(int i=0; i<2; i++)
+        int rank = 0;
+        for(CameraCalibration& cam : rig->cameras)
         {
-            s << "<h3>Camera #" << i << "</h3>" << std::endl;
+            s << "<h3>Camera #" << rank << "</h3>" << std::endl;
+
+            s << "<h4>Image resolution</h4>" << std::endl;
             s << "<table>" << std::endl;
-            s << "<tr><th>Camera calibration</th><td><em>" << htmlEscape(rig->cameras[i].calibration->name) << "</em> (" << rig->cameras[i].calibration->id << ").</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_tx</th><td>" << rig->cameras[i].camera_to_rig.translation().x() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_ty</th><td>" << rig->cameras[i].camera_to_rig.translation().y() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_tz</th><td>" << rig->cameras[i].camera_to_rig.translation().z() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_qx</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().x() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_qy</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().y() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_qz</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().z() << "</td></tr>" << std::endl;
-            s << "<tr><th>camera_to_rig_qw</th><td>" << rig->cameras[i].camera_to_rig.unit_quaternion().w() << "</td></tr>" << std::endl;
+            s << "<tr><th>width</th><td>" << cam.image_size.width << "</td></tr>" << std::endl;
+            s << "<tr><th>height</th><td>" << cam.image_size.height << "</td></tr>" << std::endl;
             s << "</table>" << std::endl;
+
+            s << "<h4>Pinhole model</h4>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>fx</th><td>" << cam.calibration_matrix.at<double>(0,0) << "</td></tr>" << std::endl;
+            s << "<tr><th>fy</th><td>" << cam.calibration_matrix.at<double>(1,1) << "</td></tr>" << std::endl;
+            s << "<tr><th>cx</th><td>" << cam.calibration_matrix.at<double>(0,2) << "</td></tr>" << std::endl;
+            s << "<tr><th>cy</th><td>" << cam.calibration_matrix.at<double>(1,2) << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            s << "<h4>Lens distortion model</h4>" << std::endl;
+            s << "<table>" << std::endl;
+            for(int i=0; i<cam.distortion_coefficients.cols; i++)
+            {
+                s << "<tr><th>" << i << "</th><td>" << cam.distortion_coefficients.at<double>(0,i) << "</td></tr>" << std::endl;
+            }
+            s << "</table>" << std::endl;
+
+            s << "<h4>Photometric LUT</h4>" << std::endl;
+            s << "<p>Present</p>" << std::endl;
+            /*
+            s << "<table>" << std::endl;
+            s << "<tr> <th>#</th> <th>blue</th> <th>green</th> <th>red</th> </tr>" << std::endl;
+            for(int i=0; i<256; i++)
+            {
+                cv::Vec3f value = cam.photometric_lut.at<cv::Vec3f>(0, i);
+                s << "<tr> <th>" << i << "</th> <td>" << value[0] << "</td> <td>" << value[1] << "</td> <td>" << value[2] << "</td> </tr>" << std::endl;
+            }
+            s << "</table>" << std::endl;
+            */
+
+            s << "<h4>Pose</h4>" << std::endl;
+            s << "<table>" << std::endl;
+            s << "<tr><th>camera_to_rig_tx</th><td>" << cam.camera_to_rig.translation().x() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_ty</th><td>" << cam.camera_to_rig.translation().y() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_tz</th><td>" << cam.camera_to_rig.translation().z() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qx</th><td>" << cam.camera_to_rig.unit_quaternion().x() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qy</th><td>" << cam.camera_to_rig.unit_quaternion().y() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qz</th><td>" << cam.camera_to_rig.unit_quaternion().z() << "</td></tr>" << std::endl;
+            s << "<tr><th>camera_to_rig_qw</th><td>" << cam.camera_to_rig.unit_quaternion().w() << "</td></tr>" << std::endl;
+            s << "</table>" << std::endl;
+
+            rank++;
         }
 
         s << "</body></html>" << std::endl;
@@ -685,27 +447,21 @@ bool Project::describeCalibration(int id, QString& descr)
 
     return ok;
 }
-*/
 
-/*
-bool Project::loadCalibration(int id, StereoRigCalibrationDataPtr& rig)
+bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
 {
     bool ok = isOpen();
 
-    rig.reset(new StereoRigCalibrationData());
+    rig.reset(new StereoRigCalibration());
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `number_of_cameras` FROM `rig_parameters` WHERE `id`=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime') FROM `rigs` WHERE `id`=?");
+
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
-
-        if(ok)
-        {
-            ok = (q.value(2).toInt() == 2);
-        }
 
         if(ok)
         {
@@ -718,50 +474,29 @@ bool Project::loadCalibration(int id, StereoRigCalibrationDataPtr& rig)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `rank`, `camera_to_rig`, `camera_id` FROM `rig_cameras` WHERE `rig_id`=? ORDER BY `rank` ASC");
+        q.prepare("SELECT id,rank_in_rig FROM cameras WHERE rig_id=? ORDER BY rank_in_rig ASC");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec();
 
-        std::vector<StereoRigCalibrationDataCamera> cameras;
-
         if(ok)
         {
+            int rank = 0;
+
             while(ok && q.next())
             {
-                StereoRigCalibrationDataCamera item;
-
                 if(ok)
                 {
-                    ok = ( q.value(0).toInt() == cameras.size() );
+                    ok = (rank < 2 && q.value(1).toInt() == rank );
                 }
 
                 if(ok)
                 {
-                    ok = loadPose( q.value(1).toInt(), item.camera_to_rig);
+                    ok = loadCamera( q.value(0).toInt(), rig->cameras[rank] );
                 }
 
-                if(ok)
-                {
-                    ok = loadCamera( q.value(2).toInt(), item.calibration );
-                }
-
-                if(ok)
-                {
-                    cameras.push_back(std::move(item));
-                }
+                rank++;
             }
-        }
-
-        if(ok)
-        {
-            ok = ( cameras.size() == 2 );
-        }
-
-        if(ok)
-        {
-            rig->cameras[0] = std::move(cameras[0]);
-            rig->cameras[1] = std::move(cameras[1]);
         }
     }
 
@@ -772,7 +507,6 @@ bool Project::loadCalibration(int id, StereoRigCalibrationDataPtr& rig)
 
     return ok;
 }
-*/
 
 bool Project::renameCalibration(int id, const QString& new_name)
 {
@@ -781,19 +515,18 @@ bool Project::renameCalibration(int id, const QString& new_name)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("UPDATE rig_parameters SET name=? WHERE id=?");
+        q.prepare("UPDATE rigs SET name=? WHERE id=?");
         q.addBindValue(new_name);
         q.addBindValue(id);
 
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
 
-    rigCalibrationModelChanged();
+    calibrationModelChanged();
 
     return ok;
 }
 
-/*
 bool Project::removeCalibration(int id)
 {
     bool ok = true;
@@ -804,7 +537,7 @@ bool Project::removeCalibration(int id)
     if(ok)
     {
         bool ismutable;
-        ok = ( isRigMutable(id, ismutable) && ismutable );
+        ok = ( isCalibrationMutable(id, ismutable) && ismutable );
     }
 
     // create transaction.
@@ -812,6 +545,7 @@ bool Project::removeCalibration(int id)
     if(ok)
     {
         ok = mDB.transaction();
+
         if(ok)
         {
             has_transaction = true;
@@ -823,7 +557,7 @@ bool Project::removeCalibration(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM poses WHERE id IN (SELECT camera_to_rig FROM rig_cameras WHERE rig_id=?)");
+        q.prepare("DELETE FROM poses WHERE id IN (SELECT camera_to_rig FROM cameras WHERE rig_id=?)");
         q.addBindValue(id);
         ok = q.exec();
     }
@@ -833,7 +567,7 @@ bool Project::removeCalibration(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM rig_cameras WHERE rig_id=?");
+        q.prepare("DELETE FROM cameras WHERE rig_id=?");
         q.addBindValue(id);
         ok = q.exec();
     }
@@ -843,7 +577,7 @@ bool Project::removeCalibration(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM rig_parameters WHERE id=?");
+        q.prepare("DELETE FROM rigs WHERE id=?");
         q.addBindValue(id);
         ok = q.exec();
     }
@@ -862,13 +596,11 @@ bool Project::removeCalibration(int id)
         }
     }
 
-    rigCalibrationModelChanged();
+    calibrationModelChanged();
 
     return ok;
 }
-*/
 
-/*
 bool Project::isCalibrationMutable(int id, bool& ismutable)
 {
     bool ok = true;
@@ -880,7 +612,7 @@ bool Project::isCalibrationMutable(int id, bool& ismutable)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT id FROM rig_parameters WHERE id=?");
+        q.prepare("SELECT id FROM rigs WHERE id=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -910,7 +642,6 @@ bool Project::isCalibrationMutable(int id, bool& ismutable)
 
     return ok;
 }
-*/
 
 bool Project::listCalibrations(CalibrationList& list)
 {
@@ -922,7 +653,7 @@ bool Project::listCalibrations(CalibrationList& list)
     {
         QSqlQuery q(mDB);
         q.setForwardOnly(true);
-        ok = q.exec("SELECT id, name, date FROM rig_parameters");
+        ok = q.exec("SELECT id, name, date FROM rigs");
 
         if(ok)
         {
@@ -940,6 +671,194 @@ bool Project::listCalibrations(CalibrationList& list)
     if(ok == false)
     {
         list.clear();
+    }
+
+    return ok;
+}
+
+bool Project::saveCamera(CameraCalibration& camera, int rig_id, int rank, int& id)
+{
+    bool ok = isOpen();
+    int pose_id = -1;
+
+    if(ok)
+    {
+        ok = savePose(camera.camera_to_rig, pose_id);
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO cameras (rig_id, rank_in_rig, image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
+        q.addBindValue(rig_id);
+        q.addBindValue(rank);
+        q.addBindValue(camera.image_size.width);
+        q.addBindValue(camera.image_size.height);
+        q.addBindValue(camera.calibration_matrix.at<double>(0,0));
+        q.addBindValue(camera.calibration_matrix.at<double>(1,1));
+        q.addBindValue(camera.calibration_matrix.at<double>(0,2));
+        q.addBindValue(camera.calibration_matrix.at<double>(1,2));
+        q.addBindValue(pose_id);
+
+        const bool ok = q.exec();
+
+        if(ok)
+        {
+            id = q.lastInsertId().toInt();
+        }
+    }
+
+    if(ok)
+    {
+        const cv::Mat lut = camera.photometric_lut;
+
+        if( lut.cols != 256 || lut.rows != 1 || lut.depth() != CV_32FC3 ) throw std::runtime_error("internal error");
+
+        for(int j=0; ok && j<256; j++)
+        {
+            const cv::Vec3f value = lut.at<cv::Vec3f>(0, j);
+
+            for(int i=0; ok && i<3; i++)
+            {
+                QSqlQuery q(mDB);
+                q.prepare("INSERT INTO photometric_luts (camera_id, channel, level, value) VALUES (?,?,?,?)");
+                q.addBindValue(id);
+                q.addBindValue(i);
+                q.addBindValue(j);
+                q.addBindValue(value[i]);
+
+                ok = q.exec();
+            }
+        }
+    }
+
+    if(ok)
+    {
+        const cv::Mat dist = camera.distortion_coefficients;
+
+        for(int j=0; ok && j<dist.cols; j++)
+        {
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO `distortion_coefficients` (`camera_id`, `rank`, `value`) VALUES (?,?,?)");
+            q.addBindValue(id);
+            q.addBindValue(j);
+            q.addBindValue(dist.at<double>(0, j));
+
+            ok = q.exec();
+        }
+    }
+
+    if(ok == false)
+    {
+        id = -1;
+    }
+
+    return ok;
+}
+
+bool Project::loadCamera(int id, CameraCalibration& camera)
+{
+    bool ok = isOpen();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig FROM cameras WHERE id=?");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+
+        bool ok = q.exec() && q.next();
+
+        if(ok)
+        {
+            ok = ok && (q.value(6).toInt() == 0);
+        }
+
+        if(ok)
+        {
+            ok = loadPose(q.value(7).toInt(), camera.camera_to_rig);
+        }
+
+        if(ok)
+        {
+            camera.image_size.width = q.value(0).toInt();
+            camera.image_size.height = q.value(1).toInt();
+
+            camera.calibration_matrix.create(3, 3, CV_64F);
+            camera.calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
+            camera.calibration_matrix.at<double>(0,1) = 0.0;
+            camera.calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
+            camera.calibration_matrix.at<double>(1,0) = 0.0;
+            camera.calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
+            camera.calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
+            camera.calibration_matrix.at<double>(2,0) = 0.0;
+            camera.calibration_matrix.at<double>(2,1) = 0.0;
+            camera.calibration_matrix.at<double>(2,2) = 1.0;
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT channel, level, value FROM photometric_luts WHERE camera_id=? ORDER BY channel ASC, level ASC");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            camera.photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
+
+            while(ok && q.next())
+            {
+                const int channel = q.value(0).toInt();
+                const int level = q.value(1).toInt();
+                const float value = q.value(2).toFloat();
+
+                if(ok)
+                {
+                    ok = (0 <= channel && channel < 3 && 0 <= level && level < 256);
+                }
+
+                if(ok)
+                {
+                    camera.photometric_lut.at<cv::Vec3f>(0, level)[level] = value;
+                }
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `rank`, `value` FROM `distortion_coefficients` WHERE `camera_id`=? ORDER BY `rank` ASC");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+
+        std::vector<double> values;
+
+        ok = q.exec();
+
+        if(ok)
+        {
+            while(ok && q.next())
+            {
+                const int rank = q.value(0).toInt();
+                ok = (values.size() == rank);
+                values.push_back( q.value(1).toDouble() );
+            }
+        }
+
+        if(ok)
+        {
+            camera.distortion_coefficients.create(1, values.size(), CV_64F);
+
+            for(size_t j=0; j<values.size(); j++)
+            {
+                camera.distortion_coefficients.at<double>(0, j) = values[j];
+            }
+        }
     }
 
     return ok;
@@ -978,7 +897,6 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
         if(ok)
         {
             id = q.lastInsertId().toInt();
-            rec->id = id;
         }
     }
 
@@ -1019,6 +937,11 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
         {
             mDB.rollback();
         }
+    }
+
+    if(ok)
+    {
+        rec->id = id;
     }
 
     recordingModelChanged();
@@ -1455,7 +1378,7 @@ bool Project::describeReconstruction(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name FROM reconstructions reconstruction, rig_parameters rig, recordings recording WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?");
+        q.prepare("SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name FROM reconstructions reconstruction, rigs rig, recordings recording WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -1750,8 +1673,7 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 
         if(ok)
         {
-            rec->id = q.lastInsertId().toInt();
-            id = rec->id;
+            id = q.lastInsertId().toInt();
         }
     }
 
@@ -1774,6 +1696,15 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
         {
             mDB.rollback();
         }
+    }
+
+    if(ok)
+    {
+        rec->id = id;
+    }
+    else
+    {
+        id = -1;
     }
 
     mMapPointToDB.clear();
@@ -1860,6 +1791,11 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
         }
     }
 
+    if(ok == false)
+    {
+        id = -1;
+    }
+
     return ok;
 }
 
@@ -1925,6 +1861,11 @@ bool Project::saveMapPoint(SLAMMapPointPtr mappoint, int& id)
     else
     {
         id = it->second;
+    }
+
+    if(ok == false)
+    {
+        id = -1;
     }
 
     return ok;

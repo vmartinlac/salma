@@ -68,7 +68,7 @@ protected:
 
     bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
 
-    bool saveCamera(CameraCalibration& camera, int& id);
+    bool saveCamera(CameraCalibration& camera, int rig_id, int rank, int& id);
     bool loadCamera(int id, CameraCalibration& camera);
 
     static std::string htmlEscape(const std::string& from);
@@ -76,7 +76,7 @@ protected:
 signals:
     
     void changed();
-    void rigCalibrationModelChanged();
+    void calibrationModelChanged();
     void recordingModelChanged();
     void reconstructionModelChanged();
 

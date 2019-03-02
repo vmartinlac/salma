@@ -15,7 +15,7 @@ CREATE TABLE 'rigs'
 (
     'id' INTEGER PRIMARY KEY,
     'name' TEXT,
-    'date' DATE,
+    'date' DATE
 );
 
 CREATE TABLE 'cameras'
@@ -29,15 +29,16 @@ CREATE TABLE 'cameras'
     'fy' FLOAT,
     'cx' FLOAT,
     'cy' FLOAT,
-    'distortion_model' INTEGER
-    'camera_to_rig' INTEGER,
+    'distortion_model' INTEGER,
+    'camera_to_rig' INTEGER
 );
 
 CREATE TABLE 'photometric_luts'
 (
     'id' INTEGER PRIMARY KEY,
     'camera_id' INTEGER,
-    'rank' INTEGER,
+    'channel' INTEGER,
+    'level' INTEGER,
     'value' FLOAT
 );
 

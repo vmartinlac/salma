@@ -4,6 +4,7 @@ add_library(
 
     STATIC
 
+    db.qrc
     CalibrationList.h
     CalibrationModel.cpp
     CalibrationModel.h
