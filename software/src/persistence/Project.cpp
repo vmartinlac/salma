@@ -1,4 +1,6 @@
 #include <QSqlQuery>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSqlError>
 #include <QFileInfo>
 #include "Project.h"
@@ -421,17 +423,33 @@ bool Project::describeCalibration(int id, QString& descr)
             }
 
             s << "<h4>Photometric LUT</h4>" << std::endl;
-            s << "<p>Present</p>" << std::endl;
-            /*
-            s << "<table>" << std::endl;
-            s << "<tr> <th>#</th> <th>blue</th> <th>green</th> <th>red</th> </tr>" << std::endl;
-            for(int i=0; i<256; i++)
+            //s << "<p>Present</p>" << std::endl;
+            //
             {
-                cv::Vec3f value = cam.photometric_lut.at<cv::Vec3f>(0, i);
-                s << "<tr> <th>" << i << "</th> <td>" << value[0] << "</td> <td>" << value[1] << "</td> <td>" << value[2] << "</td> </tr>" << std::endl;
+                std::stringstream ss[3];
+                for(int i=0; i<256; i++)
+                {
+                    if(i > 0)
+                    {
+                        ss[0] << " ; ";
+                        ss[1] << " ; ";
+                        ss[2] << " ; ";
+                    }
+
+                    const cv::Vec3f value = cam.photometric_lut.at<cv::Vec3f>(0, i);
+
+                    ss[0] << value[0];
+                    ss[1] << value[1];
+                    ss[2] << value[2];
+                }
+
+                s << "<ul>" << std::endl;
+                s << "<li>Blue: { " << ss[0].str() << " }</li>" << std::endl;
+                s << "<li>Green: { " << ss[1].str() << " }</li>" << std::endl;
+                s << "<li>Red: { " << ss[2].str() << " }</li>" << std::endl;
+                s << "</ul>" << std::endl;
             }
-            s << "</table>" << std::endl;
-            */
+            //
 
             s << "<h4>Pose</h4>" << std::endl;
             s << "<table>" << std::endl;
@@ -513,6 +531,15 @@ bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
     {
         rig.reset();
     }
+
+    /*
+    if(ok)
+    {
+        QJsonDocument doc( rig->toJson().toObject() );
+        std::cout << doc.toJson().toStdString() << std::endl;
+
+    }
+    */
 
     return ok;
 }

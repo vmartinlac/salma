@@ -78,10 +78,17 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
     SLAMFramePtr frame = reconstr->frames.back();
 
+    cv::Mat postlut_left;
+    cv::Mat postlut_right;
+    cv::LUT(frame->views[0].image, context()->calibration->cameras[0].photometric_lut, postlut_left);
+    cv::LUT(frame->views[1].image, context()->calibration->cameras[1].photometric_lut, postlut_right);
+
     cv::Mat rectified_left;
     cv::Mat rectified_right;
-    cv::remap( frame->views[0].image, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
-    cv::remap( frame->views[1].image, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
+    //cv::remap( frame->views[0].image, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
+    //cv::remap( frame->views[1].image, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
+    cv::remap( postlut_left, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
+    cv::remap( postlut_right, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
 
     if( context()->configuration->dense_reconstruction.debug )
     {

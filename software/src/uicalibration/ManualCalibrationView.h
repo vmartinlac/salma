@@ -91,8 +91,8 @@ protected:
 
     struct PhotometricFrameData
     {
-        cv::Mat left_data;
-        cv::Mat right_data;
+        cv::Mat left_pdf;
+        cv::Mat right_pdf;
     };
 
     typedef std::shared_ptr<PhotometricFrameData> PhotometricFrameDataPtr;
