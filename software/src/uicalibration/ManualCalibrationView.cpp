@@ -738,6 +738,7 @@ bool ManualCalibrationView::doCalibrate(
 
         // fill right LUT.
 
+        /*
         for(int j=0; j<256; j++)
         {
             for(int i=0; i<3; i++)
@@ -753,6 +754,7 @@ bool ManualCalibrationView::doCalibrate(
                 right_lut.at<cv::Vec3f>(0, j)[i] = left_lut.at<cv::Vec3f>(0, k)[i];
             }
         }
+        */
     }
 
     if(ok == false)

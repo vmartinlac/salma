@@ -58,6 +58,7 @@ target_link_libraries(
     salma_mvpnp
     salma_calibration
     salma_buildinfo
+    salma_libelas
 )
 
 if(${SALMA_WITH_CUDA})

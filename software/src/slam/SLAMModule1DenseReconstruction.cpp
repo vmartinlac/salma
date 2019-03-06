@@ -6,6 +6,7 @@
 #include <opencv2/imgproc.hpp>
 #include "FinitePriorityQueue.h"
 #include "SLAMModule1DenseReconstruction.h"
+#include "ElasIntf.h"
 #if defined(SALMA_WITH_CUDA)
 #include "StereoMatcher.h"
 #include <opencv2/core/cuda.hpp>
@@ -78,17 +79,18 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
     SLAMFramePtr frame = reconstr->frames.back();
 
-    cv::Mat postlut_left;
-    cv::Mat postlut_right;
-    cv::LUT(frame->views[0].image, context()->calibration->cameras[0].photometric_lut, postlut_left);
-    cv::LUT(frame->views[1].image, context()->calibration->cameras[1].photometric_lut, postlut_right);
+    cv::Mat original_left = frame->views[0].image;
+    cv::Mat original_right = frame->views[1].image;
+
+    cv::Mat grey_left;
+    cv::Mat grey_right;
+    cv::cvtColor(original_left, grey_left, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(original_right, grey_right, cv::COLOR_BGR2GRAY);
 
     cv::Mat rectified_left;
     cv::Mat rectified_right;
-    //cv::remap( frame->views[0].image, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
-    //cv::remap( frame->views[1].image, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
-    cv::remap( postlut_left, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
-    cv::remap( postlut_right, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
+    cv::remap( grey_left, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
+    cv::remap( grey_right, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
 
     if( context()->configuration->dense_reconstruction.debug )
     {
@@ -99,12 +101,11 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
     cv::Mat disparity;
     computeDisparity(rectified_left, rectified_right, disparity);
 
-    if( disparity.type() != CV_16SC1 ) throw std::runtime_error("incorrect disparity cv::Mat type!");
+    if( disparity.type() != CV_32FC1 ) throw std::runtime_error("incorrect disparity cv::Mat type!");
 
     if( context()->configuration->dense_reconstruction.debug )
     {
-        cv::Mat tmp;
-        disparity.convertTo(tmp, CV_32F);
+        cv::Mat tmp = disparity.clone();
 
         double mini = 0.0;
         double maxi = 1.0;
@@ -150,7 +151,10 @@ void SLAMModule1DenseReconstruction::computeDisparity(
     const cv::Mat& rectified_right,
     cv::Mat& disparity)
 {
+    cv::Ptr<cv::StereoMatcher> matcher = ElasIntf::create();
+    matcher->compute(rectified_left, rectified_right, disparity);
 
+/*
 #if defined(SALMA_WITH_CUDA)
 
     std::cout << "      Computing disparity with salma belief propagation stereo matcher." << std::endl;
@@ -204,18 +208,11 @@ void SLAMModule1DenseReconstruction::computeDisparity(
 
     std::cout << "      Computing disparity with OpenCV SGBM stereo matcher." << std::endl;
 
-    /*
-    cv::Mat tmpl;
-    cv::Mat tmpr;
-    cv::resize(rectified_left, tmpl, cv::Size(), 0.25, 0.25);
-    cv::resize(rectified_right, tmpr, cv::Size(), 0.25, 0.25);
-    */
-
     cv::Ptr<cv::StereoSGBM> matcher = cv::StereoSGBM::create(0, 16, 81);
     //matcher->compute(tmpl, tmpr, disparity);
     matcher->compute(rectified_left, rectified_right, disparity);
 
 #endif
-
+    */
 }
 
