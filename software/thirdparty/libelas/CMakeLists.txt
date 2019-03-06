@@ -9,7 +9,6 @@ add_library(
     filter.cpp
     filter.h
     image.h
-    main.cpp
     matrix.cpp
     matrix.h
     timer.h

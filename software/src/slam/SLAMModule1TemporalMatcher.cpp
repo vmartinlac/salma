@@ -117,7 +117,7 @@ void SLAMModule1TemporalMatcher::processView(SLAMFramePtr prev_frame, SLAMFrameP
             dbg_matches,
             outimg);
 
-        context()->debug->saveImage(curr_frame->id, "TEMPORALMATCHING_match", outimg);
+        context()->debug->saveImage(curr_frame->id, "TEMPORALMATCHING_match.png", outimg);
     }
 
     std::cout << "      Match count on FRAME_" << prev_frame->id << "/FRAME_" << curr_frame->id << "/VIEW_" << view << ": " << match_count << std::endl;

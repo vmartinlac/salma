@@ -83,7 +83,7 @@ int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, boo
             image.copyTo( output( cv::Rect(0, 0, image.cols, image.rows) ) );
             other_image.copyTo( output( cv::Rect(image.cols, 0, other_image.cols, other_image.rows) ) );
 
-            context()->debug->saveImage(f->id, "STEREOMATCHER_epipolar_line", output);
+            context()->debug->saveImage(f->id, "STEREOMATCHER_epipolar_line.png", output);
         }
     }
     */
@@ -258,7 +258,7 @@ SLAMModuleResult SLAMModule1StereoMatcher::operator()()
             matches2,
             outimg);
 
-        context()->debug->saveImage(f->id, "STEREOMATCHING_matching", outimg);
+        context()->debug->saveImage(f->id, "STEREOMATCHING_matching.png", outimg);
     }
 
     std::cout << "      Number of stereo matches: " << f->stereo_matches.size() << std::endl;

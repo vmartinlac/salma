@@ -15,24 +15,17 @@ public:
     ~SLAMDebug();
 
     bool init();
+
+    std::string getNextSaveFileName(int frame, const std::string& basename);
+
     void saveImage(int frame, const std::string& name, const cv::Mat& image);
+    void savePointCloud(int frame, const std::string& name, const std::vector<cv::Point3f>& cloud);
 
     std::string describeOpenCVMat(const cv::Mat& mat);
 
-    /*
-    void beginReconstruction();
-    void endReconstruction();
-    void beginFrame(int id);
-    void endFrame();
-    void beginModule(const std::string& name);
-    void endModule();
-    void saveImage(const std::string& name, const cv::Mat& image);
-    void writeText(const str::string& text);
-    */
-
 protected:
 
-    int mImageCount;
+    int mFileCount;
     SLAMConfigurationPtr mConfiguration;
     QDir mDir;
     std::map<int,std::string> mOpenCVTypes;

@@ -18,15 +18,17 @@ void ElasIntfImpl::compute( cv::InputArray left, cv::InputArray right, cv::Outpu
 
     if( mat_left.size() != mat_right.size() ) throw std::runtime_error("image sizes differ!");
     if( mat_left.type() != CV_8UC1 || mat_right.type() != CV_8UC1 ) throw std::runtime_error("incorrect type!");
-    // TODO: check same bytes par line.
+    if( mat_left.step != mat_right.step ) throw std::runtime_error("left and right images must have same step!");
 
     cv::Mat mat_left_disp( mat_left.size(), CV_32F );
     cv::Mat mat_right_disp( mat_right.size(), CV_32F );
 
+    if( mat_left_disp.isContinuous() == false || mat_right_disp.isContinuous() == false ) throw std::runtime_error("internal error");
+
     int32_t dims[3];
     dims[0] = mat_left.cols;
     dims[1] = mat_left.rows;
-    //dims[2] = mat_
+    dims[2] = mat_left.step;
 
     mElas->process(
         reinterpret_cast<uint8_t*>( mat_left.ptr() ),
@@ -34,6 +36,8 @@ void ElasIntfImpl::compute( cv::InputArray left, cv::InputArray right, cv::Outpu
         reinterpret_cast<float*>( mat_left_disp.ptr() ),
         reinterpret_cast<float*>( mat_right_disp.ptr() ),
         dims);
+
+    disparity.assign(mat_left_disp);
 }
 
 int ElasIntfImpl::getMinDisparity() const

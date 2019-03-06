@@ -63,7 +63,7 @@ SLAMModuleResult SLAMModule1Features::operator()()
                 frame->views[i].keypoints,
                 outimg);
 
-            context()->debug->saveImage(frame->id, "FEATURES_view"+std::to_string(i), outimg);
+            context()->debug->saveImage(frame->id, "FEATURES_view"+std::to_string(i)+".png", outimg);
         }
     }
 

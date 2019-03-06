@@ -1,12 +1,14 @@
 #include <opencv2/imgcodecs.hpp>
 #include <QDateTime>
 #include <iomanip>
+#include <fstream>
+#include <iostream>
 #include <sstream>
 #include "SLAMDebug.h"
 
 SLAMDebug::SLAMDebug( SLAMConfigurationPtr config )
 {
-    mImageCount = 0;
+    mFileCount = 0;
     mConfiguration = std::move(config);
 
     mOpenCVTypes[CV_32FC1] = "CV_32FC1";
@@ -48,7 +50,7 @@ bool SLAMDebug::init()
 
     const QString dirname = QString("salma_debug_") + QDateTime::currentDateTime().toString("dd.MM.yyyy_hh.mm.ss");
 
-    mImageCount = 0;
+    mFileCount = 0;
 
     if(ok)
     {
@@ -66,12 +68,19 @@ bool SLAMDebug::init()
 
 void SLAMDebug::saveImage(int frame, const std::string& name, const cv::Mat& image)
 {
-    const QString fname = QString("%1_frame%2_%3.png").arg(mImageCount, 6, 10, QChar('0')).arg(frame).arg(name.c_str());
+    const std::string fpath = getNextSaveFileName(frame, name);
+
+    cv::imwrite(fpath, image);
+}
+
+std::string SLAMDebug::getNextSaveFileName(int frame, const std::string& basename)
+{
+    const QString fname = QString("%1_F%2_%3").arg(mFileCount, 6, 10, QChar('0')).arg(frame).arg(basename.c_str());
     const QString fpath = mDir.absoluteFilePath(fname);
 
-    cv::imwrite(fpath.toLocal8Bit().data(), image);
+    mFileCount++;
 
-    mImageCount++;
+    return fpath.toStdString();
 }
 
 std::string SLAMDebug::describeOpenCVMat(const cv::Mat& mat)
@@ -92,5 +101,19 @@ std::string SLAMDebug::describeOpenCVMat(const cv::Mat& mat)
     s << "Mat (cols, rows) = (" << mat.cols << ", " << mat.rows << ") type = " << type;
 
     return s.str();
+}
+
+void SLAMDebug::savePointCloud(int frame, const std::string& name, const std::vector<cv::Point3f>& cloud)
+{
+    const std::string fpath = getNextSaveFileName(frame, name);
+
+    std::ofstream f(fpath.c_str(), std::ofstream::out);
+
+    for(cv::Point3f pt : cloud)
+    {
+        f << pt.x << ' ' << pt.y << ' ' << pt.z << std::endl;
+    }
+
+    f.close();
 }
 
