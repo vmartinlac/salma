@@ -3,7 +3,8 @@ Content
 =======
 
 * User interface allowing to calibrate cameras and stereo rigs, record mono or stereo videos, play them, compute odometry on a video, display reconstructions, etc.
-* Homemade stereo visual odometry and dense reconstruction engine.
+* Homemade stereo visual odometry pipeline.
+* Homemade calibration target tracking algorithm.
 
 Dependencies
 ============
