@@ -1802,23 +1802,27 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
     {
         const int N_keypoints = frame->views[v].keypoints.size();
 
+        QSqlQuery q1(mDB);
+        q1.prepare("INSERT INTO keypoints (frame_id, view, rank, u, v) VALUES (?,?,?,?,?)");
+
+        QSqlQuery q2(mDB);
+        q2.prepare("INSERT INTO projections (keypoint_id, mappoint_id) VALUES(?,?)");
+
         for(int i=0; ok && i<N_keypoints; i++)
         {
             int keypoint_id = -1;
 
             {
-                QSqlQuery q(mDB);
-                q.prepare("INSERT INTO keypoints (frame_id, view, rank, u, v) VALUES (?,?,?,?,?)");
-                q.addBindValue(id);
-                q.addBindValue(v);
-                q.addBindValue(i);
-                q.addBindValue( frame->views[v].keypoints[i].pt.x );
-                q.addBindValue( frame->views[v].keypoints[i].pt.y );
-                ok = q.exec();
+                q1.addBindValue(id);
+                q1.addBindValue(v);
+                q1.addBindValue(i);
+                q1.addBindValue( frame->views[v].keypoints[i].pt.x );
+                q1.addBindValue( frame->views[v].keypoints[i].pt.y );
+                ok = q1.exec();
 
                 if(ok)
                 {
-                    keypoint_id = q.lastInsertId().toInt();
+                    keypoint_id = q1.lastInsertId().toInt();
                 }
             }
 
@@ -1833,16 +1837,35 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
 
                 if(ok)
                 {
-                    QSqlQuery q(mDB);
-                    q.prepare("INSERT INTO projections (keypoint_id, mappoint_id) VALUES(?,?)");
-                    q.addBindValue(keypoint_id);
-                    q.addBindValue(mappoint_id);
+                    q2.addBindValue(keypoint_id);
+                    q2.addBindValue(mappoint_id);
 
-                    ok = q.exec();
+                    ok = q2.exec();
                 }
             }
 
             // TODO: save descriptor.
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO densepoints(frame_id, rig_x, rig_y, rig_z, color_red, color_green, color_blue) VALUES (?,?,?,?,?,?,?)");
+
+        for(int i=0; ok && i<frame->dense_cloud.size(); i++)
+        {
+            SLAMColoredPoint& cpt = frame->dense_cloud[i];
+
+            q.addBindValue(id);
+            q.addBindValue(cpt.point.x);
+            q.addBindValue(cpt.point.y);
+            q.addBindValue(cpt.point.z);
+            q.addBindValue(cpt.color[2]);
+            q.addBindValue(cpt.color[1]);
+            q.addBindValue(cpt.color[0]);
+
+            ok = q.exec();
         }
     }
 
@@ -2005,6 +2028,11 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 
             if(ok)
             {
+                ok = loadDensePoints(frame_id, frame);
+            }
+
+            if(ok)
+            {
                 rec->frames.push_back(frame);
             }
 
@@ -2015,6 +2043,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     if(ok)
     {
         rec->buildSegments();
+        //std::cout << rec->frames.front()->dense_cloud.size() << std::endl;
     }
 
     mMapPointFromDB.clear();
@@ -2022,6 +2051,39 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     if(ok == false)
     {
         rec.reset();
+    }
+
+    return ok;
+}
+
+bool Project::loadDensePoints(int frame_id, SLAMFramePtr frame)
+{
+    bool ok = true;
+
+    frame->dense_cloud.clear();
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rig_x, rig_y, rig_z, color_red, color_green, color_blue FROM densepoints WHERE frame_id=?");
+        q.addBindValue(frame_id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while(ok && q.next())
+        {
+            SLAMColoredPoint cpt;
+
+            cpt.point.x = q.value(0).toFloat();
+            cpt.point.y = q.value(1).toFloat();
+            cpt.point.z = q.value(2).toFloat();
+
+            cpt.color[0] = q.value(5).toFloat();
+            cpt.color[1] = q.value(4).toFloat();
+            cpt.color[2] = q.value(3).toFloat();
+
+            frame->dense_cloud.push_back(cpt);
+        }
     }
 
     return ok;

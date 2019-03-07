@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QCheckBox>
 #include <QLineEdit>
 #include "NewOperationDialog.h"
 #include "CalibrationListWidget.h"
@@ -26,6 +27,16 @@ protected:
 protected:
 
     QLineEdit* mName;
+
+    QCheckBox* mCheckDenseReconstruction;
+    QCheckBox* mCheckDebugF;
+    QCheckBox* mCheckDebugTM;
+    QCheckBox* mCheckDebugA;
+    QCheckBox* mCheckDebugLBA;
+    QCheckBox* mCheckDebugSM;
+    QCheckBox* mCheckDebugT;
+    QCheckBox* mCheckDebugDR;
+
     RecordingListWidget* mRecording;
     CalibrationListWidget* mCalibration;
 };

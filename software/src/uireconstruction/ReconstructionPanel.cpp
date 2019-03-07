@@ -50,18 +50,47 @@ ReconstructionPanel::ReconstructionPanel(Project* project, QWidget* parent)
 
 void ReconstructionPanel::onNew()
 {
-    OperationPtr op;
+    bool ok = true;
+    const char* err = "";
 
-    NewReconstructionDialog* dlg = new NewReconstructionDialog(mProject, this);
-    dlg->exec();
-    op = dlg->getOperation();
-    delete dlg;
+    RecordingList recordings;
+    CalibrationList calibrations;
 
-    if(op)
+    mProject->listRecordings(recordings);
+    mProject->listCalibrations(calibrations);
+
+    if(ok)
     {
-        OperationDialog* opdlg = new OperationDialog(mProject, op, this);
-        opdlg->exec();
-        delete opdlg;
+        ok = ( recordings.empty() == false );
+        err = "You need at least one recording!";
+    }
+
+    if(ok)
+    {
+        ok = ( calibrations.empty() == false );
+        err = "You need at least one calibration!";
+    }
+
+    if(ok)
+    {
+        OperationPtr op;
+
+        NewReconstructionDialog* dlg = new NewReconstructionDialog(mProject, this);
+        dlg->exec();
+        op = dlg->getOperation();
+        delete dlg;
+
+        if(op)
+        {
+            OperationDialog* opdlg = new OperationDialog(mProject, op, this);
+            opdlg->exec();
+            delete opdlg;
+        }
+    }
+
+    if(ok == false)
+    {
+        QMessageBox::critical(this, "Error", err);
     }
 }
 

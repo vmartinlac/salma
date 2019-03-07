@@ -157,7 +157,31 @@ void ViewerWidget::updateSwitches()
 
 osg::ref_ptr<osg::Node> ViewerWidget::createDensePointsNode(SLAMSegment& seg)
 {
-    return new osg::Group();
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+    osg::ref_ptr<osg::Vec3Array> colors = new osg::Vec3Array();
+
+    for(SLAMFramePtr f : seg.frames)
+    {
+        for(SLAMColoredPoint& cpt : f->dense_cloud)
+        {
+            const Eigen::Vector3d X( cpt.point.x, cpt.point.y, cpt.point.z );
+
+            const Eigen::Vector3d Y = f->frame_to_world * X;
+
+            vertices->push_back(osg::Vec3(Y.x(), Y.y(), Y.z()));
+            colors->push_back(osg::Vec3(cpt.color[2], cpt.color[1], cpt.color[0]));
+        }
+    }
+
+    geom->setVertexArray(vertices);
+    geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, vertices->size()));
+
+    geode->addDrawable(geom);
+
+    return geode;
 }
 
 osg::ref_ptr<osg::Node> ViewerWidget::createRigNode(SLAMSegment& seg)

@@ -6,6 +6,8 @@ add_library(
 
     MainWindow.h
     MainWindow.cpp
+    AvailableCameraDialog.h
+    AvailableCameraDialog.cpp
 )
 
 target_link_libraries(

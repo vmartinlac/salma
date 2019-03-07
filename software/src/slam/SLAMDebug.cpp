@@ -103,15 +103,15 @@ std::string SLAMDebug::describeOpenCVMat(const cv::Mat& mat)
     return s.str();
 }
 
-void SLAMDebug::savePointCloud(int frame, const std::string& name, const std::vector<cv::Point3f>& cloud)
+void SLAMDebug::savePointCloud(int frame, const std::string& name, const std::vector<SLAMColoredPoint>& cloud)
 {
     const std::string fpath = getNextSaveFileName(frame, name);
 
     std::ofstream f(fpath.c_str(), std::ofstream::out);
 
-    for(cv::Point3f pt : cloud)
+    for(const SLAMColoredPoint& pt : cloud)
     {
-        f << pt.x << ' ' << pt.y << ' ' << pt.z << std::endl;
+        f << pt.point.x << ' ' << pt.point.y << ' ' << pt.point.z << ' ' << pt.color[2] << ' ' << pt.color[1] << ' ' << pt.color[0] << std::endl;
     }
 
     f.close();

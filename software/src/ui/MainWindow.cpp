@@ -20,6 +20,7 @@
 #include "CalibrationPanel.h"
 #include "ReconstructionPanel.h"
 #include "AboutDialog.h"
+#include "AvailableCameraDialog.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -69,7 +70,9 @@ void MainWindow::about()
 
 void MainWindow::showAvailableCameras()
 {
-    QMessageBox::critical(this, "Error", "Not implemented");
+    AvailableCameraDialog* dlg = new AvailableCameraDialog(this);
+    dlg->exec();
+    delete dlg;
 }
 
 void MainWindow::clearProject()

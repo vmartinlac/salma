@@ -47,7 +47,7 @@ QWidget* NewReconstructionDialog::createNameAndInputTab()
     form->addRow("Recording:", mRecording);
     form->addRow("Rig calibration:", mCalibration);
 
-    QWidget* ret = new QWidget;
+    QWidget* ret = new QWidget();
     ret->setLayout(form);
 
     return ret;
@@ -55,7 +55,29 @@ QWidget* NewReconstructionDialog::createNameAndInputTab()
 
 QWidget* NewReconstructionDialog::createConfigurationTab()
 {
-    return new QLabel("TODO");
+    mCheckDenseReconstruction = new QCheckBox("Produce dense point cloud");
+    mCheckDebugF = new QCheckBox("Debug F module");
+    mCheckDebugTM = new QCheckBox("Debug TM module");
+    mCheckDebugA = new QCheckBox("Debug A module");
+    mCheckDebugLBA = new QCheckBox("Debug LBA module");
+    mCheckDebugSM = new QCheckBox("Debug SM module");
+    mCheckDebugT = new QCheckBox("Debug T module");
+    mCheckDebugDR = new QCheckBox("Debug DR module");
+
+    QFormLayout* lay = new QFormLayout();
+    lay->addWidget( mCheckDenseReconstruction );
+    lay->addWidget( mCheckDebugF );
+    lay->addWidget( mCheckDebugTM );
+    lay->addWidget( mCheckDebugA );
+    lay->addWidget( mCheckDebugLBA );
+    lay->addWidget( mCheckDebugSM );
+    lay->addWidget( mCheckDebugT );
+    lay->addWidget( mCheckDebugDR );
+
+    QWidget* ret = new QWidget();
+    ret->setLayout(lay);
+
+    return ret;
 }
 
 void NewReconstructionDialog::accept()
@@ -115,7 +137,19 @@ void NewReconstructionDialog::accept()
         myop->mReconstructionName = mName->text().toStdString();
         myop->mCalibration = calibration;
         myop->mRecordingHeader = recording;
+
         myop->mConfiguration.reset(new SLAMConfiguration());
+
+        myop->mConfiguration->dense_reconstruction.enabled = mCheckDenseReconstruction->isChecked();
+
+        myop->mConfiguration->features.debug = mCheckDebugF->isChecked();
+        myop->mConfiguration->temporal_matcher.debug = mCheckDebugTM->isChecked();
+        myop->mConfiguration->alignment.debug = mCheckDebugA->isChecked();
+        myop->mConfiguration->lba.debug = mCheckDebugLBA->isChecked();
+        myop->mConfiguration->stereo_matcher.debug = mCheckDebugSM->isChecked();
+        myop->mConfiguration->triangulation.debug = mCheckDebugT->isChecked();
+        myop->mConfiguration->dense_reconstruction.debug = mCheckDebugDR->isChecked();
+
         op.reset(myop);
     }
 

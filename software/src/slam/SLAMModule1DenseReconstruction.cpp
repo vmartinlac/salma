@@ -82,15 +82,15 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
     cv::Mat original_left = frame->views[0].image;
     cv::Mat original_right = frame->views[1].image;
 
-    cv::Mat grey_left;
-    cv::Mat grey_right;
-    cv::cvtColor(original_left, grey_left, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(original_right, grey_right, cv::COLOR_BGR2GRAY);
-
     cv::Mat rectified_left;
     cv::Mat rectified_right;
-    cv::remap( grey_left, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
-    cv::remap( grey_right, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
+    cv::remap( original_left, rectified_left, mRectification.cameras[0].map0, mRectification.cameras[0].map1, cv::INTER_LINEAR );
+    cv::remap( original_right, rectified_right, mRectification.cameras[1].map0, mRectification.cameras[1].map1, cv::INTER_LINEAR );
+
+    cv::Mat grey_left;
+    cv::Mat grey_right;
+    cv::cvtColor(rectified_left, grey_left, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(rectified_right, grey_right, cv::COLOR_BGR2GRAY);
 
     if( context()->configuration->dense_reconstruction.debug )
     {
@@ -99,7 +99,7 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
     }
 
     cv::Mat disparity;
-    computeDisparity(rectified_left, rectified_right, disparity);
+    computeDisparity(grey_left, grey_right, disparity);
 
     if( disparity.type() != CV_32FC1 ) throw std::runtime_error("incorrect disparity cv::Mat type!");
 
@@ -132,11 +132,26 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
     {
         for(int j=0; j<reconstruction.cols; j++)
         {
-            if( disparity.at<int16_t>(i, j) != 0 )
+            if( disparity.at<float>(i, j) > 0.5 )
             {
-                const cv::Point3f pt = reconstruction.at<cv::Point3f>(i, j);
+                const cv::Vec3b colfrom = rectified_left.at<cv::Vec3b>(i, j);
 
-                frame->dense_cloud.push_back(pt);
+                SLAMColoredPoint cpt;
+
+                const cv::Point3f X = reconstruction.at<cv::Point3f>(i, j);
+
+                const Eigen::Vector3d Y(X.x, X.y, X.z);
+
+                const Eigen::Vector3d Z = mStereoRig->cameras[0].camera_to_rig * Y;
+
+                cpt.point.x = static_cast<float>( Z.x() );
+                cpt.point.y = static_cast<float>( Z.y() );
+                cpt.point.z = static_cast<float>( Z.z() );
+                cpt.color[0] = static_cast<float>(colfrom[0]) / 255.0;
+                cpt.color[1] = static_cast<float>(colfrom[1]) / 255.0;
+                cpt.color[2] = static_cast<float>(colfrom[2]) / 255.0;
+
+                frame->dense_cloud.push_back(cpt);
             }
         }
     }

@@ -51,6 +51,14 @@ public:
     std::vector<SLAMTrack> tracks;
 };
 
+class SLAMColoredPoint
+{
+public:
+
+    cv::Point3f point;
+    cv::Vec3f color;
+};
+
 class SLAMFrame
 {
 public:
@@ -70,7 +78,7 @@ public:
     Sophus::SE3d frame_to_world;
     Eigen::Matrix<double, 7, 7> pose_covariance;
 
-    std::vector<cv::Point3f> dense_cloud;
+    std::vector<SLAMColoredPoint> dense_cloud;
 };
 
 typedef std::shared_ptr<SLAMFrame> SLAMFramePtr;
