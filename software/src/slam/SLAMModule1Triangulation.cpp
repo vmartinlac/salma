@@ -82,7 +82,7 @@ SLAMModuleResult SLAMModule1Triangulation::operator()()
     }
     else
     {
-        return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
+        return SLAMModuleResult(true, SLAM_MODULE1_RECTIFICATION);
     }
 }
 

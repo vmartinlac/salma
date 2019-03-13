@@ -1,7 +1,9 @@
 #include <chrono>
+#include "SLAMModule1Rectification.h"
 #include "SLAMModule1Features.h"
 #include "SLAMModule1TemporalMatcher.h"
 #include "SLAMModule1Alignment.h"
+#include "SLAMModule1KFS.h"
 #include "SLAMModule2EKF.h"
 #include "SLAMModule1LBA.h"
 #include "SLAMModule1StereoMatcher.h"
@@ -34,23 +36,31 @@ bool SLAMEngine::initialize(
 
         switch(configuration->pipeline)
         {
+
         case SLAM_PIPELINE1:
+            mModules.emplace_back(new SLAMModule1Rectification(mContext));
             mModules.emplace_back(new SLAMModule1Features(mContext));
             mModules.emplace_back(new SLAMModule1TemporalMatcher(mContext));
             mModules.emplace_back(new SLAMModule1Alignment(mContext));
+            mModules.emplace_back(new SLAMModule1KFS(mContext));
             mModules.emplace_back(new SLAMModule1LBA(mContext));
             mModules.emplace_back(new SLAMModule1StereoMatcher(mContext));
             mModules.emplace_back(new SLAMModule1Triangulation(mContext));
             mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
-            mNextModule = SLAM_MODULE1_FEATURES;
+            mNextModule = SLAM_MODULE1_RECTIFICATION;
             break;
+
+        /*
         case SLAM_PIPELINE2:
             //mModules.emplace_back(new SLAMModule2OpticalFlow(mContext));
             //mModules.emplace_back(new SLAMModule2EKF(mContext));
             mNextModule = SLAM_MODULE2_OPTICALFLOW;
             break;
+        */
+
         default:
             throw std::runtime_error("internal error");
+
         }
     }
 

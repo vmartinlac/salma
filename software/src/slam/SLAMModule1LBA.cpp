@@ -6,7 +6,7 @@
 #include "SLAMModule1LBA.h"
 
 SLAMModule1LBA::SLAMModule1LBA(SLAMContextPtr con) :
-    SLAMModule(SLAM_MODULE1_LBA, con)
+    SLAMModule(SLAM_MODULE1_LOCALBUNDLEADJUSTMENT, con)
 {
 }
 

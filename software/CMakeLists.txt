@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.1)
 project(slam)
 
 option(SALMA_WITH_CUDA "Whether to use CUDA" OFF)
-option(SALMA_OPENCV_HAS_CUDA "Whether to use OpenCV CUDA parts" OFF)
 
 enable_language(CXX)
 if(${SALMA_WITH_CUDA})

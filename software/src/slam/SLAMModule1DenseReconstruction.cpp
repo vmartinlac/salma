@@ -7,15 +7,7 @@
 #include "FinitePriorityQueue.h"
 #include "SLAMModule1DenseReconstruction.h"
 #include "ElasIntf.h"
-#if defined(SALMA_WITH_CUDA)
-#include "StereoMatcher.h"
-#include <opencv2/core/cuda.hpp>
-#elif defined(SALMA_OPENCV_HAS_CUDA)
-#include <opencv2/cudastereo.hpp>
-#include <opencv2/cudaimgproc.hpp>
-#else
 #include <opencv2/calib3d.hpp>
-#endif
 
 SLAMModule1DenseReconstruction::SLAMModule1DenseReconstruction(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_DENSERECONSTRUCTION, con)
@@ -163,7 +155,7 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
         context()->debug->savePointCloud(frame->id, "DENSERECONSTRUCTION_cloud.txt", frame->dense_cloud);
     }
 
-    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
+    return SLAMModuleResult(true, SLAM_MODULE1_RECTIFICATION);
 }
 
 void SLAMModule1DenseReconstruction::computeDisparity(

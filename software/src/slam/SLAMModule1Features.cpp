@@ -1,3 +1,9 @@
+#if SALMA_WITH_CUDA
+#include <opencv2/core/cuda.hpp>
+//#include <opencv2/cudastereo.hpp>
+//#include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudafeatures2d.hpp>
+#endif
 #include "FinitePriorityQueue.h"
 #include "SLAMModule1Features.h"
 
@@ -24,7 +30,11 @@ bool SLAMModule1Features::init()
 
     const int num_levels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(scale_factor) );
 
+#ifdef SALMA_WITH_CUDA
+    mFeature2d = cv::cuda::ORB::create();
+#else
     mFeature2d = cv::ORB::create();
+#endif
 
     mFeature2d->setScoreType(cv::ORB::HARRIS_SCORE);
     mFeature2d->setScaleFactor(scale_factor);

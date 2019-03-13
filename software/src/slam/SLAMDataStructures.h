@@ -8,6 +8,9 @@ Right is index 1.
 #include <memory>
 #include <list>
 #include <opencv2/core.hpp>
+#ifdef SALMA_WITH_CUDA
+#include <opencv2/core/cuda.hpp>
+#endif
 #include <sophus/se3.hpp>
 #include <Eigen/Eigen>
 #include "StereoRigCalibration.h"
@@ -45,6 +48,10 @@ class SLAMView
 public:
 
     cv::Mat image;
+
+#ifdef SALMA_WITH_CUDA
+    cv::cuda::GpuMat d_image;
+#endif
 
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;

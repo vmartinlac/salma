@@ -139,6 +139,6 @@ SLAMModuleResult SLAMModule1Alignment::operator()()
     std::cout << "      Position: " << reconstr->frames.back()->frame_to_world.translation().transpose() << std::endl;
     std::cout << "      Attitude: " << reconstr->frames.back()->frame_to_world.unit_quaternion().coeffs().transpose() << std::endl;
 
-    return SLAMModuleResult(false, SLAM_MODULE1_LBA);
+    return SLAMModuleResult(false, SLAM_MODULE1_KEYFRAMESELECTION);
 }
 

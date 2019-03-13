@@ -13,12 +13,16 @@ add_library(
     SLAMContext.h
     SLAMModule.cpp
     SLAMModule.h
+    SLAMModule1Rectification.cpp
+    SLAMModule1Rectification.h
     SLAMModule1Features.cpp
     SLAMModule1Features.h
     SLAMModule1TemporalMatcher.cpp
     SLAMModule1TemporalMatcher.h
     SLAMModule1Alignment.cpp
     SLAMModule1Alignment.h
+    SLAMModule1KFS.cpp
+    SLAMModule1KFS.h
     SLAMModule1LBA.cpp
     SLAMModule1LBA.h
     SLAMModule1StereoMatcher.cpp
@@ -62,11 +66,9 @@ target_link_libraries(
 )
 
 if(${SALMA_WITH_CUDA})
-    target_link_libraries(salma_slam PRIVATE salma_stereomatcher)
-    target_compile_definitions(salma_slam PRIVATE SALMA_WITH_CUDA)
-elseif(${SALMA_OPENCV_HAS_CUDA})
-    target_link_libraries(salma_slam PRIVATE opencv_cudastereo opencv_cudaimgproc)
-    target_compile_definitions(salma_slam PRIVATE SALMA_OPENCV_WITH_CUDA)
+    #target_link_libraries(salma_slam PRIVATE salma_stereomatcher)
+    target_link_libraries(salma_slam PUBLIC opencv_cudastereo opencv_cudaimgproc)
+    target_compile_definitions(salma_slam PUBLIC SALMA_WITH_CUDA)
 endif()
 
 target_include_directories(salma_slam INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
