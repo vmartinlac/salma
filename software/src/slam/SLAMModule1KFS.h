@@ -18,5 +18,10 @@ public:
 
     bool init() override;
     SLAMModuleResult operator()() override;
+
+protected:
+
+    double mTranslationThreshold;
+    double mAngleThreshold;
 };
 

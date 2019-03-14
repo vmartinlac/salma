@@ -42,6 +42,15 @@ struct SLAMConfigurationAlignment
     double ransac_inlier_threshold;
 };
 
+struct SLAMConfigurationKFS
+{
+    SLAMConfigurationKFS();
+
+    bool debug;
+    double translation_threshold;
+    double angle_threshold;
+};
+
 struct SLAMConfigurationEKF
 {
     SLAMConfigurationEKF();
@@ -120,6 +129,7 @@ public:
     SLAMConfigurationAlignment alignment;
     SLAMConfigurationEKF ekf;
     SLAMConfigurationLBA lba;
+    SLAMConfigurationKFS kfs;
     SLAMConfigurationStereoMatcher stereo_matcher;
     SLAMConfigurationTriangulation triangulation;
     SLAMConfigurationDenseReconstruction dense_reconstruction;

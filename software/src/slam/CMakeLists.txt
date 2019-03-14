@@ -67,7 +67,7 @@ target_link_libraries(
 
 if(${SALMA_WITH_CUDA})
     #target_link_libraries(salma_slam PRIVATE salma_stereomatcher)
-    target_link_libraries(salma_slam PUBLIC opencv_cudastereo opencv_cudaimgproc)
+    target_link_libraries(salma_slam PUBLIC opencv_cudastereo opencv_cudaimgproc opencv_cudafeatures2d)
     target_compile_definitions(salma_slam PUBLIC SALMA_WITH_CUDA)
 endif()
 

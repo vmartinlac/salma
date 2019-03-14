@@ -20,7 +20,8 @@ bool SLAMModule1Features::init()
 {
     SLAMContextPtr con = context();
 
-    const double scale_factor = con->configuration->features.scale_factor;
+    mScaleFactor = con->configuration->features.scale_factor;
+
     const int min_width = con->configuration->features.min_width;
     const int max_features = con->configuration->features.max_features;
     const int patch_size = con->configuration->features.patch_size;
@@ -28,7 +29,7 @@ bool SLAMModule1Features::init()
 
     const int reference_image_width = con->calibration->cameras[0].image_size.width;
 
-    const int num_levels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(scale_factor) );
+    mNumLevels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(mScaleFactor) );
 
 #ifdef SALMA_WITH_CUDA
     mFeature2d = cv::cuda::ORB::create();
@@ -37,8 +38,8 @@ bool SLAMModule1Features::init()
 #endif
 
     mFeature2d->setScoreType(cv::ORB::HARRIS_SCORE);
-    mFeature2d->setScaleFactor(scale_factor);
-    mFeature2d->setNLevels(num_levels);
+    mFeature2d->setScaleFactor(mScaleFactor);
+    mFeature2d->setNLevels(mNumLevels);
     mFeature2d->setFirstLevel(0);
     mFeature2d->setPatchSize(patch_size);
     mFeature2d->setFastThreshold(fast_threshold);
@@ -85,52 +86,62 @@ SLAMModuleResult SLAMModule1Features::operator()()
 
 void SLAMModule1Features::processView(SLAMView& v)
 {
+    // Interest point detection with Shi-Tomasi.
 
-    //if( context()->configuration->features.uniformize )
     {
         cv::Ptr<cv::GFTTDetector> gftt = cv::GFTTDetector::create(2000);
-        bool go_on = true;
-        cv::Mat level = v.image;
-        double scale = 1.0;
-        int octave = 0;
 
-        while(go_on)
+        for(int octave = 0; octave<mNumLevels; octave++)
         {
-            auto proc = [octave, scale] (const cv::KeyPoint& kp)
+            const double scale = std::pow(mScaleFactor, static_cast<double>(octave));
+
+            cv::Mat level;
+
+            if(octave == 0)
             {
-                cv::KeyPoint ret = kp;
-                ret.pt.x *= scale;
-                ret.pt.y *= scale;
-                ret.octave = octave;
-                return ret;
-            };
+                level = v.image;
+            }
+            else
+            {
+                cv::resize(v.image, level, cv::Size(), 1.0/scale, 1.0/scale);
+            }
 
             std::vector<cv::KeyPoint> keypoints;
 
             gftt->detect(level, keypoints);
 
-            std::transform(keypoints.begin(), keypoints.end(), std::back_inserter(v.keypoints), proc);
-
-            scale *= context()->configuration->features.scale_factor;
-
-            octave++;
-
-            go_on = ( v.image.cols / scale > context()->configuration->features.min_width );
-
-            if(go_on)
+            auto proc = [octave, scale] (const cv::KeyPoint& kp)
             {
-                cv::resize(v.image, level, cv::Size(), 1.0/scale, 1.0/scale);
-            }
+                cv::KeyPoint ret = kp;
+                ret.pt.x *= scale;
+                ret.pt.y *= scale;
+#ifdef SALMA_WITH_CUDA
+                ret.octave = 0;
+#else
+                ret.octave = octave;
+#endif
+                return ret;
+            };
+
+            std::transform(keypoints.begin(), keypoints.end(), std::back_inserter(v.keypoints), proc);
         }
-
-        uniformize(v.keypoints);
-
-        mFeature2d->compute( v.image, v.keypoints, v.descriptors );
     }
-    //
 
-    //mFeature2d->compute( v.image, v.keypoints, v.descriptors );
-    //mFeature2d->detectAndCompute( v.image, cv::Mat(), v.keypoints, v.descriptors );
+    // interest point selection.
+
+    uniformize(v.keypoints);
+
+    // compute ORB descriptors.
+
+    {
+#ifdef SALMA_WITH_CUDA
+        cv::cuda::GpuMat d_descriptors;
+        mFeature2d->compute( v.d_image, v.keypoints, d_descriptors );
+        d_descriptors.download(v.descriptors);
+#else
+        mFeature2d->compute( v.image, v.keypoints, v.descriptors );
+#endif
+    }
 
     v.tracks.resize( v.keypoints.size() );
 }

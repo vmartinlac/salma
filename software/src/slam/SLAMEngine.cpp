@@ -88,8 +88,20 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
         curr_frame->id = mContext->reconstruction->frames.size();
         curr_frame->rank_in_recording = rank_in_recording;
         curr_frame->timestamp = image.getTimestamp();
-        curr_frame->views[0].image = image.getFrame(0);
-        curr_frame->views[1].image = image.getFrame(1);
+
+
+        //curr_frame->views[0].image = image.getFrame(0);
+        //curr_frame->views[1].image = image.getFrame(1);
+
+        cv::cvtColor(image.getFrame(0), curr_frame->views[0].image, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(image.getFrame(1), curr_frame->views[1].image, cv::COLOR_BGR2GRAY);
+
+        if( curr_frame->views[0].image.type() != CV_8UC1 || curr_frame->views[1].image.type() != CV_8UC1 ) throw std::runtime_error("internal error");
+
+#if SALMA_WITH_CUDA
+        curr_frame->views[0].d_image.upload( curr_frame->views[0].image );
+        curr_frame->views[1].d_image.upload( curr_frame->views[1].image );
+#endif
 
         mContext->reconstruction->frames.push_back(curr_frame);
 
@@ -131,11 +143,18 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
     {
         const int k = ( mContext->configuration->temporal_matcher.debug) ? mContext->configuration->temporal_matcher.num_previous_frames : 0;
+
         if( mContext->reconstruction->frames.size() >= 2 + k )
         {
             const int i = int( mContext->reconstruction->frames.size() ) - 2 - k;
-            mContext->reconstruction->frames[i]->views[0].image = cv::Mat();
-            mContext->reconstruction->frames[i]->views[1].image = cv::Mat();
+
+            mContext->reconstruction->frames[i]->views[0].image.release(); // = cv::Mat();
+            mContext->reconstruction->frames[i]->views[1].image.release(); // = cv::Mat();
+
+#ifdef SALMA_WITH_CUDA
+            mContext->reconstruction->frames[i]->views[0].d_image.release(); // = cv::Mat();
+            mContext->reconstruction->frames[i]->views[1].d_image.release(); // = cv::Mat();
+#endif
         }
     }
 

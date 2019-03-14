@@ -26,6 +26,8 @@ protected:
 
 protected:
 
+    int mNumLevels;
+    double mScaleFactor;
     cv::Ptr<cv::ORB> mFeature2d;
 };
 

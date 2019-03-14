@@ -38,6 +38,13 @@ SLAMConfigurationAlignment::SLAMConfigurationAlignment()
     ransac_inlier_threshold = 12.0;
 }
 
+SLAMConfigurationKFS::SLAMConfigurationKFS()
+{
+    debug = false;
+    translation_threshold = 2.0;
+    angle_threshold = 1.0*M_PI;
+}
+
 SLAMConfigurationEKF::SLAMConfigurationEKF()
 {
     debug = true;
