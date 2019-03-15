@@ -61,9 +61,8 @@ void GenICamCamera::onFrameReceived()
 
         const double timestamp = double(raw_timestamp - mFirstTimestamp) * 1.0e-9;
 
-        cv::Mat frame(
-            cv::Size(width, height),
-            CV_8UC3);
+        //cv::Mat frame( cv::Size(width, height), CV_8UC3 );
+        cv::Mat frame( cv::Size(width, height), CV_8UC1 );
 
         std::copy(
             static_cast<const uint8_t*>(buffer_data),
@@ -207,7 +206,8 @@ bool GenICamCamera::open(bool external_trigger)
 
     if(mIsOpen)
     {
-        arv_device_set_string_feature_value(mDevice, "PixelFormat", "BGR8Packed");
+        arv_device_set_string_feature_value(mDevice, "PixelFormat", "Mono8");
+        //arv_device_set_string_feature_value(mDevice, "PixelFormat", "BGR8Packed");
         mIsOpen = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
     }
 
