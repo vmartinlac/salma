@@ -10,12 +10,18 @@ SLAMConfiguration::~SLAMConfiguration()
 {
 }
 
+SLAMConfigurationRectification::SLAMConfigurationRectification()
+{
+    debug = false;
+}
+
 SLAMConfigurationFeatures::SLAMConfigurationFeatures()
 {
     debug = false;
-    scale_factor = 1.1;
-    min_width = 160;
-    max_features = 500;
+    first_level = 0;
+    num_levels = 5;
+    scale_factor = 1.2;
+    max_features = 300;
     patch_size = 31;
     fast_threshold = 10;
 }
@@ -23,11 +29,12 @@ SLAMConfigurationFeatures::SLAMConfigurationFeatures()
 SLAMConfigurationTemporalMatcher::SLAMConfigurationTemporalMatcher()
 {
     debug = false;
-    check_symmetry = true;
-    check_lowe = false;
-    lowe_ratio = 0.90;
+    check_symmetry = false;
+    check_lowe = true;
+    lowe_ratio = 0.75;
     check_octave = false;
     //max_projected_mappoints_per_view = 300;
+    max_descriptor_distance = 400.0;
     num_previous_frames = 2;
 }
 
@@ -74,9 +81,10 @@ SLAMConfigurationStereoMatcher::SLAMConfigurationStereoMatcher()
     check_octave = false;
     check_symmetry = true;
     check_lowe = true;
-    lowe_ratio = 0.92;
+    lowe_ratio = 0.80;
     check_epipolar = true;
-    epipolar_threshold = 10.0;
+    epipolar_threshold = 7.0;
+    max_descriptor_distance = 300.0;
 }
 
 SLAMConfigurationTriangulation::SLAMConfigurationTriangulation()

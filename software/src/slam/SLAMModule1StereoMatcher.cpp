@@ -26,6 +26,8 @@ bool SLAMModule1StereoMatcher::init()
     mCheckLowe = con->configuration->stereo_matcher.check_lowe;
     mLoweRatio = con->configuration->stereo_matcher.lowe_ratio;
 
+    mMaxDescriptorDistance = con->configuration->stereo_matcher.max_descriptor_distance;
+
     mCheckEpipolar = con->configuration->stereo_matcher.check_epipolar;
     mEpipolarThreshold = con->configuration->stereo_matcher.epipolar_threshold;
 
@@ -109,11 +111,14 @@ int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, boo
     }
 
     int ret = -1;
+    double ret_dist = 0.0;
 
     if( queue.size() >= 2 && mCheckLowe )
     {
         const int j1 = queue.top();
         const double p1 = queue.top_priority();
+
+        ret_dist = -p1;
 
         queue.pop();
 
@@ -128,9 +133,15 @@ int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, boo
     else if( queue.size() > 0 )
     {
         ret = queue.top();
+        ret_dist = -queue.top_priority();
     }
 
     //std::cout << "A " << ret << std::endl;
+
+    if( ret >= 0 && ret_dist > mMaxDescriptorDistance )
+    {
+        ret = -1;
+    }
 
     if( ret >= 0 && mCheckEpipolar )
     {
@@ -181,6 +192,8 @@ int SLAMModule1StereoMatcher::matchKeyPoint(SLAMFramePtr f, int view, int i, boo
         }
     }
     //std::cout << "C " << ret << std::endl;
+
+    //if(ret >= 0) std::cout << ret_dist << std::endl;
 
     return ret;
 }

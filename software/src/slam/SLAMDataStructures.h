@@ -54,6 +54,7 @@ public:
 #endif
 
     std::vector<cv::KeyPoint> keypoints;
+    std::vector<cv::Point2f> normalized;
     cv::Mat descriptors;
     std::vector<SLAMTrack> tracks;
 };

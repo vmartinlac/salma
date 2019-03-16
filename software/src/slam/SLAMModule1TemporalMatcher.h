@@ -21,21 +21,20 @@ protected:
         SLAMFramePtr prev_frame,
         SLAMFramePtr curr_frame,
         int view,
-        std::set<int>& projected_mappoints_ids);
+        int& projection_count);
 
     int matchKeyPoint(int i, const SLAMView& from, const SLAMView& to, bool check_symmetry);
 
 protected:
 
     bool mCheckSymmetry;
-
     bool mCheckLowe;
     double mLoweRatio;
-
     bool mCheckOctave;
-
+    int mMaxDescriptorDistance;
     int mNumPreviousFrames;
     //int mMaxProjectedMapPointsPerView;
+
 };
 
 typedef std::shared_ptr<SLAMModule1TemporalMatcher> SLAMModule1TemporalMatcherPtr;

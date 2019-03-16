@@ -29,9 +29,11 @@ protected:
     QLineEdit* mName;
 
     QCheckBox* mCheckDenseReconstruction;
+    QCheckBox* mCheckDebugR;
     QCheckBox* mCheckDebugF;
     QCheckBox* mCheckDebugTM;
     QCheckBox* mCheckDebugA;
+    QCheckBox* mCheckDebugKFS;
     QCheckBox* mCheckDebugLBA;
     QCheckBox* mCheckDebugSM;
     QCheckBox* mCheckDebugT;

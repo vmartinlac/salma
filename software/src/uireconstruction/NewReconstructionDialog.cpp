@@ -56,9 +56,11 @@ QWidget* NewReconstructionDialog::createNameAndInputTab()
 QWidget* NewReconstructionDialog::createConfigurationTab()
 {
     mCheckDenseReconstruction = new QCheckBox("Produce dense point cloud");
+    mCheckDebugR = new QCheckBox("Debug R module");
     mCheckDebugF = new QCheckBox("Debug F module");
     mCheckDebugTM = new QCheckBox("Debug TM module");
     mCheckDebugA = new QCheckBox("Debug A module");
+    mCheckDebugKFS = new QCheckBox("Debug KFS module");
     mCheckDebugLBA = new QCheckBox("Debug LBA module");
     mCheckDebugSM = new QCheckBox("Debug SM module");
     mCheckDebugT = new QCheckBox("Debug T module");
@@ -66,9 +68,11 @@ QWidget* NewReconstructionDialog::createConfigurationTab()
 
     QFormLayout* lay = new QFormLayout();
     lay->addWidget( mCheckDenseReconstruction );
+    lay->addWidget( mCheckDebugR );
     lay->addWidget( mCheckDebugF );
     lay->addWidget( mCheckDebugTM );
     lay->addWidget( mCheckDebugA );
+    lay->addWidget( mCheckDebugKFS );
     lay->addWidget( mCheckDebugLBA );
     lay->addWidget( mCheckDebugSM );
     lay->addWidget( mCheckDebugT );
@@ -142,9 +146,11 @@ void NewReconstructionDialog::accept()
 
         myop->mConfiguration->dense_reconstruction.enabled = mCheckDenseReconstruction->isChecked();
 
+        myop->mConfiguration->rectification.debug = mCheckDebugR->isChecked();
         myop->mConfiguration->features.debug = mCheckDebugF->isChecked();
         myop->mConfiguration->temporal_matcher.debug = mCheckDebugTM->isChecked();
         myop->mConfiguration->alignment.debug = mCheckDebugA->isChecked();
+        myop->mConfiguration->kfs.debug = mCheckDebugKFS->isChecked();
         myop->mConfiguration->lba.debug = mCheckDebugLBA->isChecked();
         myop->mConfiguration->stereo_matcher.debug = mCheckDebugSM->isChecked();
         myop->mConfiguration->triangulation.debug = mCheckDebugT->isChecked();

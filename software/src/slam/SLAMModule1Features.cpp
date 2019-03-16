@@ -1,8 +1,5 @@
 #if SALMA_WITH_CUDA
-#include <opencv2/core/cuda.hpp>
-//#include <opencv2/cudastereo.hpp>
-//#include <opencv2/cudaimgproc.hpp>
-#include <opencv2/cudafeatures2d.hpp>
+#include <opencv2/cudawarping.hpp>
 #endif
 #include "FinitePriorityQueue.h"
 #include "SLAMModule1Features.h"
@@ -21,15 +18,12 @@ bool SLAMModule1Features::init()
     SLAMContextPtr con = context();
 
     mScaleFactor = con->configuration->features.scale_factor;
+    mFirstLevel = con->configuration->features.first_level;
+    mNumLevels = con->configuration->features.num_levels;
+    mMaxFeatures = con->configuration->features.max_features;
 
-    const int min_width = con->configuration->features.min_width;
-    const int max_features = con->configuration->features.max_features;
     const int patch_size = con->configuration->features.patch_size;
     const int fast_threshold = con->configuration->features.fast_threshold;
-
-    const int reference_image_width = con->calibration->cameras[0].image_size.width;
-
-    mNumLevels = std::floor( std::log(double(reference_image_width)/double(min_width)) / std::log(mScaleFactor) );
 
 #ifdef SALMA_WITH_CUDA
     mFeature2d = cv::cuda::ORB::create();
@@ -40,10 +34,10 @@ bool SLAMModule1Features::init()
     mFeature2d->setScoreType(cv::ORB::HARRIS_SCORE);
     mFeature2d->setScaleFactor(mScaleFactor);
     mFeature2d->setNLevels(mNumLevels);
-    mFeature2d->setFirstLevel(0);
+    mFeature2d->setFirstLevel(mFirstLevel);
     mFeature2d->setPatchSize(patch_size);
     mFeature2d->setFastThreshold(fast_threshold);
-    mFeature2d->setMaxFeatures(max_features);
+    mFeature2d->setMaxFeatures(mMaxFeatures);
 
     return true;
 }
@@ -58,10 +52,20 @@ SLAMModuleResult SLAMModule1Features::operator()()
 
     SLAMFramePtr frame = reconstr->frames.back();
 
+//#ifdef SALMA_WITH_CUDA
+
+    processViewsSimple( frame->views[0], frame->views[1] );
+
+/*
+#else
+
     for(int i=0; i<2; i++)
     {
         processView(frame->views[i]);
     }
+
+#endif
+*/
 
     if( context()->configuration->features.debug )
     {
@@ -82,6 +86,57 @@ SLAMModuleResult SLAMModule1Features::operator()()
     std::cout << "      Num keypoints on right view: " << frame->views[1].keypoints.size() << std::endl;
 
     return SLAMModuleResult(false, SLAM_MODULE1_TEMPORALMATCHER);
+}
+
+void SLAMModule1Features::processViewsSimple(SLAMView& left, SLAMView& right)
+{
+#ifdef SALMA_WITH_CUDA
+
+    cv::cuda::Stream left_stream;
+    cv::cuda::Stream right_stream;
+
+    cv::cuda::GpuMat d_left_points;
+    cv::cuda::GpuMat d_right_points;
+
+    cv::cuda::GpuMat d_left_descriptors;
+    cv::cuda::GpuMat d_right_descriptors;
+
+    mFeature2d->detectAndComputeAsync(left.d_image, cv::noArray(), d_left_points, d_left_descriptors, false, left_stream);
+    mFeature2d->detectAndComputeAsync(right.d_image, cv::noArray(), d_right_points, d_right_descriptors, false, right_stream);
+
+    d_left_descriptors.download(left.descriptors, left_stream);
+    d_right_descriptors.download(right.descriptors, right_stream);
+
+    left_stream.waitForCompletion();
+    right_stream.waitForCompletion();
+
+    mFeature2d->convert(d_left_points, left.keypoints);
+    mFeature2d->convert(d_right_points, right.keypoints);
+
+#else
+
+    mFeature2d->detectAndCompute(left.image, cv::noArray(), left.keypoints, left.descriptors, false);
+    mFeature2d->detectAndCompute(right.image, cv::noArray(), right.keypoints, right.descriptors, false);
+
+#endif
+
+    cv::KeyPoint::convert(left.keypoints, left.normalized);
+    cv::KeyPoint::convert(right.keypoints, right.normalized);
+
+    cv::undistortPoints(
+        left.normalized,
+        left.normalized,
+        context()->calibration->cameras[0].calibration_matrix,
+        context()->calibration->cameras[0].distortion_coefficients);
+
+    cv::undistortPoints(
+        right.normalized,
+        right.normalized,
+        context()->calibration->cameras[1].calibration_matrix,
+        context()->calibration->cameras[1].distortion_coefficients);
+
+    left.tracks.resize( left.keypoints.size() );
+    right.tracks.resize( right.keypoints.size() );
 }
 
 void SLAMModule1Features::processView(SLAMView& v)
@@ -115,11 +170,7 @@ void SLAMModule1Features::processView(SLAMView& v)
                 cv::KeyPoint ret = kp;
                 ret.pt.x *= scale;
                 ret.pt.y *= scale;
-#ifdef SALMA_WITH_CUDA
-                ret.octave = 0;
-#else
                 ret.octave = octave;
-#endif
                 return ret;
             };
 
@@ -133,15 +184,7 @@ void SLAMModule1Features::processView(SLAMView& v)
 
     // compute ORB descriptors.
 
-    {
-#ifdef SALMA_WITH_CUDA
-        cv::cuda::GpuMat d_descriptors;
-        mFeature2d->compute( v.d_image, v.keypoints, d_descriptors );
-        d_descriptors.download(v.descriptors);
-#else
-        mFeature2d->compute( v.image, v.keypoints, v.descriptors );
-#endif
-    }
+    mFeature2d->compute( v.image, v.keypoints, v.descriptors );
 
     v.tracks.resize( v.keypoints.size() );
 }

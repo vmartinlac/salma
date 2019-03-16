@@ -8,13 +8,21 @@ enum SLAMPipeline
     SLAM_PIPELINE2,
 };
 
+struct SLAMConfigurationRectification
+{
+    SLAMConfigurationRectification();
+
+    bool debug;
+};
+
 struct SLAMConfigurationFeatures
 {
     SLAMConfigurationFeatures();
 
     bool debug;
+    int first_level;
+    int num_levels;
     double scale_factor;
-    int min_width;
     int max_features;
     int patch_size;
     int fast_threshold;
@@ -31,6 +39,7 @@ struct SLAMConfigurationTemporalMatcher
     bool check_octave;
     int max_projected_mappoints_per_view;
     int num_previous_frames;
+    double max_descriptor_distance;
 };
 
 struct SLAMConfigurationAlignment
@@ -89,6 +98,7 @@ struct SLAMConfigurationStereoMatcher
     double lowe_ratio;
     bool check_epipolar;
     double epipolar_threshold;
+    double max_descriptor_distance;
 };
 
 struct SLAMConfigurationTriangulation
@@ -124,6 +134,7 @@ public:
 
     SLAMPipeline pipeline;
 
+    SLAMConfigurationRectification rectification;
     SLAMConfigurationFeatures features;
     SLAMConfigurationTemporalMatcher temporal_matcher;
     SLAMConfigurationAlignment alignment;

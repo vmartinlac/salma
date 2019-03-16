@@ -18,5 +18,28 @@ public:
 
     bool init() override;
     SLAMModuleResult operator()() override;
+
+protected:
+
+    struct RectifiedCamera
+    {
+        cv::Mat P;
+        cv::Mat R;
+        cv::Mat map0;
+        cv::Mat map1;
+    };
+
+    struct RectificationParameters
+    {
+        cv::Mat R;
+        cv::Mat T;
+        cv::Mat Q;
+        RectifiedCamera cameras[2];
+    };
+
+protected:
+
+    StereoRigCalibrationPtr mStereoRig;
+    RectificationParameters mRectification;
 };
 

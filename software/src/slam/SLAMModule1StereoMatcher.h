@@ -31,6 +31,7 @@ protected:
     bool mCheckOctave;
     double mEpipolarThreshold;
     double mLoweRatio;
+    double mMaxDescriptorDistance;
 
     StereoRigCalibrationPtr mStereoRigCalibration;
 
