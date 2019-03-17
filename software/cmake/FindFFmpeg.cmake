@@ -1,7 +1,7 @@
 
-pkg_search_module(FFmpeg REQUIRED libavcodec libavdevice libavfilter libavformat libavutil libswresample libswscale)
+pkg_search_module(FFMPEG REQUIRED libavformat libavcodec libavdevice libavfilter libavutil libswresample libswscale)
 
 add_library(FFmpeg INTERFACE)
-target_include_directories(FFmpeg INTERFACE ${FFmpeg_INCLUDE_DIRS})
-target_link_libraries(FFmpeg INTERFACE ${FFmpeg_LDFLAGS})
+target_include_directories(FFmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
+target_link_libraries(FFmpeg INTERFACE ${FFMPEG_LDFLAGS})
 
