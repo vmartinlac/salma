@@ -47,17 +47,37 @@ void VideoWidget::refresh()
         small = data.image;
     }
 
-    cv::Mat rgb;
-    cv::cvtColor(small, rgb, cv::COLOR_BGR2RGB);
+    QImage img;
 
-    QImage img(
-        rgb.data,
-        rgb.cols,
-        rgb.rows,
-        rgb.step,
-        QImage::Format_RGB888);
+    if( small.type() == CV_8UC3 )
+    {
+        cv::Mat rgb;
+        cv::cvtColor(small, rgb, cv::COLOR_BGR2RGB);
 
-    mImage = img.copy();
+        QImage img(
+            rgb.data,
+            rgb.cols,
+            rgb.rows,
+            rgb.step,
+            QImage::Format_RGB888);
+
+        mImage = img.copy();
+    }
+    else if( small.type() == CV_8UC1 )
+    {
+        QImage img(
+            small.data,
+            small.cols,
+            small.rows,
+            small.step,
+            QImage::Format_Grayscale8);
+
+        mImage = img.copy();
+    }
+    else
+    {
+        throw std::runtime_error("VideoWidget received frame with incorrect format!");
+    }
 
     resize(mImage.width(), mImage.height());
 

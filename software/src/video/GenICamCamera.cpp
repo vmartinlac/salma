@@ -66,7 +66,7 @@ void GenICamCamera::onFrameReceived()
 
         std::copy(
             static_cast<const uint8_t*>(buffer_data),
-            static_cast<const uint8_t*>(buffer_data) + width*height*3,
+            static_cast<const uint8_t*>(buffer_data) + width*height,
             frame.ptr(0));
 
         image.setValid(timestamp, frame);
