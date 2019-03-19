@@ -26,6 +26,12 @@ target_link_libraries(
     opencv_calib3d
 )
 
+target_link_libraries(
+    salma_uirecording
+    PRIVATE
+    FFmpeg
+)
+
 target_include_directories(salma_uirecording INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 #install(TARGETS salma_uirecording LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

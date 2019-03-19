@@ -1,7 +1,9 @@
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <QMessageBox>
 #include <QThread>
-#include <thread>
 #include <opencv2/imgcodecs.hpp>
+#include <thread>
 #include <sstream>
 #include <iostream>
 #include <fstream>

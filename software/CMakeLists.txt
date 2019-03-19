@@ -30,6 +30,7 @@ find_package(Sophus REQUIRED)
 find_package(Aravis REQUIRED)
 find_package(OSG REQUIRED)
 find_package(g2o REQUIRED)
+find_package(FFmpeg REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(app)
