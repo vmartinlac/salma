@@ -90,7 +90,7 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     aModeLeft->setChecked(true);
     setModeToLeft();
 
-    QMetaObject::invokeMethod(this, "setFrame", Q_ARG(int,0));
+    QMetaObject::invokeMethod(this, "setFrame", Qt::QueuedConnection, Q_ARG(int,0));
 }
 
 void ManualCalibrationDialog::setFrame(int frame)

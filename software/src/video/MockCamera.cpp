@@ -43,17 +43,43 @@ void MockCamera::read(Image& image)
     {
         // compute timestamp.
 
-        int ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::steady_clock::now() - mT0 ).count();
-        const double timestamp = double(ms) * 1.0e-3;
+        const int ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::steady_clock::now() - mT0 ).count();
+        const double timestamp = static_cast<double>(ms) * 1.0e-3;
 
         // compute frames.
 
         std::vector<cv::Mat> frames;
         for(int i=0; i<mNumViews; i++)
         {
-            cv::Mat frame( cv::Size(mWidth, mHeight), CV_8UC3);
-            frame = cv::Scalar(0, 0, 0);
-            cv::circle(frame, cv::Point2f(mWidth/2, mHeight/2), mWidth/4, cv::Scalar(0, 255, 0), -1);
+            const double kappa = 0.5 * (1.0 + std::cos(M_PI*timestamp/1.0));
+
+            const double radius = static_cast<double>(mWidth/4) * kappa + 10.0 * (1.0-kappa);
+            
+            const cv::Scalar color(0, 255, 0);
+
+            cv::Point2f center(mWidth/2, mHeight/2);
+
+            cv::Mat frame( cv::Size(mWidth, mHeight), CV_8UC3 );
+
+            frame = cv::Vec3b(0, 0, 0);
+
+            cv::circle(frame, center, radius, color, -1);
+
+            const std::string text = "View #" + std::to_string(i);
+
+            int baseline = 0;
+            cv::Size textsize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 1.0, 1, &baseline);
+
+            cv::putText(
+                frame,
+                text,
+                cv::Point2i(1,1+textsize.height),
+                cv::FONT_HERSHEY_SIMPLEX,
+                1.0,
+                cv::Scalar(0.0, 255.0, 0.0),
+                1,
+                cv::LINE_8,
+                false);
 
             frames.push_back(frame);
         }

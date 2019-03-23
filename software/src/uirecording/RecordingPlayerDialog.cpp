@@ -1,4 +1,5 @@
 #include <QScrollArea>
+#include <QMessageBox>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <iostream>
@@ -10,7 +11,12 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
 
     mHeader = header;
     mReader.reset(new RecordingReader(header, false));
-    mReader->open();
+    const bool open_ret = mReader->open();
+
+    if(open_ret == false)
+    {
+        QMetaObject::invokeMethod(this, "showErrorMessage", Qt::QueuedConnection);
+    }
 
     mTimer = new QTimer(this);
 
@@ -75,12 +81,17 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
     setWindowTitle("Play Recording");
 
     showFrame(-1);
-    QMetaObject::invokeMethod(this, "showFrame", Q_ARG(int,0));
+    QMetaObject::invokeMethod(this, "showFrame", Qt::QueuedConnection, Q_ARG(int,0));
 }
 
 RecordingPlayerDialog::~RecordingPlayerDialog()
 {
     mReader->close();
+}
+
+void RecordingPlayerDialog::showErrorMessage()
+{
+    QMessageBox::critical(this, "Error", "Error while loading recording!");
 }
 
 void RecordingPlayerDialog::onNext()
@@ -158,16 +169,19 @@ void RecordingPlayerDialog::showFrame(int frame)
         mReader->read(image);
         mCurrentFrame = frame;
 
-        Image concat;
-        image.concatenate(concat);
-
-        if( concat.isValid() )
+        if(image.isValid())
         {
-            mVideo->beginWrite();
-            mVideo->data().image = concat.getFrame();
-            mVideo->endWrite();
+            Image concat;
+            image.concatenate(concat);
 
-            ok = true;
+            if( concat.isValid() )
+            {
+                mVideo->beginWrite();
+                mVideo->data().image = concat.getFrame();
+                mVideo->endWrite();
+
+                ok = true;
+            }
         }
     }
 

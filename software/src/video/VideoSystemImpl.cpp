@@ -6,7 +6,7 @@
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
 
-#define MOCK_GENICAM_CAMERAS
+//#define MOCK_GENICAM_CAMERAS
 
 VideoSystemImpl::VideoSystemImpl()
 {

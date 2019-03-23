@@ -28,6 +28,7 @@ protected slots:
     void onSliderValueChanged(int);
     void onTimeout();
     void showFrame(int frame);
+    void showErrorMessage();
 
 protected:
 

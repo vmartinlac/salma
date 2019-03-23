@@ -111,15 +111,22 @@ bool RecordingOperation::step()
                     {
                         const cv::Mat frame = image.getFrame(v);
 
-                        if(frame.cols == mResult->views[v].width && frame.rows == mResult->views[v].height)
+                        if( mBuffer.type() != frame.type() ) throw std::runtime_error("internal error");
+
+                        if( frame.size() == mResult->views[v].size() )
                         {
-                            mBuffer( mResult->views[v] ) = frame;
+                            frame.copyTo( mBuffer( mResult->views[v] ) );
                         }
                         else
                         {
                             mSuccess = false;
                         }
                     }
+                }
+
+                if(mSuccess)
+                {
+                    if(mBuffer.type() != CV_8UC3 || mBuffer.size() != mResult->size) throw std::runtime_error("internal error");
 
                     mVideoWriter.write(mBuffer);
                     mResult->timestamps.push_back(image.getTimestamp());
@@ -149,14 +156,15 @@ bool RecordingOperation::step()
                     mResult->size.height = std::max(mResult->size.height, frame.rows);
                 }
 
-                mBuffer.create(mResult->size, CV_8UC1);
+                mBuffer.create(mResult->size, CV_8UC3);
 
-                const int fourcc = cv::VideoWriter::fourcc('X','2','6','4');
+                const int fourcc = cv::VideoWriter::fourcc('M','J','P','G');
+                //const int fourcc = cv::VideoWriter::fourcc('X','2','6','4');
 
                 mSuccess = mVideoWriter.open(
                     mVideoFilename,
                     fourcc,
-                    25.0,
+                    10.0,
                     mResult->size,
                     true);
 

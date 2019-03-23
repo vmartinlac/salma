@@ -85,7 +85,7 @@ void RecordingReader::read(Image& image)
             frames.resize(mHeader->num_views());
             for(int i=0; ok && i<mHeader->num_views(); i++)
             {
-                ok = (mHeader->views[i] & container) == container;
+                ok = (mHeader->views[i] | container) == container;
 
                 if(ok)
                 {
