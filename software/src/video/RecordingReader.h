@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <opencv2/videoio.hpp>
 #include <future>
 #include "VideoSource.h"
 #include "RecordingHeader.h"
@@ -9,7 +10,7 @@ class RecordingReader : public VideoSource
 {
 public:
 
-    RecordingReader(RecordingHeaderPtr header, bool asynchronous);
+    RecordingReader(RecordingHeaderPtr header, bool unused);
     ~RecordingReader() override;
 
     std::string getHumanName() override;
@@ -28,14 +29,9 @@ public:
 
 protected:
 
-    static Image loadImage(RecordingHeaderPtr rec, int rank);
-
-protected:
-
-    bool mAsynchronousLoading;
+    bool mTriggered;
     RecordingHeaderPtr mHeader;
-    int mNextFrame;
-    std::future<Image> mNextImage;
+    cv::VideoCapture mVideo;
 };
 
 typedef std::shared_ptr<RecordingReader> RecordingReaderPtr;

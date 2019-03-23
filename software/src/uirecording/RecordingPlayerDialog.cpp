@@ -10,6 +10,7 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
 
     mHeader = header;
     mReader.reset(new RecordingReader(header, false));
+    mReader->open();
 
     mTimer = new QTimer(this);
 
@@ -45,7 +46,7 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
     mSlider = new QSlider();
     mSlider->setOrientation(Qt::Horizontal);
     mSlider->setMinimum(0);
-    mSlider->setMaximum(mHeader->num_frames-1);
+    mSlider->setMaximum(mHeader->num_frames()-1);
     mSlider->setSingleStep(1);
 
     connect(mSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
@@ -79,11 +80,12 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
 
 RecordingPlayerDialog::~RecordingPlayerDialog()
 {
+    mReader->close();
 }
 
 void RecordingPlayerDialog::onNext()
 {
-    if( 0 <= mCurrentFrame && mCurrentFrame+1 < mHeader->num_frames )
+    if( 0 <= mCurrentFrame && mCurrentFrame+1 < mHeader->num_frames() )
     {
         showFrame(mCurrentFrame+1);
     }
@@ -97,13 +99,13 @@ void RecordingPlayerDialog::onNext()
 
 void RecordingPlayerDialog::onPrevious()
 {
-    if( 0 <= mCurrentFrame-1 && mCurrentFrame < mHeader->num_frames )
+    if( 0 <= mCurrentFrame-1 && mCurrentFrame < mHeader->num_frames() )
     {
         showFrame(mCurrentFrame-1);
     }
     else
     {
-        showFrame(mHeader->num_frames-1);
+        showFrame(mHeader->num_frames()-1);
     }
 
     mSlider->setValue(mCurrentFrame);
@@ -128,7 +130,7 @@ void RecordingPlayerDialog::onSliderValueChanged(int value)
 
 void RecordingPlayerDialog::onTimeout()
 {
-    showFrame( (mCurrentFrame+1)%mHeader->num_frames );
+    showFrame( (mCurrentFrame+1)%mHeader->num_frames() );
     mSlider->setValue(mCurrentFrame);
 }
 
@@ -140,7 +142,7 @@ void RecordingPlayerDialog::onFirst()
 
 void RecordingPlayerDialog::onLast()
 {
-    showFrame(mHeader->num_frames-1);
+    showFrame(mHeader->num_frames() - 1);
     mSlider->setValue(mCurrentFrame);
 }
 
@@ -148,7 +150,7 @@ void RecordingPlayerDialog::showFrame(int frame)
 {
     bool ok = false;
 
-    if(0 <= frame && frame < mHeader->num_frames)
+    if( 0 <= frame && frame < mHeader->num_frames() )
     {
         Image image;
         mReader->seek(frame);
@@ -171,8 +173,8 @@ void RecordingPlayerDialog::showFrame(int frame)
 
     if(ok)
     {
-        mLabelFrame->setText("Frame "+QString::number(mCurrentFrame+1) + "/" + QString::number(mHeader->num_frames));
-        mLabelTimestamp->setText("t =  " + QString::number(mHeader->frames[mCurrentFrame].timestamp) );
+        mLabelFrame->setText("Frame "+QString::number(mCurrentFrame+1) + "/" + QString::number(mHeader->num_frames()));
+        mLabelTimestamp->setText("t =  " + QString::number(mHeader->timestamps[mCurrentFrame]) );
     }
     else
     {

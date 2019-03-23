@@ -72,7 +72,7 @@ void NewManualCalibrationDialog::accept()
 
     if(ok)
     {
-        ok = (params->recording->num_views == 2);
+        ok = (params->recording->num_views() == 2);
         err = "You must select a stereo recording!";
     }
 

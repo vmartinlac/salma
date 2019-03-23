@@ -928,7 +928,7 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
-        ok = ( rec->id < 0 && rec->frames.size() == rec->num_frames && rec->views.size() == rec->num_frames*rec->num_views && rec->num_frames > 0 );
+        ok = ( rec->id < 0 );
     }
 
     if(ok)
@@ -942,11 +942,14 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
+        const QString relative_path = mDir.relativeFilePath(rec->filename.c_str());
+
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO recordings(name, date, directory, number_of_views) VALUES(?,DATETIME('now'),?,?)");
+        q.prepare("INSERT INTO recordings(name, date, filename, width, height) VALUES(?,DATETIME('now'),?,?,?)");
         q.addBindValue(rec->name.c_str());
-        q.addBindValue(rec->directory.dirName());
-        q.addBindValue(rec->num_views);
+        q.addBindValue(relative_path);
+        q.addBindValue(rec->size.width);
+        q.addBindValue(rec->size.height);
         ok = q.exec();
 
         if(ok)
@@ -957,28 +960,30 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
-        for(int i=0; ok && i<rec->num_frames; i++)
+        for(int i=0; ok && i<rec->num_views(); i++)
         {
             QSqlQuery q(mDB);
-            q.prepare("INSERT INTO recording_frames(recording_id, rank, time) VALUES(?,?,?)");
+            q.prepare("INSERT INTO recording_views(recording_id, rank, x, y, width, height) VALUES(?,?,?,?,?,?)");
             q.addBindValue(id);
             q.addBindValue(i);
-            q.addBindValue(rec->frames[i].timestamp);
+            q.addBindValue(rec->views[i].x);
+            q.addBindValue(rec->views[i].y);
+            q.addBindValue(rec->views[i].width);
+            q.addBindValue(rec->views[i].height);
             ok = q.exec();
+        }
+    }
 
-            if(ok)
-            {
-                const int frame_id = q.lastInsertId().toInt();
-
-                for(int j=0; ok && j<rec->num_views; j++)
-                {
-                    q.prepare("INSERT INTO recording_views(frame_id,view,filename) VALUES(?,?,?)");
-                    q.addBindValue(frame_id);
-                    q.addBindValue(j);
-                    q.addBindValue(rec->views[i*rec->num_views+j].filename);
-                    ok = q.exec();
-                }
-            }
+    if(ok)
+    {
+        for(int i=0; ok && i<rec->num_frames(); i++)
+        {
+            QSqlQuery q(mDB);
+            q.prepare("INSERT INTO recording_frames(recording_id, rank, timestamp) VALUES(?,?,?)");
+            q.addBindValue(id);
+            q.addBindValue(i);
+            q.addBindValue(rec->timestamps[i]);
+            ok = q.exec();
         }
     }
 
@@ -1013,7 +1018,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `filename`, `width`, `height` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -1023,52 +1028,53 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
             rec->id = id;
             rec->name = q.value(0).toString().toStdString();
             rec->date = q.value(1).toString().toStdString();
-
-            rec->directory = mDir;
-            ok = rec->directory.cd(q.value(2).toString());
-
-            rec->num_views = q.value(3).toInt();
+            rec->filename = mDir.absoluteFilePath(q.value(2).toString()).toStdString();
+            rec->size.width = q.value(3).toInt();
+            rec->size.height = q.value(4).toInt();
+            ok = mDir.exists( q.value(2).toString() );
         }
     }
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT f.rank, f.time, v.view, v.filename FROM recording_views v, recording_frames f WHERE v.frame_id=f.id AND f.recording_id=? ORDER BY f.rank ASC, v.view ASC");
+        q.prepare("SELECT rank, timestamp FROM recording_frames WHERE recording_id=? ORDER BY rank ASC");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec();
 
-        rec->num_frames = 0;
-
-        int i = 0;
-
         while( ok && q.next() )
         {
-            const int frame_rank = i / rec->num_views;
-            const int view_rank = i % rec->num_views;
-
-            ok = (frame_rank == q.value(0).toInt() && view_rank == q.value(2).toInt());
-
-            if( ok && view_rank == 0 )
-            {
-                RecordingHeaderFrame f;
-                f.timestamp = q.value(1).toDouble();
-                rec->frames.push_back(f);
-                rec->num_frames++;
-            }
+            ok = ( q.value(0).toInt() == rec->timestamps.size() );
 
             if(ok)
             {
-                RecordingHeaderView v;
-                v.filename = q.value(3).toString();
-                rec->views.push_back(v);
+                rec->timestamps.push_back(q.value(1).toDouble());
             }
-
-            i++;
         }
+    }
 
-        ok = ok && (i == rec->num_views*rec->num_frames && rec->num_frames > 0);
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rank, x, y, width, height FROM recording_views WHERE recording_id=? ORDER BY rank ASC");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while( ok && q.next() )
+        {
+            ok = ( q.value(0).toInt() == rec->views.size() );
+
+            if(ok)
+            {
+                rec->views.emplace_back(
+                    q.value(1).toDouble(),
+                    q.value(2).toDouble(),
+                    q.value(3).toDouble(),
+                    q.value(4).toDouble());
+            }
+        }
     }
 
     if(ok == false)
@@ -1081,9 +1087,9 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
 
 bool Project::removeRecording(int id)
 {
-    QString recording_directory_name;
     bool ok = true;
     bool has_transaction = false;
+    QString filename;
 
     // check whether the recording can be removed or not.
 
@@ -1098,15 +1104,15 @@ bool Project::removeRecording(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT directory FROM recordings WHERE id=?");
+        q.prepare("SELECT filename FROM recordings WHERE id=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
         {
-            recording_directory_name = q.value(0).toString();
-            ok = ( recording_directory_name.isEmpty() == false );
+            filename = q.value(0).toString();
+            ok = ( filename.isEmpty() == false );
         }
     }
 
@@ -1115,6 +1121,7 @@ bool Project::removeRecording(int id)
     if(ok)
     {
         ok = mDB.transaction();
+
         if(ok)
         {
             has_transaction = true;
@@ -1126,7 +1133,7 @@ bool Project::removeRecording(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM recording_views WHERE frame_id IN (SELECT id FROM recording_frames WHERE recording_id=?)");
+        q.prepare("DELETE FROM recording_views WHERE recording_id=?");
         q.addBindValue(id);
         ok = q.exec();
     }
@@ -1169,13 +1176,7 @@ bool Project::removeRecording(int id)
 
     if(ok)
     {
-        QDir dir = mDir;
-
-        if(dir.cd(recording_directory_name) && dir != mDir)
-        {
-            // TODO: we do not check return value. Failure to remove files will not be reported to the user.
-            dir.removeRecursively();
-        }
+        mDir.remove(filename);
     }
 
     recordingModelChanged();
@@ -1231,11 +1232,12 @@ bool Project::describeRecording(int id, QString& descr)
 
     double duration = 0.0;
     int num_frames = 0;
+    int num_views = 0;
 
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT MAX(`rank`)+1 AS `number_of_frames`, MAX(`time`) AS `duration` FROM recording_frames WHERE recording_id=?");
+        q.prepare("SELECT MAX(`rank`)+1 AS `number_of_frames`, MAX(`timestamp`) AS `duration` FROM `recording_frames` WHERE recording_id=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec();
@@ -1258,7 +1260,28 @@ bool Project::describeRecording(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory`, `number_of_views` FROM `recordings` WHERE `id`=?");
+        q.prepare("SELECT MAX(`rank`)+1 AS `number_of_views` FROM `recording_views` WHERE `recording_id`=?");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        if(ok)
+        {
+            if(q.next())
+            {
+                num_views = q.value(0).toInt();
+            }
+            else
+            {
+                num_views = 0;
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `filename` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -1278,8 +1301,8 @@ bool Project::describeRecording(int id, QString& descr)
 
             s << "<h3>Content</h3>" << std::endl;
             s << "<table>" << std::endl;
-            s << "<tr><th>Number of cameras:</th><td>" << q.value(3).toInt() << "</td></tr>" << std::endl;
-            s << "<tr><th>Directory:</th><td>" << q.value(2).toString().toHtmlEscaped().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>Filename:</th><td>" << q.value(2).toString().toHtmlEscaped().toStdString() << "</td></tr>" << std::endl;
+            s << "<tr><th>Number of views:</th><td>" << num_views << "</td></tr>" << std::endl;
             s << "<tr><th>Number of frames:</th><td>" << num_frames << "</td></tr>" << std::endl;
             s << "<tr><th>Duration:</th><td>" << duration << "</td></tr>" << std::endl;
             s << "</table>" << std::endl;
@@ -1345,39 +1368,30 @@ bool Project::listRecordings(RecordingList& list)
     return ok;
 }
 
-bool Project::createRecordingDirectory(QDir& dir)
+bool Project::getNewRecordingFilename(std::string& filename)
 {
-    QString name;
-    bool ok = true;
+    bool go_on = true;
+    std::string relative_path;
 
-    if(ok)
+    for(int i=0; go_on && i<1000000; i++)
     {
-        bool go_on = true;
+        std::stringstream s;
+        s << "rec_" << i << ".mkv";
 
-        for(int i=0; go_on && i<1000000; i++)
-        {
-            name = "rec_" + QString::number(i);
-            go_on = mDir.exists(name);
-        }
-
-        if(go_on)
-        {
-            ok = false;
-        }
+        relative_path = s.str();
+        go_on = mDir.exists(relative_path.c_str());
     }
 
-    if(ok)
+    if(go_on)
     {
-        dir = mDir;
-        ok = ( dir.mkdir(name) && dir.cd(name) );
+        filename.clear();
+        return false;
     }
-
-    if(ok == false)
+    else
     {
-        dir = QDir();
+        filename = mDir.absoluteFilePath(relative_path.c_str()).toStdString();
+        return true;
     }
-
-    return ok;
 }
 
 // RECONSTRUCTION

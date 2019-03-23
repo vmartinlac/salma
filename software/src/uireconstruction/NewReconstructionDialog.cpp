@@ -131,7 +131,7 @@ void NewReconstructionDialog::accept()
 
     if(ok)
     {
-        ok = (recording->num_views == 2);
+        ok = (recording->num_views() == 2);
         err = "Recording must be stereo!";
     }
 

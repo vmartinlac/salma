@@ -18,19 +18,8 @@ add_library(
     SyncIO.h
 )
 
-target_link_libraries(
-    salma_uirecording
-    PUBLIC
-    salma_uicommon
-    Qt5::Widgets
-    opencv_calib3d
-)
-
-target_link_libraries(
-    salma_uirecording
-    PRIVATE
-    FFmpeg
-)
+target_link_libraries( salma_uirecording PUBLIC salma_uicommon Qt5::Widgets opencv_calib3d )
+target_link_libraries( salma_uirecording PRIVATE opencv_videoio )
 
 target_include_directories(salma_uirecording INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

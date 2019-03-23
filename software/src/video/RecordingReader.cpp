@@ -2,11 +2,10 @@
 #include <opencv2/imgcodecs.hpp>
 #include "RecordingReader.h"
 
-RecordingReader::RecordingReader(RecordingHeaderPtr header, bool asynchronous)
+RecordingReader::RecordingReader(RecordingHeaderPtr header, bool unused)
 {
-    mAsynchronousLoading = asynchronous;
+    mTriggered = false;
     mHeader = std::move(header);
-    mNextFrame = 0;
 }
 
 RecordingReader::~RecordingReader()
@@ -20,55 +19,35 @@ std::string RecordingReader::getHumanName()
 
 bool RecordingReader::open()
 {
-    mNextFrame = 0;
-    mNextImage = std::future<Image>();
-    return true;
-}
-
-void RecordingReader::close()
-{
-    mNextFrame = -1;
-    mNextImage = std::future<Image>();
-}
-
-Image RecordingReader::loadImage(RecordingHeaderPtr header, int rank)
-{
-    Image ret;
-    std::vector<cv::Mat> views(header->num_views);
     bool ok = true;
 
-    for(int i=0; ok && i<header->num_views; i++)
-    {
-        cv::Mat v = cv::imread( header->directory.absoluteFilePath(header->views[rank*header->num_views+i].filename).toStdString() );
-        ok = bool(v.data);
+    mTriggered = false;
 
-        if(ok)
-        {
-            views[i] = std::move(v);
-        }
+    if(ok)
+    {
+        ok = mVideo.open(mHeader->filename);
     }
 
     if(ok)
     {
-        ret.setValid( header->frames[rank].timestamp, views );
-    }
-    else
-    {
-        ret.setInvalid();
+        const int frame_count = static_cast<int>(mVideo.get(cv::CAP_PROP_FRAME_COUNT));
+        ok = (mHeader->num_frames() == frame_count);
     }
 
-    return ret;
+    return ok;
+}
+
+void RecordingReader::close()
+{
+    mVideo.release();
 }
 
 void RecordingReader::trigger()
 {
-    if(mAsynchronousLoading)
+    if(mVideo.isOpened() && mTriggered == false)
     {
-        if(0 <= mNextFrame && mNextFrame < mHeader->num_frames)
-        {
-            mNextImage = std::async(std::launch::async, loadImage, mHeader, mNextFrame);
-            mNextFrame++;
-        }
+        mTriggered = true;
+        mVideo.grab();
     }
 }
 
@@ -76,28 +55,63 @@ void RecordingReader::read(Image& image)
 {
     image.setInvalid();
 
-    if(mAsynchronousLoading)
+    if(mVideo.isOpened() && mTriggered)
     {
-        if(mNextImage.valid())
+        cv::Mat received;
+        int current_frame;
+        std::vector<cv::Mat> frames;
+        bool ok = true;
+
+        if(ok)
         {
-            image = std::move( mNextImage.get() );
+            current_frame = static_cast<int>(mVideo.get(cv::CAP_PROP_POS_FRAMES));
+            ok = (0 <= current_frame && current_frame < mHeader->num_frames());
         }
-    }
-    else
-    {
-        image = loadImage(mHeader, mNextFrame);
+
+        if(ok)
+        {
+            ok = mVideo.read(received);
+        }
+
+        if(ok)
+        {
+            ok = (received.size() == mHeader->size);
+        }
+
+        if(ok)
+        {
+            const cv::Rect container(cv::Point2i(0,0), mHeader->size);
+
+            frames.resize(mHeader->num_views());
+            for(int i=0; ok && i<mHeader->num_views(); i++)
+            {
+                ok = (mHeader->views[i] & container) == container;
+
+                if(ok)
+                {
+                    frames[i] = received(mHeader->views[i]);
+                }
+            }
+        }
+
+        if(ok)
+        {
+            image.setValid(mHeader->timestamps[current_frame], frames);
+        }
     }
 }
 
 int RecordingReader::getNumberOfCameras()
 {
-    return mHeader->num_views;
+    return mHeader->num_views();
 }
 
 void RecordingReader::seek(int frame)
 {
-    mNextFrame = frame;
-    mNextImage = std::future<Image>();
+    if(mVideo.isOpened() && 0 <= frame && frame < mHeader->num_frames())
+    {
+        mVideo.set(cv::CAP_PROP_POS_FRAMES, frame);
+    }
 }
 
 RecordingHeaderPtr RecordingReader::getHeader()

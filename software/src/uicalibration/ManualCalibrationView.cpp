@@ -90,7 +90,7 @@ void ManualCalibrationView::mouseMoveEvent(QMouseEvent* ev)
 
 void ManualCalibrationView::doClear()
 {
-    if(0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames)
+    if( 0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames() )
     {
         if( mMode == MODE_LEFT )
         {
@@ -128,7 +128,7 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
     const int half_width = width()/2;
     const int half_height = height()/2;
 
-    if(mCurrentImageQt.isNull() == false && 0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames)
+    if( mCurrentImageQt.isNull() == false && 0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames() )
     {
         if(mZoom.valid == false)
         {
@@ -254,7 +254,7 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
 
 void ManualCalibrationView::doTake()
 {
-    if(0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames)
+    if( 0 <= mCurrentFrameId && mCurrentFrameId < mParams->recording->num_frames() )
     {
         if( mMode == MODE_LEFT || mMode == MODE_RIGHT )
         {

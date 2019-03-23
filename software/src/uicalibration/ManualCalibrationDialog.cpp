@@ -45,7 +45,7 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     mSlider = new QSlider;
     mSlider->setOrientation(Qt::Horizontal);
     mSlider->setMinimum(0);
-    mSlider->setMaximum(params->recording->num_frames);
+    mSlider->setMaximum(params->recording->num_frames());
 
     mLabelFrame = new QLabel("N/A");
 
@@ -95,9 +95,9 @@ ManualCalibrationDialog::ManualCalibrationDialog(
 
 void ManualCalibrationDialog::setFrame(int frame)
 {
-    if(0 <= frame && frame < mParameters->recording->num_frames)
+    if(0 <= frame && frame < mParameters->recording->num_frames())
     {
-        mLabelFrame->setText( QString("Frame %1/%2").arg(frame+1).arg(mParameters->recording->num_frames) );
+        mLabelFrame->setText( QString("Frame %1/%2").arg(frame+1).arg(mParameters->recording->num_frames()) );
     }
     else
     {
@@ -194,7 +194,7 @@ void ManualCalibrationDialog::frameWithDataClicked(QListWidgetItem* item)
 
     if(ok)
     {
-        ok = (0 <= id && id < mParameters->recording->num_frames);
+        ok = (0 <= id && id < mParameters->recording->num_frames());
     }
 
     if(ok)

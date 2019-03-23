@@ -5,6 +5,7 @@
 #include <QDir>
 #include <fstream>
 #include <iostream>
+#include <opencv2/videoio.hpp>
 #include "VideoSource.h"
 #include "Operation.h"
 #include "RecordingHeader.h"
@@ -36,7 +37,11 @@ public:
 
 protected:
 
-    QDir mDirectory;
+    bool mSuccess;
+    cv::Mat mBuffer;
+    cv::VideoWriter mVideoWriter;
+    std::string mVideoFilename;
+    bool mVideoFileCreated;
     QTime mClock;
     int mNumFrames;
     QTime mFrameRateClock;

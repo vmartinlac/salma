@@ -28,7 +28,7 @@ add_library(
 )
 
 target_link_libraries(salma_video PUBLIC opencv_core Qt5::Core)
-target_link_libraries(salma_video PRIVATE Aravis opencv_videoio opencv_imgcodecs FFmpeg)
+target_link_libraries(salma_video PRIVATE Aravis opencv_videoio opencv_imgcodecs) # FFmpeg)
 target_include_directories(salma_video INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 install(TARGETS salma_video LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

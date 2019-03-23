@@ -66,7 +66,7 @@ bool ReconstructionOperation::step()
 {
     bool ret = true;
 
-    if(mNextFrame >= mRecordingHeader->num_frames)
+    if(mNextFrame >= mRecordingHeader->num_frames())
     {
         ret = false;
     }

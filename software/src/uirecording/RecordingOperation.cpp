@@ -1,6 +1,5 @@
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
 #include <QMessageBox>
+#include <QFile>
 #include <QThread>
 #include <opencv2/imgcodecs.hpp>
 #include <thread>
@@ -24,43 +23,34 @@ RecordingOperation::~RecordingOperation()
 
 bool RecordingOperation::uibefore(QWidget* parent, Project* project)
 {
-    bool ok = true;
+    mSuccess = true;
+    mVideoFileCreated = false;
+    mVideoFilename.clear();
 
-    if(mVisualizationOnly)
+    if( mVisualizationOnly == false )
     {
-        mDirectory = QDir::temp();
-    }
-    else
-    {
-        ok = project->createRecordingDirectory(mDirectory);
-
-        if(ok == false)
-        {
-            QMessageBox::critical(parent, "Error", "Could not create directory! Check filesystem permissions!");
-        }
+        mSuccess = project->getNewRecordingFilename(mVideoFilename) && (mVideoFilename.empty() == false);
     }
 
-    return ok;
+    return mSuccess;
 }
 
 bool RecordingOperation::before()
 {
-    bool ok = true;
-
     mClock.start();
     mNumFrames = 0;
 
-    if(ok)
+    if(mSuccess)
     {
-        ok = (mRecordingName.empty() == false && mMaxFrameRate > 0.0);
+        mSuccess = (mRecordingName.empty() == false && mMaxFrameRate > 0.0);
     }
 
-    if(ok)
+    if(mSuccess)
     {
-        ok = bool(mCamera) && (mCamera->getNumberOfCameras() >= 1);
+        mSuccess = bool(mCamera) && (mCamera->getNumberOfCameras() >= 1);
     }
 
-    if(ok)
+    if(mSuccess)
     {
         if(mVisualizationOnly)
         {
@@ -72,30 +62,28 @@ bool RecordingOperation::before()
             mResult->id = -1;
             mResult->name = mRecordingName;
             mResult->date.clear();
-            mResult->num_views = mCamera->getNumberOfCameras();
-            mResult->num_frames = 0;
-            mResult->directory = mDirectory;
+            mResult->timestamps.clear();
+            mResult->views.clear();
+            mResult->filename = mVideoFilename;
         }
     }
 
-    if(ok)
+    if(mSuccess)
     {
-        ok = mCamera->open();
+        mSuccess = mCamera->open();
     }
 
-    if(ok)
+    if(mSuccess)
     {
         mCamera->trigger();
     }
 
-    return ok;
+    return mSuccess;
 }
 
 bool RecordingOperation::step()
 {
-    bool ret = true;
-
-    if( mCamera)
+    if( mSuccess )
     {
         Image image;
 
@@ -108,36 +96,71 @@ bool RecordingOperation::step()
             {
                 mNumFrames++;
             }
-            else
+            else if(mVideoWriter.isOpened())
             {
-                ret = ret && ( image.getNumberOfFrames() == mResult->num_views );
-
-                if(ret)
+                if(mSuccess)
                 {
-                    for(int v=0; ret && v<image.getNumberOfFrames(); v++)
-                    {
-                        const QString str_frame = QString::number(mNumFrames);
-                        const QString str_view = QString::number(v);
-                        const QString basename = QString("frame_%1_%2.png").arg(str_frame, 8, '0').arg(str_view, 2, '0');
-                        const QString filename = mDirectory.absoluteFilePath(basename);
-                        ret = ret && syncimwrite(filename.toLocal8Bit().data(), ".png", image.getFrame(v));
+                    mSuccess = ( image.getNumberOfFrames() == mResult->num_views() );
+                }
 
-                        RecordingHeaderView rhv;
-                        rhv.filename = basename;
-                        mResult->views.push_back(rhv);
+                if(mSuccess)
+                {
+                    if(mBuffer.size() != mResult->size) throw std::runtime_error("internal error");
+
+                    for(int v=0; mSuccess && v<image.getNumberOfFrames(); v++)
+                    {
+                        const cv::Mat frame = image.getFrame(v);
+
+                        if(frame.cols == mResult->views[v].width && frame.rows == mResult->views[v].height)
+                        {
+                            mBuffer( mResult->views[v] ) = frame;
+                        }
+                        else
+                        {
+                            mSuccess = false;
+                        }
                     }
 
-                    RecordingHeaderFrame rhf;
-                    rhf.timestamp = image.getTimestamp();
-                    mResult->frames.push_back(rhf);
-                    mResult->num_frames++;
-
+                    mVideoWriter.write(mBuffer);
+                    mResult->timestamps.push_back(image.getTimestamp());
                     mNumFrames++;
 
-                    ret = ret && (mResult->num_frames == mResult->frames.size());
-                    ret = ret && (mResult->num_views*mResult->num_frames == mResult->views.size());
-                    ret = ret && (mNumFrames == mResult->num_frames);
+                    mSuccess = (mResult->timestamps.size() == mNumFrames);
                 }
+            }
+            else
+            {
+                mResult->size.width = 0;
+                mResult->size.height = 0;
+
+                if( mResult->views.empty() == false ) throw std::runtime_error("internal error");
+
+                for(int i=0; i<image.getNumberOfFrames(); i++)
+                {
+                    const cv::Mat frame = image.getFrame(i);
+
+                    mResult->views.emplace_back(
+                        mResult->size.width,
+                        0,
+                        frame.cols,
+                        frame.rows);
+
+                    mResult->size.width += frame.cols;
+                    mResult->size.height = std::max(mResult->size.height, frame.rows);
+                }
+
+                mBuffer.create(mResult->size, CV_8UC1);
+
+                const int fourcc = cv::VideoWriter::fourcc('X','2','6','4');
+
+                mSuccess = mVideoWriter.open(
+                    mVideoFilename,
+                    fourcc,
+                    25.0,
+                    mResult->size,
+                    true);
+
+                mVideoFileCreated = mSuccess;
             }
 
             // display video.
@@ -160,7 +183,7 @@ bool RecordingOperation::step()
             }
 
             // write output text.
-            if(ret)
+            if(mSuccess)
             {
                 const int total_seconds = static_cast<int>( mClock.elapsed()*1.0e-3 );
                 const int seconds = total_seconds % 60;
@@ -181,7 +204,7 @@ bool RecordingOperation::step()
 
                 if(mVisualizationOnly == false)
                 {
-                    s << "Output directory: " << mDirectory.dirName().toStdString() << std::endl;
+                    s << "Output filename: " << mVideoFilename << std::endl;
                 }
                 s << "Visualization only: " << (mVisualizationOnly ? "true" : "false") << std::endl;
                 s << "Max frame rate: " << mMaxFrameRate << std::endl;
@@ -209,18 +232,8 @@ bool RecordingOperation::step()
             mFrameRateClock.start();
         }
     }
-    else
-    {
-        ret = false;
-    }
 
-    if(ret == false && bool(mResult))
-    {
-        mResult.reset();
-        mDirectory.removeRecursively();
-    }
-
-    return ret;
+    return mSuccess;
 }
 
 void RecordingOperation::after()
@@ -229,41 +242,44 @@ void RecordingOperation::after()
     {
         mCamera->close();
     }
-}
 
-const char* RecordingOperation::getName()
-{
-    return "Recording";
+    if(mVideoWriter.isOpened())
+    {
+        mVideoWriter.release();
+    }
 }
 
 void RecordingOperation::uiafter(QWidget* parent, Project* project)
 {
     if( mVisualizationOnly == false )
     {
-        if( mResult )
+        int recording_id = -1;
+        const char* err = "Error while recording!";
+
+        if(mSuccess)
         {
-            bool ok = true;
-            int recording_id = -1;
+            mSuccess = project->saveRecording(mResult, recording_id);
+            err = "Recording could not be saved to database!";
+        }
 
-            if(ok)
-            {
-                ok = project->saveRecording(mResult, recording_id);
-            }
+        if(mSuccess == false && mVideoFileCreated)
+        {
+            QFile(mVideoFilename.c_str()).remove();
+        }
 
-            if(ok)
-            {
-                QMessageBox::information(parent, "Success", "Done recording!");
-            }
-            else
-            {
-                mDirectory.removeRecursively();
-                QMessageBox::critical(parent, "Error", "Recording could not be saved to database!");
-            }
+        if(mSuccess)
+        {
+            QMessageBox::information(parent, "Success", "Done recording!");
         }
         else
         {
-            QMessageBox::critical(parent, "Error", "Recording failed!");
+            QMessageBox::critical(parent, "Error", err);
         }
     }
+}
+
+const char* RecordingOperation::getName()
+{
+    return "Recording";
 }
 
