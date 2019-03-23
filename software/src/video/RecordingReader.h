@@ -29,7 +29,6 @@ public:
 
 protected:
 
-    bool mTriggered;
     RecordingHeaderPtr mHeader;
     cv::VideoCapture mVideo;
 };

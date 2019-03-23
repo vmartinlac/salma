@@ -187,13 +187,13 @@ void RecordingPlayerDialog::showFrame(int frame)
 
     if(ok)
     {
-        mLabelFrame->setText("Frame "+QString::number(mCurrentFrame+1) + "/" + QString::number(mHeader->num_frames()));
+        mLabelFrame->setText("Frame " + QString::number(mCurrentFrame+1) + "/" + QString::number(mHeader->num_frames()));
         mLabelTimestamp->setText("t =  " + QString::number(mHeader->timestamps[mCurrentFrame]) );
     }
     else
     {
         cv::Mat image(320, 200, CV_8UC3);
-        image = cv::Scalar(0,0,0);
+        image = cv::Vec3b(0,0,0);
 
         mVideo->beginWrite();
         mVideo->data().image = image;

@@ -1,10 +1,10 @@
 #include <thread>
+#include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include "RecordingReader.h"
 
 RecordingReader::RecordingReader(RecordingHeaderPtr header, bool unused)
 {
-    mTriggered = false;
     mHeader = std::move(header);
 }
 
@@ -20,8 +20,6 @@ std::string RecordingReader::getHumanName()
 bool RecordingReader::open()
 {
     bool ok = true;
-
-    mTriggered = false;
 
     if(ok)
     {
@@ -44,18 +42,13 @@ void RecordingReader::close()
 
 void RecordingReader::trigger()
 {
-    if(mVideo.isOpened() && mTriggered == false)
-    {
-        mTriggered = true;
-        mVideo.grab();
-    }
 }
 
 void RecordingReader::read(Image& image)
 {
     image.setInvalid();
 
-    if(mVideo.isOpened() && mTriggered)
+    if( mVideo.isOpened() )
     {
         cv::Mat received;
         int current_frame;
