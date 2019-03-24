@@ -4,6 +4,8 @@
 #include "GenICamRig.h"
 #include "GenICamCamera.h"
 
+//#define GRAYSCALE
+
 extern "C" void GenICamCallback(ArvStream* stream, void* user_data)
 {
     GenICamCamera* cam = static_cast<GenICamCamera*>(user_data);
@@ -61,12 +63,19 @@ void GenICamCamera::onFrameReceived()
 
         const double timestamp = double(raw_timestamp - mFirstTimestamp) * 1.0e-9;
 
+#ifdef GRAYSCALE
+        cv::Mat frame( cv::Size(width, height), CV_8UC1 );
+#else
         cv::Mat frame( cv::Size(width, height), CV_8UC3 );
-        //cv::Mat frame( cv::Size(width, height), CV_8UC1 );
+#endif
 
         std::copy(
             static_cast<const uint8_t*>(buffer_data),
+#ifdef GRAYSCALE
             static_cast<const uint8_t*>(buffer_data) + width*height,
+#else
+            static_cast<const uint8_t*>(buffer_data) + width*height*3,
+#endif
             frame.ptr(0));
 
         image.setValid(timestamp, frame);
@@ -206,8 +215,11 @@ bool GenICamCamera::open(bool external_trigger)
 
     if(mIsOpen)
     {
-        //arv_device_set_string_feature_value(mDevice, "PixelFormat", "Mono8");
+#ifdef GRAYSCALE
+        arv_device_set_string_feature_value(mDevice, "PixelFormat", "Mono8");
+#else
         arv_device_set_string_feature_value(mDevice, "PixelFormat", "BGR8Packed");
+#endif
         mIsOpen = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
     }
 

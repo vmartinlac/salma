@@ -115,6 +115,7 @@ bool RecordingOperation::step()
 
                         if( frame.size() == mResult->views[v].size() )
                         {
+                            //std::cout << frame.type() << " " << mBuffer.type() << std::endl;
                             frame.copyTo( mBuffer( mResult->views[v] ) );
                         }
                         else
@@ -164,7 +165,7 @@ bool RecordingOperation::step()
                 mSuccess = mVideoWriter.open(
                     mVideoFilename,
                     fourcc,
-                    10.0,
+                    15.0,
                     mResult->size,
                     true);
 
