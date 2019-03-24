@@ -6,7 +6,11 @@
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
 
-//#define MOCK_GENICAM_CAMERAS
+/*
+#define MOCK_GENICAM_CAMERAS
+#define MOCK_GENICAM_CAMERA_WIDTH 1292
+#define MOCK_GENICAM_CAMERA_HEIGHT 964
+*/
 
 VideoSystemImpl::VideoSystemImpl()
 {
@@ -72,7 +76,7 @@ std::string VideoSystemImpl::getNameOfGenICamCamera(int idx)
 VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, ExternalTriggerPtr trigger)
 {
 #ifdef MOCK_GENICAM_CAMERAS
-    VideoSourcePtr ret(new MockCamera(1, 640, 480));
+    VideoSourcePtr ret(new MockCamera(1, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
     return ret;
 #else
     GenICamRigPtr ret;
@@ -97,7 +101,7 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, Ext
 VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_idx, ExternalTriggerPtr trigger)
 {
 #ifdef MOCK_GENICAM_CAMERAS
-    VideoSourcePtr ret(new MockCamera(2, 640, 480));
+    VideoSourcePtr ret(new MockCamera(2, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
     return ret;
 #else
     GenICamRigPtr ret;
