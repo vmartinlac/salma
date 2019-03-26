@@ -73,10 +73,12 @@ bool RecordingOperation::before()
         mSuccess = mCamera->open();
     }
 
+    /*
     if(mSuccess)
     {
         mCamera->trigger();
     }
+    */
 
     return mSuccess;
 }
@@ -87,8 +89,8 @@ bool RecordingOperation::step()
     {
         Image image;
 
-        mCamera->read(image);
         mCamera->trigger();
+        mCamera->read(image);
 
         if( image.isValid() )
         {

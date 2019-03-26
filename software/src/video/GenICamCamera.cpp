@@ -6,6 +6,34 @@
 
 //#define GRAYSCALE
 
+///////////////////////
+/*
+#include <chrono>
+#include <mutex>
+
+void LOG(const char* txt)
+{
+    static std::mutex mutex;
+    const std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
+
+    static std::chrono::steady_clock::time_point t0;
+    static bool first = true;
+
+    if(first)
+    {
+        t0 = t;
+        first = false;
+    }
+
+    const int dt = std::chrono::duration_cast<std::chrono::milliseconds>(t - t0).count();
+
+    mutex.lock();
+    std::cout << "t = " << dt << ": " << txt << std::endl;
+    mutex.unlock();
+}
+*/
+//////////////////
+
 extern "C" void GenICamCallback(ArvStream* stream, void* user_data)
 {
     GenICamCamera* cam = static_cast<GenICamCamera*>(user_data);
@@ -14,6 +42,7 @@ extern "C" void GenICamCallback(ArvStream* stream, void* user_data)
 
 void GenICamCamera::onFrameReceived()
 {
+    //LOG("frame received");
     mMutex.lock();
 
     const void* buffer_data = nullptr;
@@ -31,7 +60,42 @@ void GenICamCamera::onFrameReceived()
 
     if(ok)
     {
-        ok = ( arv_buffer_get_status(buffer) == ARV_BUFFER_STATUS_SUCCESS );
+        const int status = arv_buffer_get_status(buffer);
+        ok = ( status == ARV_BUFFER_STATUS_SUCCESS );
+
+        //LOG( std::to_string(arv_buffer_get_frame_id(buffer)).c_str() );
+        /*
+        switch(status)
+        {
+        case ARV_BUFFER_STATUS_UNKNOWN:
+            //LOG("UNKNOWN");
+            break;
+        case ARV_BUFFER_STATUS_SUCCESS:
+            //LOG("SUCCESS");
+            break;
+        case ARV_BUFFER_STATUS_CLEARED:
+            LOG("CLEARED");
+            break;
+        case ARV_BUFFER_STATUS_TIMEOUT:
+            LOG("TIMEOUT");
+            break;
+        case ARV_BUFFER_STATUS_MISSING_PACKETS:
+            LOG("MISSING_PACKETS");
+            break;
+        case ARV_BUFFER_STATUS_WRONG_PACKET_ID:
+            LOG("WRONG_PACKET_ID");
+            break;
+        case ARV_BUFFER_STATUS_SIZE_MISMATCH:
+            LOG("SIZE_MISMATCH");
+            break;
+        case ARV_BUFFER_STATUS_FILLING:
+            LOG("FILLING");
+            break;
+        case ARV_BUFFER_STATUS_ABORTED:
+            LOG("ABORTED");
+            break;
+        }
+        */
     }
 
     if(ok)
@@ -98,6 +162,8 @@ void GenICamCamera::onFrameReceived()
     {
         mRig->onFrameReceived();
     }
+
+    if(ok == false) std::cerr << "FRAME REJECTED!" << std::endl;
 }
 
 void GenICamCamera::takeLastImage(Image& image)
@@ -230,6 +296,12 @@ bool GenICamCamera::open(bool external_trigger)
         mIsOpen = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
     }
     */
+
+    if(mIsOpen)
+    {
+        arv_device_execute_command(mDevice, "GVSPAdjustPacketSize");
+        mIsOpen = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
+    }
 
     if(mIsOpen)
     {
