@@ -34,13 +34,16 @@ void LOG(const char* txt)
 */
 //////////////////
 
-extern "C" void GenICamCallback(ArvStream* stream, void* user_data)
+extern "C" void GenICamCallback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer)
 {
-    GenICamCamera* cam = static_cast<GenICamCamera*>(user_data);
-    cam->onFrameReceived();
+    if(type = ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE)
+    {
+        GenICamCamera* cam = static_cast<GenICamCamera*>(user_data);
+        cam->onFrameReceived(buffer);
+    }
 }
 
-void GenICamCamera::onFrameReceived()
+void GenICamCamera::onFrameReceived(ArvBuffer* buffer)
 {
     //LOG("frame received");
     mMutex.lock();
@@ -50,12 +53,12 @@ void GenICamCamera::onFrameReceived()
     gint height;
     Image image;
     bool ok = true;
-    ArvBuffer* buffer = nullptr;
     
     if(ok)
     {
-        buffer = arv_stream_try_pop_buffer(mStream);
         ok = (buffer != nullptr);
+
+        //if(ok == false) std::cout << "Buffer is nullptr!" << std::endl;
     }
 
     if(ok)
@@ -63,36 +66,38 @@ void GenICamCamera::onFrameReceived()
         const int status = arv_buffer_get_status(buffer);
         ok = ( status == ARV_BUFFER_STATUS_SUCCESS );
 
+        //if(ok == false) std::cout << "Incorrect status " << arv_buffer_get_status(buffer) << std::endl;
+
         //LOG( std::to_string(arv_buffer_get_frame_id(buffer)).c_str() );
         /*
         switch(status)
         {
         case ARV_BUFFER_STATUS_UNKNOWN:
-            //LOG("UNKNOWN");
+            std::cout << "UNKNOWN" << std::endl;
             break;
         case ARV_BUFFER_STATUS_SUCCESS:
-            //LOG("SUCCESS");
+            std::cout << "SUCCESS" << std::endl;
             break;
         case ARV_BUFFER_STATUS_CLEARED:
-            LOG("CLEARED");
+            std::cout << "CLEARED" << std::endl;
             break;
         case ARV_BUFFER_STATUS_TIMEOUT:
-            LOG("TIMEOUT");
+            std::cout << "TIMEOUT" << std::endl;
             break;
         case ARV_BUFFER_STATUS_MISSING_PACKETS:
-            LOG("MISSING_PACKETS");
+            std::cout << "MISSING_PACKETS" << std::endl;
             break;
         case ARV_BUFFER_STATUS_WRONG_PACKET_ID:
-            LOG("WRONG_PACKET_ID");
+            std::cout << "WRONG_PACKET_ID" << std::endl;
             break;
         case ARV_BUFFER_STATUS_SIZE_MISMATCH:
-            LOG("SIZE_MISMATCH");
+            std::cout << "SIZE_MISMATCH" << std::endl;
             break;
         case ARV_BUFFER_STATUS_FILLING:
-            LOG("FILLING");
+            std::cout << "FILLING" << std::endl;
             break;
         case ARV_BUFFER_STATUS_ABORTED:
-            LOG("ABORTED");
+            std::cout << "ABORTED" << std::endl;
             break;
         }
         */
@@ -100,7 +105,8 @@ void GenICamCamera::onFrameReceived()
 
     if(ok)
     {
-        ok = (arv_buffer_get_payload_type(buffer) == ARV_BUFFER_PAYLOAD_TYPE_IMAGE);
+        ok = ( arv_buffer_get_payload_type(buffer) == ARV_BUFFER_PAYLOAD_TYPE_IMAGE );
+        //if(ok == false) std::cout << "Incorrect payload type " << arv_buffer_get_payload_type(buffer) << std::endl;
     }
 
     if(ok)
@@ -163,7 +169,7 @@ void GenICamCamera::onFrameReceived()
         mRig->onFrameReceived();
     }
 
-    if(ok == false) std::cerr << "FRAME REJECTED!" << std::endl;
+    //if(ok == false) std::cerr << "FRAME REJECTED!" << std::endl;
 }
 
 void GenICamCamera::takeLastImage(Image& image)
@@ -172,19 +178,6 @@ void GenICamCamera::takeLastImage(Image& image)
     image = std::move(mLastImage);
     mMutex.unlock();
 }
-
-/*
-extern "C" void GenICamCallback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer)
-{
-    GenICamCamera* cam = static_cast<GenICamCamera*>(user_data);
-
-    if( type == ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE && arv_buffer_get_status(buffer) == ARV_BUFFER_STATUS_SUCCESS )
-    {
-        std::cout << "Frame received! " << std::endl;
-        arv_stream_push_buffer(cam->getArvStream(), buffer);
-    }
-}
-*/
 
 GenICamCamera::GenICamCamera(GenICamRig* rig, const std::string& id)
 {
@@ -249,15 +242,15 @@ bool GenICamCamera::open(bool external_trigger)
 
     if(mIsOpen)
     {
-        mStream = arv_device_create_stream(mDevice, nullptr, nullptr);
+        mStream = arv_device_create_stream(mDevice, GenICamCallback, this);
         mIsOpen = bool(mStream);
 
     }
 
     if(mIsOpen)
     {
-        arv_stream_set_emit_signals(mStream, 1);
-        g_signal_connect(mStream, "new-buffer", G_CALLBACK(GenICamCallback), this);
+        //g_object_set(mStream, "packet-timeout", 1000000, nullptr);
+        //g_object_set(mStream, "frame-retention", 1000000, nullptr);
     }
 
     if(mIsOpen)
@@ -338,17 +331,9 @@ void GenICamCamera::close()
 {
     if(mIsOpen)
     {
-        mMutex.lock();
         arv_device_execute_command(mDevice, "AcquisitionStop");
         mIsOpen = false;
-        arv_stream_set_emit_signals(mStream, 0);
-        for(ArvBuffer*& b : mAvailableBuffers)
-        {
-            g_clear_object(&b);
-        }
-        g_clear_object(&mStream);
         g_clear_object(&mDevice);
-        mMutex.unlock();
     }
 }
 

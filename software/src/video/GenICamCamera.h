@@ -22,7 +22,7 @@ public:
     void prepareTrigger();
     void softwareTrigger();
 
-    void onFrameReceived();
+    void onFrameReceived(ArvBuffer* buffer);
     void takeLastImage(Image& image);
 
 protected:
@@ -42,5 +42,3 @@ protected:
 
 typedef std::shared_ptr<GenICamCamera> GenICamCameraPtr;
 
-//extern "C" void GenICamCallback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer);
-extern "C" void GenICamCallback(ArvStream* stream, void* data);
