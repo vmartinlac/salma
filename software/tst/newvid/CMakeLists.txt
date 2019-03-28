@@ -5,6 +5,7 @@ add_executable(
     Camera.cpp
     Rig.h
     Rig.cpp
+    GenICamConfig.h
 )
 
 target_link_libraries(

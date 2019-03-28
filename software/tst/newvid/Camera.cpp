@@ -1,9 +1,6 @@
 #include "Camera.h"
 #include "Rig.h"
 
-#define NUM_BUFFERS 12
-#define MAX_OUT_OF_STREAM_BUFFERS 4
-
 Camera::Camera(Rig* rig, const std::string& id, int rank) :
     mRig(rig),
     mRank(rank),
@@ -49,7 +46,7 @@ void Camera::open()
 
     if(ok)
     {
-        for(int i=0; i<NUM_BUFFERS; i++)
+        for(int i=0; i<GENICAM_NUM_BUFFERS; i++)
         {
             ArvBuffer* buffer = arv_buffer_new_allocate(payload);
             arv_stream_push_buffer(mStream, buffer);
@@ -67,7 +64,7 @@ void Camera::close()
 
 void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer)
 {
-    Camera* cam = reinterpret_cast<Camera*>(user_data);
+    Camera* const cam = reinterpret_cast<Camera*>(user_data);
     bool ok = true;
 
     if(ok)
@@ -87,16 +84,14 @@ void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuf
 
     if(ok)
     {
-        //const guint32 id = arv_buffer_get_frame_id(buffer);
-
-        ArvBuffer* to_push = cam->mTab.push(buffer);
+        ArvBuffer* const to_push = cam->mTab1.push(buffer);
 
         if(to_push)
         {
             arv_stream_push_buffer(cam->mStream, to_push);
         }
 
-        cam->mRig->mSemaphore.release();
+        cam->mRig->mSemaphore.up();
     }
 }
 

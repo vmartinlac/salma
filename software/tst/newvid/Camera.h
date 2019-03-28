@@ -11,6 +11,8 @@
 #include <arv.h>
 #include <opencv2/core.hpp>
 
+#include "GenICamConfig.h"
+
 class Rig;
 
 template<typename T, int D>
@@ -22,6 +24,11 @@ public:
     {
         mFirst = 0;
         mCount = 0;
+    }
+
+    constexpr int maxsize()
+    {
+        return D;
     }
 
     template<typename Iterator>
@@ -93,10 +100,11 @@ public:
     int mRank;
     std::string mId;
 
-    ArvStream* mStream;
     ArvDevice* mDevice;
+    ArvStream* mStream;
 
-    CircularBuffer<ArvBuffer,3> mTab;
+    CircularBuffer<ArvBuffer, GENICAM_NUM_BUFFERS> mTab1;
+    std::map<guint32,ArvBuffer*> mTab2;
 };
 
 typedef std::shared_ptr<Camera> CameraPtr;
