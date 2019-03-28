@@ -11,6 +11,7 @@
 #include <vector>
 #include <arv.h>
 #include <opencv2/core.hpp>
+#include <QSemaphore>
 
 #include "Camera.h"
 
@@ -32,10 +33,10 @@ protected:
 
 public:
 
+    bool mIsOpen;
     std::vector<CameraPtr> mCameras;
-    //std::mutex mMutex;
     std::thread mThread;
-    std::condition_variable mConditionVariable;
+    QSemaphore mSemaphore;
 };
 
 typedef std::shared_ptr<Rig> RigPtr;

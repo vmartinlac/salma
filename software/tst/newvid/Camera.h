@@ -13,6 +13,66 @@
 
 class Rig;
 
+template<typename T, int D>
+class CircularBuffer
+{
+public:
+
+    CircularBuffer()
+    {
+        mFirst = 0;
+        mCount = 0;
+    }
+
+    template<typename Iterator>
+    void take(Iterator it)
+    {
+        mMutex.lock();
+
+        for(int i=0; i<mCount; i++)
+        {
+            *it = mTab[ (mFirst + i) % D ];
+            it++;
+        }
+
+        mCount = 0;
+        mFirst = 0;
+
+        mMutex.unlock();
+    }
+
+    T* push(T* item)
+    {
+        T* ret = nullptr;
+
+        mMutex.lock();
+
+        if(mCount < D)
+        {
+            mTab[mCount] = item;
+            mCount++;
+        }
+        else
+        {
+            T*& cell = mTab[ (mFirst + D - 1) % D ];
+            ret = cell;
+            cell = item;
+            mFirst = (mFirst+1) % D;
+        }
+
+        mMutex.unlock();
+
+        return ret;
+    }
+
+protected:
+
+    T* mTab[D];
+    int mCount;
+    int mFirst;
+    std::mutex mMutex;
+};
+
 class Camera
 {
 public:
@@ -36,8 +96,8 @@ public:
     ArvStream* mStream;
     ArvDevice* mDevice;
 
-    std::mutex mMutex;
-    std::map<guint32,ArvBuffer*> mBuffers;
+    CircularBuffer<ArvBuffer,3> mTab;
 };
 
 typedef std::shared_ptr<Camera> CameraPtr;
+

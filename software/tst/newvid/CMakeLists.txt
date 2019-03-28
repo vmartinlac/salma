@@ -12,5 +12,6 @@ target_link_libraries(
     PUBLIC
     Aravis
     opencv_core
+    Qt5::Core
 )
 

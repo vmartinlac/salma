@@ -2,6 +2,7 @@
 
 void Rig::RigProc(Rig* rig)
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 Rig::Rig(const std::initializer_list<int>& cams)
@@ -15,16 +16,20 @@ Rig::Rig(const std::initializer_list<int>& cams)
 
 void Rig::open()
 {
-    mThread = std::thread(RigProc, this);
-
     for( CameraPtr cam : mCameras )
     {
         cam->open();
     }
+
+    mIsOpen = true;
+
+    mThread = std::thread(RigProc, this);
 }
 
 void Rig::close()
 {
+    mIsOpen = false;
+
     mThread.join();
     for( CameraPtr cam : mCameras )
     {

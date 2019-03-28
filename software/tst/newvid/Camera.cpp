@@ -67,7 +67,13 @@ void Camera::close()
 
 void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer)
 {
+    Camera* cam = reinterpret_cast<Camera*>(user_data);
     bool ok = true;
+
+    if(ok)
+    {
+        ok = bool(cam) && bool(cam->mRig);
+    }
 
     if(ok)
     {
@@ -81,16 +87,16 @@ void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuf
 
     if(ok)
     {
-        const guint32 id = arv_buffer_get_frame_id(buffer);
+        //const guint32 id = arv_buffer_get_frame_id(buffer);
 
-        Camera* cam = reinterpret_cast<Camera*>(user_data);
+        ArvBuffer* to_push = cam->mTab.push(buffer);
 
-        cam->mMutex.lock();
-        cam->mBuffers[id] = buffer;
-        //arv_stream_push_buffer(cam->mStream, buffer);
-        cam->mMutex.unlock();
-        cam->mRig->mConditionVariable.notify_one();
-        std::cout << "Callback" << std::endl;
+        if(to_push)
+        {
+            arv_stream_push_buffer(cam->mStream, to_push);
+        }
+
+        cam->mRig->mSemaphore.release();
     }
 }
 
