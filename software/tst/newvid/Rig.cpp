@@ -143,7 +143,7 @@ void Rig::RigProc(Rig* rig)
                 }
 
                 // TODO: put these frame in an image.
-                std::cout << "Generated a frame!" << std::endl;
+                std::cout << "Generated frame " << found_id << std::endl;
             }
             else
             {
