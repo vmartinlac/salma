@@ -99,7 +99,7 @@ void Rig::RigProc(Rig* rig)
                 }
 
                 {
-                    std::map<guint32,int>::iterator it;
+                    std::map<guint32,int>::iterator it = count.begin();
 
                     while(it != count.end())
                     {
