@@ -90,6 +90,8 @@ public:
 
     void close();
 
+    void trigger();
+
 protected:
 
     static void stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer);

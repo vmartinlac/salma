@@ -95,3 +95,10 @@ void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuf
     }
 }
 
+void Camera::trigger()
+{
+    arv_device_execute_command(mDevice, "TriggerSoftware");
+    const bool ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
+    if(ok == false) std::cerr << "Software trigger failed!" << std::endl;
+}
+

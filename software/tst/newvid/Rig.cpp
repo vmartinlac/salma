@@ -188,7 +188,11 @@ void Rig::RigProc(Rig* rig)
                     chosen_buffers[i] = nullptr;
                 }
 
-                // TODO: put these frame in an image.
+                Image image(std::move(frames));
+                rig->mMutexB.lock();
+                rig->mImage = std::move(image);
+                rig->mMutexB.unlock();
+                rig->mMutexA.unlock();
                 std::cout << "Generated frame " << found_id << std::endl;
             }
             else
@@ -231,6 +235,8 @@ void Rig::open()
     mAskThreadToQuit = false;
 
     mThread = std::thread(RigProc, this);
+
+    mMutexA.try_lock(); // TODO: if already locked, generate an error.
 }
 
 void Rig::close()
@@ -247,8 +253,27 @@ void Rig::close()
     mIsOpen = false;
 }
 
-cv::Mat Rig::read()
+bool Rig::read(Image& im)
 {
-    return cv::Mat();
+    bool ret = false;
+
+    mMutexA.lock(); // TODO: add timeout wait.
+
+    if(ret)
+    {
+        mMutexB.lock();
+        im = std::move(mImage);
+        mMutexB.unlock();
+    }
+
+    return ret;
+}
+
+void Rig::trigger()
+{
+    for(CameraPtr cam : mCameras)
+    {
+        cam->trigger();
+    }
 }
 

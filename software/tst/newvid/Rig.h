@@ -48,6 +48,34 @@ private:
     int mCount;
 };
 
+class Image
+{
+public:
+
+    Image()
+    {
+    }
+
+    Image(std::vector<cv::Mat>&& vec)
+    {
+        mViews = vec;
+    }
+
+    Image(Image&& o)
+    {
+        mViews = std::move(o.mViews);
+    }
+
+    void operator=(Image&& o)
+    {
+        mViews = std::move(o.mViews);
+    }
+
+protected:
+
+    std::vector<cv::Mat> mViews;
+};
+
 class Rig
 {
 public:
@@ -58,7 +86,9 @@ public:
 
     void close();
 
-    cv::Mat read();
+    bool read(Image& im);
+
+    void trigger();
 
 protected:
 
@@ -71,6 +101,10 @@ public:
     std::thread mThread;
     Semaphore mSemaphore;
     bool mAskThreadToQuit;
+
+    Image mImage;
+    std::mutex mMutexA;
+    std::mutex mMutexB;
 };
 
 typedef std::shared_ptr<Rig> RigPtr;

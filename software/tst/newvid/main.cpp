@@ -21,7 +21,15 @@ int main(int num_args, char** args)
 
     rig->open();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    const auto t0 = std::chrono::steady_clock::now();
+
+    while( (std::chrono::steady_clock::now() - t0) < std::chrono::milliseconds(2000) )
+    {
+        rig->trigger();
+
+        Image im;
+        rig->read(im);
+    }
 
     rig->close();
 
