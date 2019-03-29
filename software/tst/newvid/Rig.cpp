@@ -1,5 +1,78 @@
 #include "Rig.h"
 
+class Counter
+{
+public:
+
+    int get(guint32 id)
+    {
+        int ret = 0;
+        auto it = mMap.find(id);
+
+        if( mMap.end() == it )
+        {
+            return it->second;
+        }
+
+        return ret;
+    }
+
+    void increment(guint32 id)
+    {
+        auto it = mMap.find(id);
+        if( mMap.end() == it )
+        {
+            mMap[id] = 1;
+        }
+        else
+        {
+            it->second++;
+        }
+    }
+
+    void decrement(guint32 id)
+    {
+        auto it = mMap.find(id);
+        if( mMap.end() == it )
+        {
+            throw std::runtime_error("internal error");
+        }
+        else if(it->second > 1)
+        {
+            it->second--;
+        }
+        else
+        {
+            mMap.erase(it);
+        }
+    }
+
+    void remove(guint32 id)
+    {
+        mMap.erase(id);
+    }
+
+    void removeUpTo(guint32 id)
+    {
+        auto it = mMap.begin();
+        while(it != mMap.end())
+        {
+            if(it->first <= id)
+            {
+                it = mMap.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+        }
+    }
+
+protected:
+
+    std::map<guint32,int> mMap;
+};
+
 void Rig::RigProc(Rig* rig)
 {
     bool go_on = true;
@@ -10,7 +83,7 @@ void Rig::RigProc(Rig* rig)
 
     std::vector<ArvBuffer*> chosen_buffers(N_views, nullptr);
 
-    std::map<guint32,int> count;
+    Counter count;
 
     for(CameraPtr cam : rig->mCameras)
     {
@@ -44,20 +117,9 @@ void Rig::RigProc(Rig* rig)
 
                     cam->mTab2[id] = *it;
 
-                    {
-                        std::map<guint32,int>::iterator it2 = count.find(id);
+                    count.increment(id);
 
-                        if( count.end() == it2 )
-                        {
-                            count[id] = 1;
-                        }
-                        else
-                        {
-                            it2->second++;
-                        }
-                    }
-
-                    if( count[id] == N_views && (found == false || id > found_id))
+                    if( count.get(id) == N_views && (found == false || id > found_id))
                     {
                         found = true;
                         found_id = id;
@@ -75,8 +137,6 @@ void Rig::RigProc(Rig* rig)
                     chosen_buffers[i] = rig->mCameras[i]->mTab2[found_id];
                     rig->mCameras[i]->mTab2.erase(found_id);
                 }
-
-                count.erase(found_id);
 
                 // remove buffers older than found_id and push them to their respective stream.
 
@@ -98,21 +158,7 @@ void Rig::RigProc(Rig* rig)
                     }
                 }
 
-                {
-                    std::map<guint32,int>::iterator it = count.begin();
-
-                    while(it != count.end())
-                    {
-                        if(it->first <= found_id)
-                        {
-                            it = count.erase(it);
-                        }
-                        else
-                        {
-                            it++;
-                        }
-                    }
-                }
+                count.removeUpTo(found_id);
 
                 // produce the image.
 
@@ -147,7 +193,19 @@ void Rig::RigProc(Rig* rig)
             }
             else
             {
-                // TODO: put too old buffers.
+                // remove too old buffers.
+
+                for(CameraPtr cam : rig->mCameras)
+                {
+                    auto it = cam->mTab2.begin();
+
+                    while( cam->mTab2.size() > GENICAM_NUM_BUFFERS-4 )
+                    {
+                        count.decrement(it->first);
+                        arv_stream_push_buffer(cam->mStream, it->second);
+                        it = cam->mTab2.erase(it);
+                    }
+                }
             }
         }
     }
