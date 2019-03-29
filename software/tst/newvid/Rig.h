@@ -54,6 +54,7 @@ public:
 
     Image()
     {
+        mValid = false;
     }
 
     Image(std::vector<cv::Mat>&& vec)
@@ -71,8 +72,26 @@ public:
         mViews = std::move(o.mViews);
     }
 
+    void setInvalid()
+    {
+        mValid = false;
+        mViews.clear();
+    }
+
+    void setValid(
+        double timestamp,
+        int frameid,
+        std::vector<cv::Mat>& frames)
+    {
+    }
+
 protected:
 
+    bool mValid;
+    double mCameraTimestamp;
+    double mSystemTimestamp;
+    int mCameraFrameId;
+    int mSystemFrameId;
     std::vector<cv::Mat> mViews;
 };
 
@@ -103,7 +122,7 @@ public:
     bool mAskThreadToQuit;
 
     Image mImage;
-    std::mutex mMutexA;
+    std::timed_mutex mMutexA;
     std::mutex mMutexB;
 };
 

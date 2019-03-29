@@ -257,7 +257,8 @@ bool Rig::read(Image& im)
 {
     bool ret = false;
 
-    mMutexA.lock(); // TODO: add timeout wait.
+    //mMutexA.lock(); // TODO: add timeout wait.
+    ret = mMutexA.try_lock_for(std::chrono::milliseconds(100)); // TODO: add timeout wait.
 
     if(ret)
     {
