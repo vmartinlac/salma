@@ -57,19 +57,22 @@ public:
         mValid = false;
     }
 
-    Image(std::vector<cv::Mat>&& vec)
-    {
-        mViews = vec;
-    }
-
-    Image(Image&& o)
-    {
-        mViews = std::move(o.mViews);
-    }
-
     void operator=(Image&& o)
     {
-        mViews = std::move(o.mViews);
+        mValid = o.mValid;
+
+        if(mValid)
+        {
+            mFrameId = o.mFrameId;
+            mTimestamp = o.mTimestamp;
+            mViews = std::move(o.mViews);
+        }
+        else
+        {
+            mViews.clear();
+        }
+
+        o.setInvalid();
     }
 
     void setInvalid()
@@ -79,19 +82,31 @@ public:
     }
 
     void setValid(
-        double timestamp,
         int frameid,
+        double timestamp,
         std::vector<cv::Mat>& frames)
     {
+        mValid = true;
+        mFrameId = frameid;
+        mTimestamp = timestamp;
+        mViews = frames;
+    }
+
+    bool isValid()
+    {
+        return mValid;
+    }
+
+    int getFrameId()
+    {
+        return mFrameId;
     }
 
 protected:
 
     bool mValid;
-    double mCameraTimestamp;
-    double mSystemTimestamp;
-    int mCameraFrameId;
-    int mSystemFrameId;
+    double mTimestamp;
+    int mFrameId;
     std::vector<cv::Mat> mViews;
 };
 
@@ -105,7 +120,7 @@ public:
 
     void close();
 
-    bool read(Image& im);
+    void read(Image& im);
 
     void trigger();
 

@@ -34,32 +34,56 @@ void Camera::open()
 
     if(ok)
     {
-        mStream = arv_device_create_stream(mDevice, stream_callback, this);
-        if(mStream == nullptr) throw std::runtime_error("could not open stream");
-    }
-
-    if(ok)
-    {
         payload = arv_device_get_integer_feature_value(mDevice, "PayloadSize");
         ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
     }
 
     if(ok)
     {
+        mStream = arv_device_create_stream(mDevice, stream_callback, this);
+        if(mStream == nullptr) throw std::runtime_error("could not open stream");
+    }
+
+    if(ok)
+    {
         for(int i=0; i<GENICAM_NUM_BUFFERS; i++)
         {
-            ArvBuffer* buffer = arv_buffer_new_allocate(payload);
+            ArvBuffer* const buffer = arv_buffer_new_allocate(payload);
             arv_stream_push_buffer(mStream, buffer);
         }
     }
 
-    arv_device_execute_command(mDevice, "AcquisitionStart");
+    if(ok)
+    {
+        arv_device_execute_command(mDevice, "AcquisitionStart");
+        ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
+    }
 }
 
 void Camera::close()
 {
     arv_device_execute_command(mDevice, "AcquisitionStop");
+
     g_object_unref(mDevice);
+
+    {
+        std::array<ArvBuffer*, GENICAM_NUM_BUFFERS+1> tmp;
+        std::fill(tmp.begin(), tmp.end(), nullptr);
+        mTab1.take(tmp.begin());
+        for(auto it = tmp.begin(); *it!=nullptr; it++)
+        {
+            g_object_unref(*it);
+            it++;
+        }
+    }
+
+    {
+        for(std::pair<guint32,ArvBuffer*> p : mTab2)
+        {
+            g_object_unref(p.second);
+        }
+        mTab2.clear();
+    }
 }
 
 void Camera::stream_callback(void* user_data, ArvStreamCallbackType type, ArvBuffer* buffer)

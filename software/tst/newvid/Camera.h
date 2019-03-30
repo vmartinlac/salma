@@ -72,6 +72,14 @@ public:
         return ret;
     }
 
+    void clear()
+    {
+        mMutex.lock();
+        mFirst = 0;
+        mCount = 0;
+        mMutex.unlock();
+    }
+
 protected:
 
     T* mTab[D];

@@ -7,11 +7,11 @@ public:
     int get(guint32 id)
     {
         int ret = 0;
-        auto it = mMap.find(id);
+        const auto it = mMap.find(id);
 
-        if( mMap.end() == it )
+        if( mMap.end() != it )
         {
-            return it->second;
+            ret = it->second;
         }
 
         return ret;
@@ -66,6 +66,16 @@ public:
                 it++;
             }
         }
+    }
+
+    void dump()
+    {
+        std::cout << "{" << std::endl;
+        for( const std::pair<guint32,int> p : mMap )
+        {
+            std::cout << "[ " << p.first << " ] " << p.second << std::endl;
+        }
+        std::cout << "}" << std::endl;
     }
 
 protected:
@@ -127,6 +137,9 @@ void Rig::RigProc(Rig* rig)
                 }
             }
 
+            //count.dump();
+
+            //std::cout << found << std::endl;
             if(found)
             {
                 // put aside buffers corresponding to found_id.
@@ -188,12 +201,15 @@ void Rig::RigProc(Rig* rig)
                     chosen_buffers[i] = nullptr;
                 }
 
-                Image image(std::move(frames));
+                Image image;
+                image.setValid(found_id, timestamp, frames);
+
                 rig->mMutexB.lock();
                 rig->mImage = std::move(image);
                 rig->mMutexB.unlock();
                 rig->mMutexA.unlock();
-                std::cout << "Generated frame " << found_id << std::endl;
+
+                //std::cout << "Generated frame " << found_id << std::endl;
             }
             else
             {
@@ -250,24 +266,22 @@ void Rig::close()
         cam->close();
     }
 
+    mImage.setInvalid();
     mIsOpen = false;
 }
 
-bool Rig::read(Image& im)
+void Rig::read(Image& im)
 {
-    bool ret = false;
+    im.setInvalid();
 
-    //mMutexA.lock(); // TODO: add timeout wait.
-    ret = mMutexA.try_lock_for(std::chrono::milliseconds(100)); // TODO: add timeout wait.
+    const bool locked = mMutexA.try_lock_for(std::chrono::milliseconds(200));
 
-    if(ret)
+    if(locked)
     {
         mMutexB.lock();
         im = std::move(mImage);
         mMutexB.unlock();
     }
-
-    return ret;
 }
 
 void Rig::trigger()
