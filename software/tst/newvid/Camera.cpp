@@ -110,7 +110,6 @@ void Camera::close()
         mCamera = nullptr;
     }
 
-    /*
     {
         std::array<ArvBuffer*, GENICAM_NUM_BUFFERS+1> tmp;
         std::fill(tmp.begin(), tmp.end(), nullptr);
@@ -129,7 +128,6 @@ void Camera::close()
         }
         mTab2.clear();
     }
-    */
 }
 
 void Camera::stream_callback(ArvStream *stream, void *user_data)
@@ -168,10 +166,8 @@ void Camera::stream_callback(ArvStream *stream, void *user_data)
 
 void Camera::trigger()
 {
-    /*
     arv_device_execute_command(mDevice, "TriggerSoftware");
-    const bool ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
-    if(ok == false) std::cerr << "Software trigger failed!" << std::endl;
-    */
+    //const bool ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
+    //if(ok == false) std::cerr << "Software trigger failed!" << std::endl;
 }
 
