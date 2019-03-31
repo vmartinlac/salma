@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include "ExternalTrigger.h"
 #include "VideoSource.h"
 
 class VideoSystem
@@ -20,8 +19,8 @@ public:
     virtual int getNumberOfGenICamCameras();
     virtual std::string getNameOfGenICamCamera(int idx);
 
-    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx, ExternalTriggerPtr trigger=ExternalTriggerPtr());
-    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id, ExternalTriggerPtr trigger=ExternalTriggerPtr());
+    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx);
+    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id);
 
     virtual VideoSourcePtr createVideoSourceOpenCV(int id);
     virtual VideoSourcePtr createVideoSourceOpenCV(const std::string& filename);

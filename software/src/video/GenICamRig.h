@@ -1,42 +1,67 @@
 #pragma once
 
-#include <condition_variable>
-#include <initializer_list>
+#include <iostream>
+#include <atomic>
+#include <map>
+#include <chrono>
+#include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <memory>
-#include "ExternalTrigger.h"
+#include <initializer_list>
+#include <vector>
+#include <opencv2/core.hpp>
+
 #include "VideoSource.h"
 #include "GenICamCamera.h"
+#include "GenICamSemaphore.h"
 
 class GenICamRig : public VideoSource
 {
 public:
 
-    GenICamRig(std::initializer_list<std::string> cameras);
+    GenICamRig(
+        const std::initializer_list<std::string>& cameras,
+        bool software_trigger);
+
     virtual ~GenICamRig();
 
-    void setCameras(std::initializer_list<std::string> cameras);
-    void setExternalTrigger(ExternalTriggerPtr trigger);
+    void setCameras(const std::initializer_list<std::string>& cameras);
+
+    bool open() override;
+
+    void close() override;
+
+    void read(Image& image) override;
+
+    void trigger();
 
     std::string getHumanName() override;
 
-    bool open() override;
-    void close() override;
-
-    void trigger() override;
-    void read(Image& image) override;
-
     int getNumberOfCameras() override;
 
-    void onFrameReceived();
+    void signalImageAvailability();
+
+protected:
+
+    void produceImages();
+
+protected:
+
+    class Counter;
 
 protected:
 
     bool mIsOpen;
+    bool mSoftwareTrigger;
     std::vector<GenICamCameraPtr> mCameras;
-    std::condition_variable mCondition;
-    std::mutex mMutex;
-    ExternalTriggerPtr mExternalTrigger;
+    std::thread mThread;
+    GenICamSemaphore mSemaphore;
+    std::atomic<bool> mAskThreadToQuit;
+
+    Image mImage;
+    std::timed_mutex mMutexA;
+    std::mutex mMutexB;
 };
 
 typedef std::shared_ptr<GenICamRig> GenICamRigPtr;

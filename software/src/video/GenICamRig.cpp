@@ -2,22 +2,99 @@
 #include <set>
 #include <thread>
 #include "GenICamRig.h"
+#include "GenICamConfig.h"
 
-GenICamRig::GenICamRig(std::initializer_list<std::string> cameras)
+class GenICamRig::Counter
 {
+public:
+
+    int get(guint32 id)
+    {
+        int ret = 0;
+        const auto it = mMap.find(id);
+
+        if( mMap.end() != it )
+        {
+            ret = it->second;
+        }
+
+        return ret;
+    }
+
+    void increment(guint32 id)
+    {
+        auto it = mMap.find(id);
+        if( mMap.end() == it )
+        {
+            mMap[id] = 1;
+        }
+        else
+        {
+            it->second++;
+        }
+    }
+
+    void decrement(guint32 id)
+    {
+        auto it = mMap.find(id);
+        if( mMap.end() == it )
+        {
+            throw std::runtime_error("internal error");
+        }
+        else if(it->second > 1)
+        {
+            it->second--;
+        }
+        else
+        {
+            mMap.erase(it);
+        }
+    }
+
+    void remove(guint32 id)
+    {
+        mMap.erase(id);
+    }
+
+    void removeUpTo(guint32 id)
+    {
+        auto it = mMap.begin();
+        while(it != mMap.end())
+        {
+            if(it->first <= id)
+            {
+                it = mMap.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+        }
+    }
+
+    void dump()
+    {
+        std::cout << "{" << std::endl;
+        for( const std::pair<guint32,int> p : mMap )
+        {
+            std::cout << "[ " << p.first << " ] " << p.second << std::endl;
+        }
+        std::cout << "}" << std::endl;
+    }
+
+protected:
+
+    std::map<guint32,int> mMap;
+};
+
+GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras, bool software_trigger)
+{
+    mSoftwareTrigger = software_trigger;
     mIsOpen = false;
     setCameras(cameras);
 }
 
-GenICamRig::~GenICamRig()
-{
-    if(mIsOpen)
-    {
-        close();
-    }
-}
-
-void GenICamRig::setCameras(std::initializer_list<std::string> cameras)
+void GenICamRig::setCameras(const std::initializer_list<std::string>& cameras)
 {
     // check that the rig is not currently open.
 
@@ -34,11 +111,23 @@ void GenICamRig::setCameras(std::initializer_list<std::string> cameras)
 
     mCameras.clear();
 
+    int rank = 0;
     for(const std::string& id : cameras)
     {
-        mCameras.push_back( GenICamCameraPtr(new GenICamCamera(this, id)) );
+        GenICamCameraPtr cam( new GenICamCamera(this, id, rank, mSoftwareTrigger) );
+        mCameras.push_back(cam);
+        rank++;
     }
 }
+
+GenICamRig::~GenICamRig()
+{
+    if(mIsOpen)
+    {
+        close();
+    }
+}
+
 
 std::string GenICamRig::getHumanName()
 {
@@ -68,119 +157,230 @@ std::string GenICamRig::getHumanName()
 
 bool GenICamRig::open()
 {
+    bool ok = true;
+
     if(mIsOpen) throw std::runtime_error("camera is already open");
 
-    mIsOpen = true;
-
-    if(mExternalTrigger)
+    for(size_t i = 0; ok && i<mCameras.size(); i++)
     {
-        mIsOpen = mIsOpen && mExternalTrigger->open();
-
-        for(GenICamCameraPtr c : mCameras)
-        {
-            mIsOpen = mIsOpen && c->open(true);
-        }
-    }
-    else
-    {
-        for(GenICamCameraPtr c : mCameras)
-        {
-            mIsOpen = mIsOpen && c->open(false);
-        }
+        ok = mCameras[i]->open();
     }
 
-    return mIsOpen;
+    if(ok)
+    {
+        mAskThreadToQuit = false;
+
+        mThread = std::thread([this] () { produceImages(); });
+
+        const bool locked = mMutexA.try_lock();
+        if(locked == false) throw std::runtime_error("internal error");
+    }
+
+    mIsOpen = ok;
+
+    return ok;
 }
 
 void GenICamRig::close()
 {
     if(mIsOpen)
     {
-        for(GenICamCameraPtr c : mCameras)
+        mAskThreadToQuit = true;
+        mSemaphore.up();
+        mThread.join();
+
+        for( GenICamCameraPtr cam : mCameras )
         {
-            c->close();
+            cam->close();
         }
 
-        if(mExternalTrigger)
-        {
-            mExternalTrigger->close();
-        }
-
+        mImage.setInvalid();
         mIsOpen = false;
     }
 }
 
 void GenICamRig::trigger()
 {
-    for(GenICamCameraPtr c : mCameras)
+    if(mSoftwareTrigger)
     {
-        c->prepareTrigger();
-    }
-
-    if(mExternalTrigger)
-    {
-        mExternalTrigger->trigger();
-    }
-    else
-    {
-      for(GenICamCameraPtr c : mCameras)
-      {
-          c->softwareTrigger();
-      }
+        for(GenICamCameraPtr c : mCameras)
+        {
+          c->trigger();
+        }
     }
 }
 
-void GenICamRig::read(Image& image)
+void GenICamRig::read(Image& im)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
+    im.setInvalid();
 
-    //auto expiration_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
-    const size_t N = mCameras.size();
+    const bool locked = mMutexA.try_lock_for(std::chrono::milliseconds(200));
 
-    std::vector<Image> images(N);
-
-    auto pred = [&images,this,N] ()
+    if(locked)
     {
-        bool ret = true;
-
-        for(size_t i=0; i<N; i++)
-        {
-            if(images[i].isValid() == false)
-            {
-                mCameras[i]->takeLastImage(images[i]);
-            }
-
-            ret = ret && images[i].isValid();
-        }
-
-        return ret;
-    };
-
-    const bool ok = mCondition.wait_for(lock, std::chrono::milliseconds(100), pred);
-
-    if(ok)
-    {
-        Image::merge(images, image);
-    }
-    else
-    {
-        image.setInvalid();
+        mMutexB.lock();
+        im = std::move(mImage);
+        mMutexB.unlock();
     }
 }
 
 int GenICamRig::getNumberOfCameras()
 {
-    return mCameras.size();
+    return static_cast<int>(mCameras.size());
 }
 
-void GenICamRig::onFrameReceived()
+void GenICamRig::produceImages()
 {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mCondition.notify_one();
+    bool go_on = true;
+
+    const int N_views = static_cast<int>(mCameras.size());
+
+    std::array<ArvBuffer*,GENICAM_NUM_BUFFERS+1> buffers;
+
+    std::vector<ArvBuffer*> chosen_buffers(N_views, nullptr);
+
+    Counter count;
+
+    for(GenICamCameraPtr cam : mCameras)
+    {
+        cam->mTab2.clear();
+    }
+
+    while(go_on)
+    {
+        mSemaphore.down();
+
+        if(mAskThreadToQuit)
+        {
+            go_on = false;
+        }
+        else
+        {
+            bool found = false;
+            guint32 found_id = 0;
+
+            for(GenICamCameraPtr cam : mCameras)
+            {
+                std::fill(buffers.begin(), buffers.end(), nullptr);
+
+                cam->mTab1.take(buffers.begin());
+
+                for(auto it = buffers.begin(); *it != nullptr; it++)
+                {
+                    const guint32 id = arv_buffer_get_frame_id(*it);
+
+                    if( cam->mTab2.find(id) != cam->mTab2.end() ) std::cerr << "Internal error: frame id already in table!" << std::endl;
+
+                    cam->mTab2[id] = *it;
+
+                    count.increment(id);
+
+                    if( count.get(id) == N_views && (found == false || id > found_id))
+                    {
+                        found = true;
+                        found_id = id;
+                    }
+                }
+            }
+
+            //count.dump();
+
+            //std::cout << found << std::endl;
+            if(found)
+            {
+                // put aside buffers corresponding to found_id.
+
+                for(int i=0; i<N_views; i++)
+                {
+                    if( mCameras[i]->mTab2.find(found_id) == mCameras[i]->mTab2.end() ) throw std::runtime_error("internal error");
+                    chosen_buffers[i] = mCameras[i]->mTab2[found_id];
+                    mCameras[i]->mTab2.erase(found_id);
+                }
+
+                // remove buffers older than found_id and push them to their respective stream.
+
+                for(GenICamCameraPtr cam : mCameras)
+                {
+                    std::map<guint32,ArvBuffer*>::iterator it = cam->mTab2.begin();
+
+                    while(it != cam->mTab2.end())
+                    {
+                        if(it->first <= found_id)
+                        {
+                            arv_stream_push_buffer(cam->mStream, it->second);
+                            it = cam->mTab2.erase(it);
+                        }
+                        else
+                        {
+                            it++;
+                        }
+                    }
+                }
+
+                count.removeUpTo(found_id);
+
+                // produce the image.
+
+                std::vector<cv::Mat> frames;
+
+                const double timestamp = static_cast<double>(arv_buffer_get_timestamp(chosen_buffers.front())) * 1.0e-9;
+
+                for(int i=0; i<N_views; i++)
+                {
+                    ArvBuffer* buff = chosen_buffers[i];
+
+                    const gint width = arv_buffer_get_image_width(buff);
+                    const gint height = arv_buffer_get_image_height(buff);
+
+                    size_t size;
+                    const uint8_t* data = reinterpret_cast<const uint8_t*>(arv_buffer_get_data(buff, &size));
+
+                    if(size != width*height*3) throw std::runtime_error("internal error");
+
+                    cv::Mat mat( cv::Size(width, height), CV_8UC3 );
+                    std::copy( data, data+size, mat.data );
+
+                    frames.emplace_back(std::move(mat));
+
+                    arv_stream_push_buffer(mCameras[i]->mStream, chosen_buffers[i]);
+
+                    chosen_buffers[i] = nullptr;
+                }
+
+                if(frames.size() != N_views) throw std::runtime_error("internal error");
+
+                Image image;
+                image.setValid(timestamp, frames);
+
+                mMutexB.lock();
+                mImage = std::move(image);
+                mMutexB.unlock();
+                mMutexA.unlock();
+
+                //std::cout << "Generated frame " << found_id << std::endl;
+            }
+            else
+            {
+                // remove too old buffers.
+
+                for(GenICamCameraPtr cam : mCameras)
+                {
+                    auto it = cam->mTab2.begin();
+
+                    while( cam->mTab2.size() > GENICAM_NUM_BUFFERS-4 )
+                    {
+                        count.decrement(it->first);
+                        arv_stream_push_buffer(cam->mStream, it->second);
+                        it = cam->mTab2.erase(it);
+                    }
+                }
+            }
+        }
+    }
 }
 
-void GenICamRig::setExternalTrigger(ExternalTriggerPtr trigger)
+void GenICamRig::signalImageAvailability()
 {
-  mExternalTrigger = std::move(trigger);
+    mSemaphore.up();
 }
 

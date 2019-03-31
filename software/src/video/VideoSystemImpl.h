@@ -18,8 +18,8 @@ public:
     int getNumberOfGenICamCameras() override;
     std::string getNameOfGenICamCamera(int idx) override;
 
-    VideoSourcePtr createVideoSourceGenICamMono(int camera_idx, ExternalTriggerPtr trigger) override;
-    VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id, ExternalTriggerPtr trigger) override;
+    VideoSourcePtr createVideoSourceGenICamMono(int camera_idx) override;
+    VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id) override;
 
     VideoSourcePtr createVideoSourceMockMono() override;
     VideoSourcePtr createVideoSourceMockStereo() override;
