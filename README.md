@@ -10,7 +10,7 @@ The added value offered by this project is:
   * compute visual odometry trajectory,
   * display trajectory and odometry data.
 * a stereo visual odometry algorithm.
-* a homemade algorithm to track calibration target.
+* a algorithm to track calibration target.
 * a code for synchronizing video stream from multiple cameras.
 
 Dependencies
