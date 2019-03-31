@@ -9,10 +9,44 @@
 #include <condition_variable>
 #include <memory>
 #include <vector>
+#include <VimbaC/Include/VimbaC.h>
 #include <opencv2/core.hpp>
 
-#include "Camera.h"
-#include "Semaphore.h"
+#include "Camera2.h"
+
+class Semaphore
+{
+public:
+
+    Semaphore(int count = 0) : mCount(count)
+    {
+    }
+
+    void up()
+    {
+        std::unique_lock<std::mutex> lock(mMutex);
+        mCount++;
+        mCondition.notify_one();
+    }
+
+    void down()
+    {
+        std::unique_lock<std::mutex> lock(mMutex);
+
+        while(mCount == 0)
+        {
+            mCondition.wait(lock);
+        }
+
+        mCount--;
+    }
+
+private:
+
+    std::mutex mMutex;
+    std::condition_variable mCondition;
+    int mCount;
+};
 
 class Image
 {
@@ -80,9 +114,9 @@ class Rig
 {
 public:
 
-    Rig(const std::initializer_list<int>& cams);
+    Rig(const std::vector<std::string>& cams);
 
-    bool open();
+    void open();
 
     void close();
 

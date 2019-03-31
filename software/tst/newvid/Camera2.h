@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <iostream>
@@ -8,7 +7,7 @@
 #include <mutex>
 #include <memory>
 #include <vector>
-#include <arv.h>
+#include <VimbaC/Include/VimbaC.h>
 #include <opencv2/core.hpp>
 
 #include "GenICamConfig.h"
@@ -94,15 +93,23 @@ public:
 
     Camera(Rig* rig, const std::string& id, int rank);
 
-    bool open();
+    void open();
 
     void close();
 
     void trigger();
 
+public:
+
+    struct Buffer
+    {
+        std::vector<uint8_t> data;
+        VmbFrame_t frame;
+    };
+
 protected:
 
-    static void stream_callback(ArvStream *stream, void *user_data);
+    static void callback(const VmbHandle_t handle, VmbFrame_t*  pFrame);
 
 public:
 
@@ -110,12 +117,13 @@ public:
     int mRank;
     std::string mId;
 
-    ArvCamera* mCamera;
-    ArvDevice* mDevice;
-    ArvStream* mStream;
+    bool mIsOpen;
+    VmbCameraInfo_t mInfo;
+    VmbHandle_t mHandle;
+    std::vector<Buffer> mBuffers;
 
-    CircularBuffer<ArvBuffer, GENICAM_NUM_BUFFERS> mTab1;
-    std::map<guint32,ArvBuffer*> mTab2;
+    //CircularBuffer<ArvBuffer, GENICAM_NUM_BUFFERS> mTab1;
+    //std::map<guint32,ArvBuffer*> mTab2;
 };
 
 typedef std::shared_ptr<Camera> CameraPtr;

@@ -1,5 +1,6 @@
-#include "Rig.h"
+#include "Rig2.h"
 
+/*
 class Counter
 {
 public:
@@ -230,43 +231,40 @@ void Rig::RigProc(Rig* rig)
         }
     }
 }
+*/
 
-Rig::Rig(const std::initializer_list<int>& cams)
+Rig::Rig(const std::vector<std::string>& cams)
 {
-    for(int i : cams)
+    int rank = 0;
+    for(const std::string& id : cams)
     {
-        const std::string id = arv_get_device_id(i);
-        mCameras.emplace_back( new Camera(this, id, i) );
+        mCameras.emplace_back( new Camera(this, id, rank) );
+        rank++;
     }
 }
 
-bool Rig::open()
+void Rig::open()
 {
-    bool ok = true;
-
-    for(size_t i = 0; i<mCameras.size(); i++)
+    for( CameraPtr cam : mCameras )
     {
-        ok = mCameras[i]->open();
+        cam->open();
     }
 
-    if(ok)
-    {
-        mIsOpen = true;
-        mAskThreadToQuit = false;
+    mIsOpen = true;
+    mAskThreadToQuit = false;
 
-        mThread = std::thread(RigProc, this);
+    //mThread = std::thread(RigProc, this);
 
-        mMutexA.try_lock(); // TODO: if already locked, generate an error.
-    }
-
-    return ok;
+    mMutexA.try_lock(); // TODO: if already locked, generate an error.
 }
 
 void Rig::close()
 {
+    /*
     mAskThreadToQuit = true;
     mSemaphore.up();
     mThread.join();
+    */
 
     for( CameraPtr cam : mCameras )
     {

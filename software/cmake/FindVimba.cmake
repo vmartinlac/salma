@@ -17,5 +17,5 @@ find_package_handle_standard_args( Vimba DEFAULT_MSG VIMBA_CPP_LIBRARY VIMBA_C_L
 
 add_library(Vimba INTERFACE)
 target_include_directories(Vimba INTERFACE ${VIMBA_INCLUDE_DIR})
-target_link_libraries(Vimba INTERFACE ${VIMBA_CPP_LIBRARY} ${VIMBA_C_LIBRARY})
+target_link_libraries(Vimba INTERFACE ${VIMBA_CPP_LIBRARY} ${VIMBA_C_LIBRARY} Threads::Threads)
 

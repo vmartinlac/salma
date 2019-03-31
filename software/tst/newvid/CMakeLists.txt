@@ -1,3 +1,5 @@
+find_package(Vimba)
+
 add_executable(
     newvid
     main.cpp
@@ -6,11 +8,13 @@ add_executable(
     Rig.h
     Rig.cpp
     GenICamConfig.h
+    Semaphore.h
 )
 
 target_link_libraries(
     newvid
     PUBLIC
+    #Vimba
     Aravis
     opencv_core
     Qt5::Core

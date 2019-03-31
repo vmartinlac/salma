@@ -16,7 +16,7 @@ void test(RigPtr rig)
     std::cout << "Let's test" << std::endl;
 
     std::cout << "Open" << std::endl;
-    rig->open();
+    if( rig->open() == false ) throw std::runtime_error("could not open rig!");
 
     int count = 0;
 
@@ -44,6 +44,7 @@ void test(RigPtr rig)
 
     std::cout << "Close" << std::endl;
     rig->close();
+    arv_shutdown();
 }
 
 int main(int num_args, char** args)
@@ -52,12 +53,9 @@ int main(int num_args, char** args)
 
     if(arv_get_n_devices() != 2) throw std::runtime_error("there should be two cameras!");
 
+    //RigPtr rig(new Rig({0}));
     RigPtr rig(new Rig({0, 1}));
 
-    test(rig);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    test(rig);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     test(rig);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     test(rig);
