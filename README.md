@@ -4,13 +4,14 @@ Content
 
 * User interface allowing to calibrate cameras and stereo rigs, record mono or stereo videos, play them, compute odometry on a video, display reconstructions, etc.
 * Homemade stereo visual odometry pipeline.
-* Homemade calibration target tracking algorithm.
+* Homemade algorithm to track calibration target.
+* Code for synchronizing video stream from multiple cameras.
 
 Dependencies
 ============
 
 * Aravis (access to GenICam cameras)
-* Cuda (Nvidia GPU programming)
+* Cuda (optional, Nvidia GPU programming)
 * Eigen3 (linear algebra primitives)
 * g2o (graph optimization)
 * nanoflann (nearest neighbors search)

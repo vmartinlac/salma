@@ -115,15 +115,6 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
         ret.reset( new GenICamRig( {left_id, right_id}, true) );
     }
 
-    /*
-    if(ok)
-    {
-        ArduinoTriggerPtr t(new ArduinoTrigger());
-        t->setPathToSerialPort("/dev/ttyACM0");
-        //ret->setExternalTrigger(t);
-    }
-    */
-
     return ret;
 #endif
 }
