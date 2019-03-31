@@ -2,10 +2,16 @@
 Content
 =======
 
-* User interface allowing to calibrate cameras and stereo rigs, record mono or stereo videos, play them, compute odometry on a video, display reconstructions, etc.
-* Homemade stereo visual odometry pipeline.
-* Homemade algorithm to track calibration target.
-* Code for synchronizing video stream from multiple cameras.
+The added value offered by this project is:
+
+* an user interface allowing to
+  * record mono or stereo video stream,
+  * calibrate cameras and stereo rigs,
+  * compute visual odometry trajectory,
+  * display trajectory and odometry data.
+* a stereo visual odometry algorithm.
+* a homemade algorithm to track calibration target.
+* a code for synchronizing video stream from multiple cameras.
 
 Dependencies
 ============
