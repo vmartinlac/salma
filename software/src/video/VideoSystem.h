@@ -19,8 +19,8 @@ public:
     virtual int getNumberOfGenICamCameras();
     virtual std::string getNameOfGenICamCamera(int idx);
 
-    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx);
-    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id);
+    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx, bool software_trigger);
+    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id, bool software_trigger);
 
     virtual VideoSourcePtr createVideoSourceOpenCV(int id);
     virtual VideoSourcePtr createVideoSourceOpenCV(const std::string& filename);

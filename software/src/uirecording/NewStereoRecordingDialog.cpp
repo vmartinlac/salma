@@ -14,6 +14,7 @@ NewStereoRecordingDialog::NewStereoRecordingDialog(Project* proj, QWidget* paren
     mRightCamera = new CameraList();
     mFrameRate = new FrameRateWidget();
     mVisualizationOnly = new QCheckBox();
+    mSoftwareTrigger = new QCheckBox();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
@@ -21,6 +22,7 @@ NewStereoRecordingDialog::NewStereoRecordingDialog(Project* proj, QWidget* paren
     form->addRow("Right camera:", mRightCamera);
     form->addRow("Max frame rate:", mFrameRate);
     form->addRow("Visualization only:", mVisualizationOnly);
+    form->addRow("Software trigger:", mSoftwareTrigger);
 
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
@@ -79,7 +81,7 @@ void NewStereoRecordingDialog::accept()
 
     if(ok)
     {
-        camera = VideoSystem::instance()->createVideoSourceGenICamStereo(left_camera_id, right_camera_id);
+        camera = VideoSystem::instance()->createVideoSourceGenICamStereo(left_camera_id, right_camera_id, mSoftwareTrigger->isChecked());
         ok = bool(camera);
         err = "Incorrect camera!";
     }

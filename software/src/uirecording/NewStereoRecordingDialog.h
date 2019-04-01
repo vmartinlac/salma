@@ -27,5 +27,6 @@ protected:
     CameraList* mRightCamera;
     FrameRateWidget* mFrameRate;
     QCheckBox* mVisualizationOnly;
+    QCheckBox* mSoftwareTrigger;
 };
 

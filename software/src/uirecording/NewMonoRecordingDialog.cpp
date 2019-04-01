@@ -13,12 +13,14 @@ NewMonoRecordingDialog::NewMonoRecordingDialog(Project* proj, QWidget* parent) :
     mCamera = new CameraList();
     mFrameRate = new FrameRateWidget();
     mVisualizationOnly = new QCheckBox();
+    mSoftwareTrigger = new QCheckBox();
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Camera:", mCamera);
     form->addRow("Max frame rate:", mFrameRate);
     form->addRow("Visualization only:", mVisualizationOnly);
+    form->addRow("Software trigger:", mSoftwareTrigger);
 
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
@@ -75,7 +77,7 @@ void NewMonoRecordingDialog::accept()
 
     if(ok)
     {
-        camera = VideoSystem::instance()->createVideoSourceGenICamMono(camera_id);
+        camera = VideoSystem::instance()->createVideoSourceGenICamMono(camera_id, mSoftwareTrigger->isChecked());
         ok = bool(camera);
         err = "Incorrect camera!";
     }
