@@ -16,6 +16,8 @@ NewStereoRecordingDialog::NewStereoRecordingDialog(Project* proj, QWidget* paren
     mVisualizationOnly = new QCheckBox();
     mSoftwareTrigger = new QCheckBox();
 
+    mSoftwareTrigger->setChecked(true);
+
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Left camera:", mLeftCamera);
