@@ -63,7 +63,7 @@ bool target::Tracker2::track( const cv::Mat& image, bool absolute_pose )
 
     std::cout << "Converting to grayscale..." << std::endl;
     cv::Mat gray;
-    cv::cvtColor(image, gray, CV_BGR2GRAY);
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
     cv::imwrite("debug_output/20_greyscale.png", gray);
 
     std::cout << "Adaptative threshold..." << std::endl;

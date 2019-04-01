@@ -20,7 +20,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent)
     html += "</style>";
     html += "</head><body>";
     html += "<h1>SALMA</h1>";
-    html += "<p>This software was written by Victor MARTIN LAC between august 2018 and october 2018.</p>";
+    html += "<p>This software was written by Victor MARTIN-LAC between August 2018 and April 2019.</p>";
     html += "<table>";
 
     html += "<tr><th>Version :</th><td>" +

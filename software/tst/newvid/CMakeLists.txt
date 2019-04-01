@@ -1,4 +1,3 @@
-find_package(Vimba)
 
 add_executable(
     newvid

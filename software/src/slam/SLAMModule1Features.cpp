@@ -1,3 +1,4 @@
+#include <opencv2/calib3d.hpp>
 #if SALMA_WITH_CUDA
 #include <opencv2/cudawarping.hpp>
 #endif

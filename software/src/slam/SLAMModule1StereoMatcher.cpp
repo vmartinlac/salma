@@ -1,5 +1,6 @@
 #include <Eigen/Eigen>
 #include <opencv2/features2d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
 #include <utility>

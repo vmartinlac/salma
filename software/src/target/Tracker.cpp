@@ -29,7 +29,7 @@ namespace target {
 #endif
 
         // Converting to greyscale.
-        cv::cvtColor(image, m_greyscale, CV_BGR2GRAY);
+        cv::cvtColor(image, m_greyscale, cv::COLOR_BGR2GRAY);
 #ifdef TARGET_DETECTOR_DEBUG
         cv::imwrite("debug_output/20_greyscale.png", m_greyscale);
 #endif

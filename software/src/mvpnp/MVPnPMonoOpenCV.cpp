@@ -32,12 +32,7 @@ bool MVPnP::SolverMonoOpenCV::run( const std::vector<View>& views, Sophus::SE3d&
 
         if( use_ransac )
         {
-            inliers.resize( views.size() );
-
-            for( int i=0; i<views.size(); i++ )
-            {
-                inliers[i].assign(views[i].points.size(), false);
-            }
+            std::vector<uint8_t> inliers_uchar(views.front().points.size());
 
             ret = cv::solvePnPRansac(
                 views.front().points,
@@ -50,7 +45,17 @@ bool MVPnP::SolverMonoOpenCV::run( const std::vector<View>& views, Sophus::SE3d&
                 100,
                 8.0,
                 0.99,
-                inliers.front());
+                inliers_uchar);
+                //inliers.front());
+
+            for( int i=0; i<views.size(); i++ )
+            {
+                inliers[i].assign(views[i].points.size(), false);
+            }
+
+            if( inliers.front().size() != inliers_uchar.size() ) throw std::runtime_error("internal error");
+
+            std::transform(inliers_uchar.begin(), inliers_uchar.end(), inliers.front().begin(), [] (uchar value) { return bool(value); });
         }
         else
         {
