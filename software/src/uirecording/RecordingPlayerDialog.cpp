@@ -10,7 +10,7 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
     mCurrentFrame = -1;
 
     mHeader = header;
-    mReader.reset(new RecordingReader(header, false));
+    mReader.reset(new RecordingReader(header));
     const bool open_ret = mReader->open();
 
     if(open_ret == false)

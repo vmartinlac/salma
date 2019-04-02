@@ -10,15 +10,18 @@ class RecordingReader : public VideoSource
 {
 public:
 
-    RecordingReader(RecordingHeaderPtr header, bool unused);
+    RecordingReader(RecordingHeaderPtr header);
+
     ~RecordingReader() override;
 
     std::string getHumanName() override;
 
     bool open() override;
+
     void close() override;
 
     void trigger() override;
+
     void read(Image& image) override;
 
     int getNumberOfCameras() override;
@@ -30,7 +33,7 @@ public:
 protected:
 
     RecordingHeaderPtr mHeader;
-    cv::VideoCapture mVideo;
+    int mNextFrameId;
 };
 
 typedef std::shared_ptr<RecordingReader> RecordingReaderPtr;

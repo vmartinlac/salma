@@ -23,7 +23,7 @@ ManualCalibrationView::ManualCalibrationView(
     mMode = MODE_LEFT;
     mCurrentFrameId = -1;
     mParams = params;
-    mReader.reset(new RecordingReader(mParams->recording, true));
+    mReader.reset(new RecordingReader(mParams->recording));
 
     mReader->open();
 

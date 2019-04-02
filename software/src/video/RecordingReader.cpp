@@ -3,11 +3,10 @@
 #include <opencv2/imgcodecs.hpp>
 #include "RecordingReader.h"
 
-/*
-
-RecordingReader::RecordingReader(RecordingHeaderPtr header, bool unused)
+RecordingReader::RecordingReader(RecordingHeaderPtr header)
 {
     mHeader = std::move(header);
+    mNextFrameId = 0;
 }
 
 RecordingReader::~RecordingReader()
@@ -21,25 +20,12 @@ std::string RecordingReader::getHumanName()
 
 bool RecordingReader::open()
 {
-    bool ok = true;
-
-    if(ok)
-    {
-        ok = mVideo.open(mHeader->filename);
-    }
-
-    if(ok)
-    {
-        const int frame_count = static_cast<int>(mVideo.get(cv::CAP_PROP_FRAME_COUNT));
-        ok = (mHeader->num_frames() == frame_count);
-    }
-
-    return ok;
+    mNextFrameId = 0;
+    return true;
 }
 
 void RecordingReader::close()
 {
-    mVideo.release();
 }
 
 void RecordingReader::trigger()
@@ -50,6 +36,33 @@ void RecordingReader::read(Image& image)
 {
     image.setInvalid();
 
+    if( 0 <= mNextFrameId && mNextFrameId < mHeader->num_frames() )
+    {
+        bool ok = true;
+        std::vector<cv::Mat> frames;
+
+        for(int i=0; ok && i < mHeader->num_views(); i++)
+        {
+            cv::Mat mat = cv::imread( mHeader->getImageFileName(mNextFrameId, i).toStdString() );
+
+            if(mat.data == nullptr)
+            {
+                ok = false;
+            }
+            else
+            {
+                frames.push_back(mat);
+            }
+        }
+
+        if(ok)
+        {
+            image.setValid(mHeader->timestamps[mNextFrameId], frames);
+            mNextFrameId++;
+        }
+    }
+
+/*
     if( mVideo.isOpened() )
     {
         cv::Mat received;
@@ -94,6 +107,7 @@ void RecordingReader::read(Image& image)
             image.setValid(mHeader->timestamps[current_frame], frames);
         }
     }
+    */
 }
 
 int RecordingReader::getNumberOfCameras()
@@ -103,9 +117,13 @@ int RecordingReader::getNumberOfCameras()
 
 void RecordingReader::seek(int frame)
 {
-    if(mVideo.isOpened() && 0 <= frame && frame < mHeader->num_frames())
+    if( 0 <= frame && frame < mHeader->num_frames() )
     {
-        mVideo.set(cv::CAP_PROP_POS_FRAMES, frame);
+        mNextFrameId = frame;
+    }
+    else
+    {
+        throw std::runtime_error("internal error");
     }
 }
 
@@ -113,5 +131,4 @@ RecordingHeaderPtr RecordingReader::getHeader()
 {
     return mHeader;
 }
-*/
 

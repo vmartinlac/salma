@@ -39,10 +39,6 @@ public:
 protected:
 
     bool mSuccess;
-    cv::Mat mBuffer;
-    cv::VideoWriter mVideoWriter;
-    std::string mVideoFilename;
-    bool mVideoFileCreated;
     QTime mClock;
     int mNumFrames;
     QTime mFrameRateClock;

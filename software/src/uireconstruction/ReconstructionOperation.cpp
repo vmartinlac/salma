@@ -39,7 +39,7 @@ bool ReconstructionOperation::before()
 
     if(ok)
     {
-        mRecordingReader.reset(new RecordingReader(mRecordingHeader, false));
+        mRecordingReader.reset(new RecordingReader(mRecordingHeader));
         mEngine.reset(new SLAMEngine());
         const bool ok = mEngine->initialize(mCalibration, mConfiguration);
     }

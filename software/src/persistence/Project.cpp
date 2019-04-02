@@ -1096,7 +1096,7 @@ bool Project::removeRecording(int id)
 {
     bool ok = true;
     bool has_transaction = false;
-    QString filename;
+    QString dirname;
 
     // check whether the recording can be removed or not.
 
@@ -1111,15 +1111,15 @@ bool Project::removeRecording(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT filename FROM recordings WHERE id=?");
+        q.prepare("SELECT directory FROM recordings WHERE id=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
         if(ok)
         {
-            filename = q.value(0).toString();
-            ok = ( filename.isEmpty() == false );
+            dirname = q.value(0).toString();
+            ok = ( dirname.isEmpty() == false );
         }
     }
 
@@ -1183,7 +1183,11 @@ bool Project::removeRecording(int id)
 
     if(ok)
     {
-        mDir.remove(filename);
+        QDir recdir = mDir;
+        if( recdir.cd(dirname) )
+        {
+            recdir.removeRecursively();
+        }
     }
 
     recordingModelChanged();
@@ -1288,7 +1292,7 @@ bool Project::describeRecording(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `filename` FROM `recordings` WHERE `id`=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -1375,30 +1379,36 @@ bool Project::listRecordings(RecordingList& list)
     return ok;
 }
 
-bool Project::getNewRecordingFilename(std::string& filename)
+bool Project::createRecordingDirectory(QDir& dir)
 {
     bool go_on = true;
-    std::string relative_path;
+    QString relative_path;
 
     for(int i=0; go_on && i<1000000; i++)
     {
-        std::stringstream s;
-        s << "rec_" << i << ".mkv";
-
-        relative_path = s.str();
-        go_on = mDir.exists(relative_path.c_str());
+        relative_path = QString("rec_") + QString::number(i);
+        go_on = mDir.exists(relative_path);
     }
 
-    if(go_on)
+    bool ok = !go_on;
+
+    if(ok)
     {
-        filename.clear();
-        return false;
+        dir = mDir;
+        ok = mDir.mkdir(relative_path);
     }
-    else
+
+    if(ok)
     {
-        filename = mDir.absoluteFilePath(relative_path.c_str()).toStdString();
-        return true;
+        ok = mDir.cd(relative_path);
     }
+
+    if(ok == false)
+    {
+        dir = QDir();
+    }
+
+    return ok;
 }
 
 // RECONSTRUCTION
