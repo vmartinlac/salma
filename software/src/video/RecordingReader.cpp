@@ -3,6 +3,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include "RecordingReader.h"
 
+/*
+
 RecordingReader::RecordingReader(RecordingHeaderPtr header, bool unused)
 {
     mHeader = std::move(header);
@@ -111,4 +113,5 @@ RecordingHeaderPtr RecordingReader::getHeader()
 {
     return mHeader;
 }
+*/
 

@@ -934,6 +934,7 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
     if(ok)
     {
         ok = mDB.transaction();
+
         if(ok)
         {
             has_transaction = true;
@@ -942,14 +943,12 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
-        const QString relative_path = mDir.relativeFilePath(rec->filename.c_str());
+        const QString dir_name = rec->directory.dirName();
 
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO recordings(name, date, filename, width, height) VALUES(?,DATETIME('now'),?,?,?)");
+        q.prepare("INSERT INTO recordings(name, date, directory) VALUES(?,DATETIME('now'),?)");
         q.addBindValue(rec->name.c_str());
-        q.addBindValue(relative_path);
-        q.addBindValue(rec->size.width);
-        q.addBindValue(rec->size.height);
+        q.addBindValue(dir_name);
         ok = q.exec();
 
         if(ok)
@@ -963,11 +962,9 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
         for(int i=0; ok && i<rec->num_views(); i++)
         {
             QSqlQuery q(mDB);
-            q.prepare("INSERT INTO recording_views(recording_id, rank, x, y, width, height) VALUES(?,?,?,?,?,?)");
+            q.prepare("INSERT INTO recording_views(recording_id, rank, width, height) VALUES(?,?,?,?)");
             q.addBindValue(id);
             q.addBindValue(i);
-            q.addBindValue(rec->views[i].x);
-            q.addBindValue(rec->views[i].y);
             q.addBindValue(rec->views[i].width);
             q.addBindValue(rec->views[i].height);
             ok = q.exec();
@@ -1018,7 +1015,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `filename`, `width`, `height` FROM `recordings` WHERE `id`=?");
+        q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory` FROM `recordings` WHERE `id`=?");
         q.addBindValue(id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
@@ -1028,10 +1025,30 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
             rec->id = id;
             rec->name = q.value(0).toString().toStdString();
             rec->date = q.value(1).toString().toStdString();
-            rec->filename = mDir.absoluteFilePath(q.value(2).toString()).toStdString();
-            rec->size.width = q.value(3).toInt();
-            rec->size.height = q.value(4).toInt();
-            ok = mDir.exists( q.value(2).toString() );
+            
+            rec->directory = mDir;
+            ok = rec->directory.cd( q.value(2).toString() );
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT rank, width, height FROM recording_views WHERE recording_id=? ORDER BY rank ASC");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while( ok && q.next() )
+        {
+            ok = ( q.value(0).toInt() == rec->views.size() );
+
+            if(ok)
+            {
+                rec->views.emplace_back(
+                    q.value(1).toDouble(),
+                    q.value(2).toDouble());
+            }
         }
     }
 
@@ -1054,25 +1071,15 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
         }
     }
 
+    // check that the frames exist.
+
     if(ok)
     {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT rank, x, y, width, height FROM recording_views WHERE recording_id=? ORDER BY rank ASC");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-        ok = q.exec();
-
-        while( ok && q.next() )
+        for(int i=0; ok && i<rec->num_frames(); i++)
         {
-            ok = ( q.value(0).toInt() == rec->views.size() );
-
-            if(ok)
+            for(int j=0; ok && j<rec->num_views(); j++)
             {
-                rec->views.emplace_back(
-                    q.value(1).toDouble(),
-                    q.value(2).toDouble(),
-                    q.value(3).toDouble(),
-                    q.value(4).toDouble());
+                ok = rec->directory.exists(rec->getImageFileName(i, j));
             }
         }
     }

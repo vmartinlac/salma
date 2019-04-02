@@ -11,6 +11,7 @@
 #include "SyncIO.h"
 #include "Project.h"
 
+/*
 RecordingOperation::RecordingOperation()
 {
     mVisualizationOnly = false;
@@ -296,4 +297,5 @@ const char* RecordingOperation::getName()
 {
     return "Recording";
 }
+*/
 

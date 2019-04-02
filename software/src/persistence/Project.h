@@ -38,7 +38,7 @@ public:
     bool describeRecording(int id, QString& descr);
     bool renameRecording(int id, const QString& new_name);
     bool removeRecording(int id);
-    bool getNewRecordingFilename(std::string& filename);
+    bool createRecordingDirectory(QDir& dir);
 
     bool saveCalibration(StereoRigCalibrationPtr rig, int& id);
     bool loadCalibration(int id, StereoRigCalibrationPtr& rig);

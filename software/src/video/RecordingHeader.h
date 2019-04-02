@@ -20,11 +20,12 @@ public:
     std::string date;
 
     std::vector<double> timestamps;
-    std::vector<cv::Rect> views;
-    std::string filename;
-    cv::Size size;
+    std::vector<cv::Size> views;
+    QDir directory;
 
 public:
+
+    QString getImageFileName(int frame, int view);
 
     int num_views()
     {

@@ -56,9 +56,7 @@ CREATE TABLE 'recordings'
     'id' INTEGER PRIMARY KEY,
     'name' TEXT,
     'date' DATE,
-    'filename' TEXT,
-    'width' INTEGER,
-    'height' INTEGER
+    'directory' TEXT
 );
 
 CREATE TABLE 'recording_frames'
@@ -74,8 +72,6 @@ CREATE TABLE 'recording_views'
     'id' INTEGER PRIMARY KEY,
     'recording_id' INTEGER,
     'rank' INTEGER,
-    'x' INTEGER,
-    'y' INTEGER,
     'width' INTEGER,
     'height' INTEGER
 );

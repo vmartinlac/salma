@@ -16,6 +16,7 @@ add_library(
     VideoSystem.h
     RecordingReader.cpp
     RecordingReader.h
+    RecordingHeader.cpp
     RecordingHeader.h
     MockCamera.h
     MockCamera.cpp
