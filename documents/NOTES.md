@@ -26,6 +26,7 @@ TODO
 * Improve recording framerate
   * grayscale instead of RGB?
   * encode with ffmpeg instead of writing uncompressed images?
+  * turbojpeg?
 * Use CUDA on the whole SLAM pipeline and for recording
   * FFMPEG/CUDA: https://stackoverflow.com/questions/44510765/gpu-accelerated-video-processing-with-ffmpeg
   * For bundle adjustment: https://github.com/cbalint13/pba

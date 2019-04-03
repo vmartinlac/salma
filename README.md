@@ -20,6 +20,7 @@ Dependencies
 * Cuda (optional, Nvidia GPU programming)
 * Eigen3 (linear algebra primitives)
 * g2o (graph optimization)
+* libjpeg-turbo (fast JPEG implementation)
 * nanoflann (nearest neighbors search)
 * OpenCV (general purpose computer vision)
 * OpenMP (shared-memory parallelism)

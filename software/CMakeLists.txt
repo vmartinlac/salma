@@ -21,6 +21,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 find_package(PkgConfig REQUIRED)
 find_package(Aravis REQUIRED)
+find_package(TurboJPEG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(g2o REQUIRED)
 find_package(nanoflann REQUIRED)
