@@ -1381,16 +1381,14 @@ bool Project::listRecordings(RecordingList& list)
 
 bool Project::createRecordingDirectory(QDir& dir)
 {
-    bool go_on = true;
+    bool ok = false;
     QString relative_path;
 
-    for(int i=0; go_on && i<1000000; i++)
+    for(int i=0; ok == false && i<1000000; i++)
     {
         relative_path = QString("rec_") + QString::number(i);
-        go_on = mDir.exists(relative_path);
+        ok = ( mDir.exists(relative_path) == false );
     }
-
-    bool ok = !go_on;
 
     if(ok)
     {
@@ -1400,7 +1398,7 @@ bool Project::createRecordingDirectory(QDir& dir)
 
     if(ok)
     {
-        ok = mDir.cd(relative_path);
+        ok = dir.cd(relative_path);
     }
 
     if(ok == false)

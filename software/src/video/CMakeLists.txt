@@ -18,8 +18,6 @@ add_library(
     RecordingHeader.h
     RecordingReader.cpp
     RecordingReader.h
-    RecordingWriter.cpp
-    RecordingWriter.h
     MockCamera.h
     MockCamera.cpp
     VideoErrorCode.h
@@ -30,8 +28,6 @@ add_library(
     GenICamCamera.cpp
     GenICamCamera.h
     RecordingHeader.h
-    SyncIO.cpp
-    SyncIO.h
 )
 
 target_link_libraries(salma_video PUBLIC opencv_core Qt5::Core)

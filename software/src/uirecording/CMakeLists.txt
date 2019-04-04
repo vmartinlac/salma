@@ -4,6 +4,8 @@ add_library(
 
     STATIC
 
+    SyncIO.cpp
+    SyncIO.h
     NewMonoRecordingDialog.cpp
     NewMonoRecordingDialog.h
     NewStereoRecordingDialog.cpp
@@ -17,7 +19,7 @@ add_library(
 )
 
 target_link_libraries( salma_uirecording PUBLIC salma_uicommon Qt5::Widgets opencv_calib3d )
-target_link_libraries( salma_uirecording PRIVATE opencv_videoio )
+target_link_libraries( salma_uirecording PRIVATE TurboJPEG )
 
 target_include_directories(salma_uirecording INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 

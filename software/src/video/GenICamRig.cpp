@@ -89,6 +89,8 @@ protected:
 
 GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras, bool software_trigger)
 {
+    mHasFirstTimestamp = false;
+    mFirstTimestamp = 0.0;
     mSoftwareTrigger = software_trigger;
     mIsOpen = false;
     setCameras(cameras);
@@ -160,6 +162,9 @@ bool GenICamRig::open()
     bool ok = true;
 
     if(mIsOpen) throw std::runtime_error("camera is already open");
+
+    mHasFirstTimestamp = false;
+    mFirstTimestamp = 0.0;
 
     for(size_t i = 0; ok && i<mCameras.size(); i++)
     {
@@ -323,7 +328,15 @@ void GenICamRig::produceImages()
 
                 std::vector<cv::Mat> frames;
 
-                const double timestamp = static_cast<double>(arv_buffer_get_timestamp(chosen_buffers.front())) * 1.0e-9;
+                const double this_timestamp = static_cast<double>(arv_buffer_get_timestamp(chosen_buffers.front())) * 1.0e-9;
+
+                if(mHasFirstTimestamp == false)
+                {
+                    mHasFirstTimestamp = true;
+                    mFirstTimestamp = this_timestamp;
+                }
+
+                const double timestamp = this_timestamp - mFirstTimestamp;
 
                 for(int i=0; i<N_views; i++)
                 {

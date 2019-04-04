@@ -1,6 +1,6 @@
 #include <thread>
 #include <iostream>
-#include <opencv2/imgcodecs.hpp>
+#include <turbojpeg.h>
 #include "RecordingReader.h"
 
 RecordingReader::RecordingReader(RecordingHeaderPtr header)
@@ -40,19 +40,70 @@ void RecordingReader::read(Image& image)
     {
         bool ok = true;
         std::vector<cv::Mat> frames;
+        tjhandle handle = nullptr;
+
+        if(ok)
+        {
+            handle = tjInitDecompress();
+            ok = bool(handle);
+        }
+
 
         for(int i=0; ok && i < mHeader->num_views(); i++)
         {
-            cv::Mat mat = cv::imread( mHeader->getImageFileName(mNextFrameId, i).toStdString() );
+            QByteArray buffer;
+            QFile file( mHeader->getImageFileName(mNextFrameId, i) );
 
-            if(mat.data == nullptr)
+            int width = 0;
+            int height = 0;
+            int jpegsubsamp = 0;
+            int jpegcolorspace = 0;
+
+            cv::Mat mat;
+
+            if(ok)
             {
-                ok = false;
+                ok = file.open(QFile::ReadOnly);
             }
-            else
+
+            if(ok)
             {
-                frames.push_back(mat);
+                buffer = file.readAll();
+                ok = (buffer.isEmpty() == false);
             }
+
+            if(ok)
+            {
+                const int ret = tjDecompressHeader3(
+                    handle, reinterpret_cast<const uint8_t*>(buffer.constData()), buffer.size(),
+                    &width, &height, &jpegsubsamp, &jpegcolorspace);
+
+                ok = (ret == 0);
+            }
+
+            if(ok)
+            {
+                ok = (width > 0 && height > 0);
+            }
+
+            if(ok)
+            {
+                mat.create( cv::Size(width, height), CV_8UC3);
+                const int ret = tjDecompress2(
+                    handle, reinterpret_cast<const uint8_t*>(buffer.constData()), buffer.size(),
+                    mat.data, mat.cols, mat.step1(), mat.rows, TJPF_BGR, TJFLAG_ACCURATEDCT);
+                ok = (ret == 0);
+            }
+
+            if(ok)
+            {
+                frames.emplace_back(std::move(mat));
+            }
+        }
+
+        if(handle)
+        {
+            tjDestroy(handle);
         }
 
         if(ok)

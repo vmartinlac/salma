@@ -108,7 +108,7 @@ bool RecordingOperation::step()
 
                     if( first_frame )
                     {
-                        mResult->views[v] = frame.size();
+                        mResult->views.push_back(frame.size());
                     }
                     else
                     {

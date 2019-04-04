@@ -62,6 +62,9 @@ protected:
     Image mImage;
     std::timed_mutex mMutexA;
     std::mutex mMutexB;
+
+    bool mHasFirstTimestamp;
+    double mFirstTimestamp;
 };
 
 typedef std::shared_ptr<GenICamRig> GenICamRigPtr;

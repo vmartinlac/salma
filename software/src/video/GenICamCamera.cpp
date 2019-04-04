@@ -20,11 +20,8 @@ bool GenICamCamera::open()
     bool ok = true;
     const char* err = "";
 
-    if(ok)
-    {
-        mTab1.clear();
-        mTab2.clear();
-    }
+    mTab1.clear();
+    mTab2.clear();
 
     if(ok)
     {
