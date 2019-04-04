@@ -1,10 +1,9 @@
 #include <unistd.h>
 #include <iostream>
 #include <fcntl.h>
-#include <opencv2/imgcodecs.hpp>
 #include "SyncIO.h"
 
-bool syncimwrite(const std::string& path, const std::string& ext, const cv::Mat& image)
+bool syncimwrite(const std::string& path, const cv::Mat& image)
 {
     std::vector<uint8_t> data;
     int fd = -1;
@@ -12,7 +11,8 @@ bool syncimwrite(const std::string& path, const std::string& ext, const cv::Mat&
 
     if(ok)
     {
-        ok = cv::imencode(ext, image, data);
+        //ok = cv::imencode(ext, image, data);
+        throw std::runtime_error("TODO"); // TODO
     }
 
     if(ok)

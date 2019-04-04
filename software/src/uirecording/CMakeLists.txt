@@ -14,8 +14,6 @@ add_library(
     RecordingPanel.h
     RecordingPlayerDialog.cpp
     RecordingPlayerDialog.h
-    SyncIO.cpp
-    SyncIO.h
 )
 
 target_link_libraries( salma_uirecording PUBLIC salma_uicommon Qt5::Widgets opencv_calib3d )

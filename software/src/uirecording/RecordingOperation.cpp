@@ -118,7 +118,7 @@ bool RecordingOperation::step()
                     if(mSuccess)
                     {
                         const std::string fname = mResult->getImageFileName(mNumFrames, v).toStdString();
-                        mSuccess = syncimwrite(fname, ".png", frame);
+                        mSuccess = syncimwrite(fname, frame);
                     }
                 }
 
