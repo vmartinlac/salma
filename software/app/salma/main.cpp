@@ -12,9 +12,7 @@ void printWelcomeMessage()
 
     std::cout << logo << std::endl;
     std::cout << "Version: " << BuildInfo::getVersionMajor() << "." << BuildInfo::getVersionMinor() << "." << BuildInfo::getVersionRevision() << std::endl;
-    std::cout << std::endl;
-    std::cout << "Writen by Victor Martin Lac in 2018" << std::endl;
-    std::cout << std::endl;
+    std::cout << "Author: Victor MARTIN-LAC 2018-2019" << std::endl;
     std::cout << "Build date: " << BuildInfo::getCompilationDate() << std::endl;
     std::cout << "Compiler: " << BuildInfo::getCompilerName() << std::endl;
     std::cout << std::endl;
