@@ -288,7 +288,20 @@ void GenICamRig::produceImages()
                 }
             }
 
-            //count.dump();
+
+            /*
+            {
+                std::cout << "============" << std::endl;
+                count.dump();
+                int i = 0;
+                for(GenICamCameraPtr c : mCameras)
+                {
+                    std::cout << "cam #" << i << ": " << c->mTab2.size() << std::endl;
+                    i++;
+                }
+                std::cout << "============" << std::endl;
+            }
+            */
 
             //std::cout << found << std::endl;
             if(found)
