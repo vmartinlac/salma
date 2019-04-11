@@ -8,6 +8,8 @@ add_library(
     ExternalTrigger.h
     Image.cpp
     Image.h
+    GenICamVideoSource.cpp
+    GenICamVideoSource.h
     VideoSource.cpp
     VideoSource.h
     VideoSystemImpl.cpp

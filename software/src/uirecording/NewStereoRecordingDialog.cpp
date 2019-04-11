@@ -53,7 +53,7 @@ void NewStereoRecordingDialog::accept()
     QString name;
     int left_camera_id = -1;
     int right_camera_id = -1;
-    VideoSourcePtr camera;
+    GenICamVideoSourcePtr camera;
     double framerate;
     bool visualization_only;
 
@@ -83,9 +83,22 @@ void NewStereoRecordingDialog::accept()
 
     if(ok)
     {
-        camera = VideoSystem::instance()->createVideoSourceGenICamStereo(left_camera_id, right_camera_id, mSoftwareTrigger->isChecked());
+        camera = VideoSystem::instance()->createGenICamVideoSourceStereo(left_camera_id, right_camera_id);
         ok = bool(camera);
         err = "Incorrect camera!";
+    }
+
+    if(ok)
+    {
+        if( mSoftwareTrigger->isChecked() )
+        {
+            camera->setSoftwareTrigger();
+        }
+        else
+        {
+            throw std::runtime_error("not implemented!");
+        }
+        err = "Incorrect trigger!";
     }
 
     if(ok)

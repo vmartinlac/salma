@@ -21,14 +21,13 @@ public:
     GenICamCamera(
         GenICamRig* rig,
         const std::string& id,
-        int rank,
-        bool software_trigger);
+        int rank);
 
-    bool open();
+    bool open(bool software_trigger);
 
     void close();
 
-    void trigger();
+    void softwareTrigger();
 
     std::string getId();
 
@@ -114,7 +113,6 @@ public:
     GenICamRig* mRig;
     int mRank;
     std::string mId;
-    bool mSoftwareTrigger;
 
     ArvCamera* mCamera;
     ArvDevice* mDevice;

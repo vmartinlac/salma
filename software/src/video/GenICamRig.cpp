@@ -3,6 +3,7 @@
 #include <thread>
 #include "GenICamRig.h"
 #include "GenICamConfig.h"
+#include "ArduinoTrigger.h"
 
 class GenICamRig::Counter
 {
@@ -87,11 +88,10 @@ protected:
     std::map<guint32,int> mMap;
 };
 
-GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras, bool software_trigger)
+GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras)
 {
     mHasFirstTimestamp = false;
     mFirstTimestamp = 0.0;
-    mSoftwareTrigger = software_trigger;
     mIsOpen = false;
     setCameras(cameras);
 }
@@ -116,7 +116,7 @@ void GenICamRig::setCameras(const std::initializer_list<std::string>& cameras)
     int rank = 0;
     for(const std::string& id : cameras)
     {
-        GenICamCameraPtr cam( new GenICamCamera(this, id, rank, mSoftwareTrigger) );
+        GenICamCameraPtr cam( new GenICamCamera(this, id, rank) );
         mCameras.push_back(cam);
         rank++;
     }
@@ -166,9 +166,16 @@ bool GenICamRig::open()
     mHasFirstTimestamp = false;
     mFirstTimestamp = 0.0;
 
+    const bool software_trigger = !bool(mTrigger);
+
+    if(ok && bool(mTrigger))
+    {
+        ok = mTrigger->open();
+    }
+
     for(size_t i = 0; ok && i<mCameras.size(); i++)
     {
-        ok = mCameras[i]->open();
+        ok = mCameras[i]->open(software_trigger);
     }
 
     if(ok)
@@ -190,6 +197,7 @@ void GenICamRig::close()
 {
     if(mIsOpen)
     {
+
         mAskThreadToQuit = true;
         mSemaphore.up();
         mThread.join();
@@ -199,6 +207,11 @@ void GenICamRig::close()
             cam->close();
         }
 
+        if(mTrigger)
+        {
+            mTrigger->close();
+        }
+
         mImage.setInvalid();
         mIsOpen = false;
     }
@@ -206,11 +219,15 @@ void GenICamRig::close()
 
 void GenICamRig::trigger()
 {
-    if(mSoftwareTrigger)
+    if(mTrigger)
+    {
+        mTrigger->trigger();
+    }
+    else
     {
         for(GenICamCameraPtr c : mCameras)
         {
-          c->trigger();
+          c->softwareTrigger();
         }
     }
 }
@@ -408,5 +425,17 @@ void GenICamRig::produceImages()
 void GenICamRig::signalImageAvailability()
 {
     mSemaphore.up();
+}
+
+void GenICamRig::setSoftwareTrigger()
+{
+    mTrigger.reset();
+}
+
+void GenICamRig::setHardwareTrigger(const std::string& device)
+{
+    ArduinoTriggerPtr trigger(new ArduinoTrigger());
+    trigger->setPathToSerialPort(device);
+    mTrigger = trigger;
 }
 

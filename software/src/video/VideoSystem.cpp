@@ -31,22 +31,22 @@ std::string VideoSystem::getNameOfGenICamCamera(int idx)
     throw std::runtime_error("fatal error");
 }
 
-VideoSourcePtr VideoSystem::createVideoSourceGenICamMono(int camera_idx, bool software_trigger)
+GenICamVideoSourcePtr VideoSystem::createGenICamVideoSourceMono(int camera_idx)
+{
+    return GenICamVideoSourcePtr();
+}
+
+GenICamVideoSourcePtr VideoSystem::createGenICamVideoSourceStereo(int left_camera_idx, int right_camera_idx)
+{
+    return GenICamVideoSourcePtr();
+}
+
+VideoSourcePtr VideoSystem::createOpenCVVideoSource(int id)
 {
     return VideoSourcePtr();
 }
 
-VideoSourcePtr VideoSystem::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id, bool software_trigger)
-{
-    return VideoSourcePtr();
-}
-
-VideoSourcePtr VideoSystem::createVideoSourceOpenCV(int id)
-{
-    return VideoSourcePtr();
-}
-
-VideoSourcePtr VideoSystem::createVideoSourceOpenCV(const std::string& filename)
+VideoSourcePtr VideoSystem::createOpenCVVideoSource(const std::string& filename)
 {
     return VideoSourcePtr();
 }

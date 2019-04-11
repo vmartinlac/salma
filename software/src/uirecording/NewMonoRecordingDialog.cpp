@@ -50,7 +50,7 @@ void NewMonoRecordingDialog::accept()
 {
     QString name;
     int camera_id = -1;
-    VideoSourcePtr camera;
+    GenICamVideoSourcePtr camera;
     double framerate;
     bool visualization_only;
 
@@ -79,7 +79,8 @@ void NewMonoRecordingDialog::accept()
 
     if(ok)
     {
-        camera = VideoSystem::instance()->createVideoSourceGenICamMono(camera_id, mSoftwareTrigger->isChecked());
+        camera = VideoSystem::instance()->createGenICamVideoSourceMono(camera_id);
+        //, mSoftwareTrigger->isChecked());
         ok = bool(camera);
         err = "Incorrect camera!";
     }

@@ -73,13 +73,14 @@ std::string VideoSystemImpl::getNameOfGenICamCamera(int idx)
 #endif
 }
 
-VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, bool software_trigger)
+GenICamVideoSourcePtr VideoSystemImpl::createGenICamVideoSourceMono(int camera_idx)
 {
+/*
 #ifdef MOCK_GENICAM_CAMERAS
     VideoSourcePtr ret(new MockCamera(1, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
     return ret;
 #else
-
+*/
     GenICamRigPtr ret;
 
     const bool ok = (0 <= camera_idx && camera_idx < mGenICamCameras.size());
@@ -87,19 +88,21 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamMono(int camera_idx, boo
     if(ok)
     {
         std::string& id = mGenICamCameras.at(camera_idx);
-        ret.reset( new GenICamRig( { id }, software_trigger) );
+        ret.reset( new GenICamRig( { id } ) );
     }
 
     return ret;
-#endif
+//#endif
 }
 
-VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_idx, bool software_trigger)
+GenICamVideoSourcePtr VideoSystemImpl::createGenICamVideoSourceStereo(int left_camera_idx, int right_camera_idx)
 {
+/*
 #ifdef MOCK_GENICAM_CAMERAS
     VideoSourcePtr ret(new MockCamera(2, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
     return ret;
 #else
+*/
     GenICamRigPtr ret;
     bool ok = true;
 
@@ -112,11 +115,11 @@ VideoSourcePtr VideoSystemImpl::createVideoSourceGenICamStereo(int left_camera_i
         std::string& left_id = mGenICamCameras[left_camera_idx];
         std::string& right_id = mGenICamCameras[right_camera_idx];
 
-        ret.reset( new GenICamRig( {left_id, right_id}, software_trigger) );
+        ret.reset( new GenICamRig( {left_id, right_id} ) );
     }
 
     return ret;
-#endif
+//#endif
 }
 
 VideoSourcePtr VideoSystemImpl::createVideoSourceMockMono()

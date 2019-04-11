@@ -2,6 +2,7 @@
 
 #include <string>
 #include "VideoSource.h"
+#include "GenICamVideoSource.h"
 
 class VideoSystem
 {
@@ -19,11 +20,11 @@ public:
     virtual int getNumberOfGenICamCameras();
     virtual std::string getNameOfGenICamCamera(int idx);
 
-    virtual VideoSourcePtr createVideoSourceGenICamMono(int camera_idx, bool software_trigger);
-    virtual VideoSourcePtr createVideoSourceGenICamStereo(int left_camera_idx, int right_camera_id, bool software_trigger);
+    virtual GenICamVideoSourcePtr createGenICamVideoSourceMono(int camera_idx);
+    virtual GenICamVideoSourcePtr createGenICamVideoSourceStereo(int left_camera_idx, int right_camera_idx);
 
-    virtual VideoSourcePtr createVideoSourceOpenCV(int id);
-    virtual VideoSourcePtr createVideoSourceOpenCV(const std::string& filename);
+    virtual VideoSourcePtr createOpenCVVideoSource(int id);
+    virtual VideoSourcePtr createOpenCVVideoSource(const std::string& filename);
 
     virtual VideoSourcePtr createVideoSourceMockMono();
     virtual VideoSourcePtr createVideoSourceMockStereo();

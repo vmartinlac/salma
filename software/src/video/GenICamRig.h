@@ -11,18 +11,16 @@
 #include <initializer_list>
 #include <vector>
 #include <opencv2/core.hpp>
-
-#include "VideoSource.h"
+#include "ExternalTrigger.h"
+#include "GenICamVideoSource.h"
 #include "GenICamCamera.h"
 #include "GenICamSemaphore.h"
 
-class GenICamRig : public VideoSource
+class GenICamRig : public GenICamVideoSource
 {
 public:
 
-    GenICamRig(
-        const std::initializer_list<std::string>& cameras,
-        bool software_trigger);
+    GenICamRig( const std::initializer_list<std::string>& cameras );
 
     virtual ~GenICamRig();
 
@@ -42,6 +40,10 @@ public:
 
     void signalImageAvailability();
 
+    void setSoftwareTrigger() override;
+
+    void setHardwareTrigger(const std::string& device) override;
+
 protected:
 
     void produceImages();
@@ -53,7 +55,7 @@ protected:
 protected:
 
     bool mIsOpen;
-    bool mSoftwareTrigger;
+    ExternalTriggerPtr mTrigger;
     std::vector<GenICamCameraPtr> mCameras;
     std::thread mThread;
     GenICamSemaphore mSemaphore;

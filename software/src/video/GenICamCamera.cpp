@@ -1,11 +1,10 @@
 #include "GenICamRig.h"
 #include "GenICamCamera.h"
 
-GenICamCamera::GenICamCamera(GenICamRig* rig, const std::string& id, int rank, bool software_trigger) :
+GenICamCamera::GenICamCamera(GenICamRig* rig, const std::string& id, int rank) :
     mRig(rig),
     mRank(rank),
-    mId(id),
-    mSoftwareTrigger(software_trigger)
+    mId(id)
 {
 }
 
@@ -14,7 +13,7 @@ std::string GenICamCamera::getId()
     return mId;
 }
 
-bool GenICamCamera::open()
+bool GenICamCamera::open(bool software_trigger)
 {
     gint64 payload = 0;
     bool ok = true;
@@ -46,7 +45,7 @@ bool GenICamCamera::open()
 
     if(ok)
     {
-        if(mSoftwareTrigger)
+        if(software_trigger)
         {
             arv_device_set_string_feature_value(mDevice, "TriggerSource", "Software");
         }
@@ -174,13 +173,10 @@ void GenICamCamera::stream_callback(ArvStream *stream, void *user_data)
     }
 }
 
-void GenICamCamera::trigger()
+void GenICamCamera::softwareTrigger()
 {
-    if(mSoftwareTrigger)
-    {
-        arv_device_execute_command(mDevice, "TriggerSoftware");
-        //const bool ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
-        //if(ok == false) std::cerr << "Software trigger failed!" << std::endl;
-    }
+    arv_device_execute_command(mDevice, "TriggerSoftware");
+    //const bool ok = ( arv_device_get_status(mDevice) == ARV_DEVICE_STATUS_SUCCESS );
+    //if(ok == false) std::cerr << "Software trigger failed!" << std::endl;
 }
 
