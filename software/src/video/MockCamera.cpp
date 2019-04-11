@@ -98,3 +98,11 @@ void MockCamera::trigger()
 {
 }
 
+void MockCamera::setSoftwareTrigger()
+{
+}
+
+void MockCamera::setHardwareTrigger(const std::string& device)
+{
+}
+

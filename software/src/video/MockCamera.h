@@ -2,9 +2,9 @@
 
 #include <memory>
 #include <chrono>
-#include "VideoSource.h"
+#include "GenICamVideoSource.h"
 
-class MockCamera : public VideoSource
+class MockCamera : public GenICamVideoSource
 {
 public:
 
@@ -19,6 +19,9 @@ public:
 
     void read(Image& image) override;
     void trigger() override;
+
+    void setSoftwareTrigger() override;
+    void setHardwareTrigger(const std::string& device) override;
 
 protected:
 
