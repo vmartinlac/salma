@@ -9,8 +9,7 @@
 #include "RecordingPanel.h"
 #include "Project.h"
 #include "VideoSystem.h"
-#include "NewMonoRecordingDialog.h"
-#include "NewStereoRecordingDialog.h"
+#include "NewRecordingDialog.h"
 #include "OperationDialog.h"
 #include "RecordingPlayerDialog.h"
 
@@ -31,12 +30,14 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
     QAction* aNewMono = new QAction("Mono",this);
     QAction* aNewStereo = new QAction("Stereo",this);
+    QAction* aNewArbitrary = new QAction("Other",this);
 
     QToolButton* bNew = new QToolButton();
     bNew->setText("New");
     bNew->setPopupMode(QToolButton::InstantPopup);
     bNew->addAction(aNewMono);
     bNew->addAction(aNewStereo);
+    bNew->addAction(aNewArbitrary);
 
     QToolBar* tb = new QToolBar();
     tb->addWidget(bNew);
@@ -48,6 +49,7 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
     connect(aNewMono, SIGNAL(triggered()), this, SLOT(onNewMonoRecording()));
     connect(aNewStereo, SIGNAL(triggered()), this, SLOT(onNewStereoRecording()));
+    connect(aNewArbitrary, SIGNAL(triggered()), this, SLOT(onNewArbitraryRecording()));
     connect(aPlay, SIGNAL(triggered()), this, SLOT(onPlayRecording()));
     connect(aRename, SIGNAL(triggered()), this, SLOT(onRenameRecording()));
     connect(aDelete, SIGNAL(triggered()), this, SLOT(onDeleteRecording()));
@@ -65,37 +67,32 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
 void RecordingPanel::onNewMonoRecording()
 {
-    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= 1 )
-    {
-        OperationPtr op;
-
-        NewMonoRecordingDialog* dlg = new NewMonoRecordingDialog(mProject, this);
-        dlg->exec();
-        op = dlg->getOperation();
-        delete dlg;
-
-        if(op)
-        {
-            OperationDialog* opdlg = new OperationDialog(mProject, op, this);
-            opdlg->exec();
-            delete opdlg;
-
-            mProject->recordingModel()->refresh();
-        }
-    }
-    else
-    {
-        QMessageBox::critical(this, "Error", "You need at least one camera!");
-    }
+    onNewRecording(1);
 }
 
 void RecordingPanel::onNewStereoRecording()
 {
-    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= 2 )
+    onNewRecording(2);
+}
+
+void RecordingPanel::onNewArbitraryRecording()
+{
+    bool ok = true;
+    const int num_cameras = QInputDialog::getInt(this, "Number of cameras", "Number of cameras?", 1, 1, 10, 1, &ok);
+
+    if(ok)
+    {
+        onNewRecording(num_cameras);
+    }
+}
+
+void RecordingPanel::onNewRecording(int num_cameras)
+{
+    if( VideoSystem::instance()->getNumberOfGenICamCameras() >= num_cameras )
     {
         OperationPtr op;
 
-        NewStereoRecordingDialog* dlg = new NewStereoRecordingDialog(mProject, this);
+        NewRecordingDialog* dlg = new NewRecordingDialog(num_cameras, mProject, this);
         dlg->exec();
         op = dlg->getOperation();
         delete dlg;
@@ -111,7 +108,7 @@ void RecordingPanel::onNewStereoRecording()
     }
     else
     {
-        QMessageBox::critical(this, "Error", "You need at least two cameras!");
+        QMessageBox::critical(this, "Error", "You need at least " + QString::number(num_cameras) + " camera(s)!");
     }
 }
 

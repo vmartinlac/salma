@@ -88,7 +88,7 @@ protected:
     std::map<guint32,int> mMap;
 };
 
-GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras)
+GenICamRig::GenICamRig(const std::vector<std::string>& cameras)
 {
     mHasFirstTimestamp = false;
     mFirstTimestamp = 0.0;
@@ -96,7 +96,7 @@ GenICamRig::GenICamRig(const std::initializer_list<std::string>& cameras)
     setCameras(cameras);
 }
 
-void GenICamRig::setCameras(const std::initializer_list<std::string>& cameras)
+void GenICamRig::setCameras(const std::vector<std::string>& cameras)
 {
     // check that the rig is not currently open.
 

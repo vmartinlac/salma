@@ -1,28 +1,42 @@
+#include <set>
 #include <QFormLayout>
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
-#include "NewMonoRecordingDialog.h"
+#include "NewRecordingDialog.h"
 #include "VideoSystem.h"
 #include "RecordingOperation.h"
 
-NewMonoRecordingDialog::NewMonoRecordingDialog(Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
+NewRecordingDialog::NewRecordingDialog(int num_cameras, Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
 {
     mName = new QLineEdit();
-    mCamera = new CameraList();
+    mName->setText("My Recording");
+
+    for(int i=0; i<num_cameras; i++)
+    {
+        mCameras.push_back( new CameraList() );
+    }
     mFrameRate = new FrameRateWidget();
     mVisualizationOnly = new QCheckBox();
-    mSoftwareTrigger = new QCheckBox();
+    mSoftwareTrigger = new QRadioButton();
+    mHardwareTrigger = new QRadioButton();
+    mHardwareTriggerPath = new PathWidget(PathWidget::GET_OPEN_FILENAME);
 
     mSoftwareTrigger->setChecked(true);
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
-    form->addRow("Camera:", mCamera);
+    for(int i=0; i<num_cameras; i++)
+    {
+        const QString text = "Camera #" + QString::number(i) + ":";
+        form->addRow(text, mCameras[i]);
+    }
     form->addRow("Max frame rate:", mFrameRate);
     form->addRow("Visualization only:", mVisualizationOnly);
     form->addRow("Software trigger:", mSoftwareTrigger);
+    form->addRow("Hardware trigger:", mHardwareTrigger);
+    form->addRow("Hardware trigger device:", mHardwareTriggerPath);
 
     QPushButton* btnok = new QPushButton("OK");
     QPushButton* btncancel = new QPushButton("Cancel");
@@ -36,20 +50,24 @@ NewMonoRecordingDialog::NewMonoRecordingDialog(Project* proj, QWidget* parent) :
     vlay->addLayout(hlay);
 
     setLayout(vlay);
-    setWindowTitle("New Mono Recording");
+    setWindowTitle("New Recording");
 
     connect(btnok, SIGNAL(clicked()), this, SLOT(accept()));
     connect(btncancel, SIGNAL(clicked()), this, SLOT(reject()));
+    connect(mHardwareTrigger, SIGNAL(clicked()), this, SLOT(triggerChanged()));
+    connect(mSoftwareTrigger, SIGNAL(clicked()), this, SLOT(triggerChanged()));
+
+    triggerChanged();
 }
 
-NewMonoRecordingDialog::~NewMonoRecordingDialog()
+NewRecordingDialog::~NewRecordingDialog()
 {
 }
 
-void NewMonoRecordingDialog::accept()
+void NewRecordingDialog::accept()
 {
     QString name;
-    int camera_id = -1;
+    std::vector<int> camera_ids(mCameras.size(), -1);
     GenICamVideoSourcePtr camera;
     double framerate;
     bool visualization_only;
@@ -72,17 +90,43 @@ void NewMonoRecordingDialog::accept()
 
     if(ok)
     {
-        camera_id = mCamera->getCameraId();
-        ok = (camera_id >= 0);
+        for(size_t i=0; ok && i<mCameras.size(); i++)
+        {
+            camera_ids[i] = mCameras[i]->getCameraId();
+            ok = (camera_ids[i] >= 0);
+        }
+
+        if(ok)
+        {
+            std::set<int> items(camera_ids.begin(), camera_ids.end());
+            ok = ( items.size() == mCameras.size() );
+        }
+
         err = "Incorrect camera!";
     }
 
     if(ok)
     {
-        camera = VideoSystem::instance()->createGenICamVideoSourceMono(camera_id);
-        //, mSoftwareTrigger->isChecked());
+        camera = VideoSystem::instance()->createGenICamVideoSource(camera_ids);
         ok = bool(camera);
         err = "Incorrect camera!";
+    }
+
+    if(ok)
+    {
+        if( mSoftwareTrigger->isChecked() )
+        {
+            camera->setSoftwareTrigger();
+        }
+        else
+        {
+            const std::string device = mHardwareTriggerPath->path().toStdString();
+
+            // TODO: check that file exist and is device.
+
+            camera->setHardwareTrigger(device);
+            err = "Incorrect trigger!";
+        }
     }
 
     if(ok)
@@ -109,5 +153,10 @@ void NewMonoRecordingDialog::accept()
     {
         QMessageBox::critical(this, "Error", err);
     }
+}
+
+void NewRecordingDialog::triggerChanged()
+{
+    mHardwareTriggerPath->setEnabled( mHardwareTrigger->isChecked() );
 }
 

@@ -18,6 +18,8 @@ protected slots:
 
     void onNewMonoRecording();
     void onNewStereoRecording();
+    void onNewArbitraryRecording();
+    void onNewRecording(int num_cameras);
     void onPlayRecording();
     void onRenameRecording();
     void onDeleteRecording();

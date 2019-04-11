@@ -31,12 +31,7 @@ std::string VideoSystem::getNameOfGenICamCamera(int idx)
     throw std::runtime_error("fatal error");
 }
 
-GenICamVideoSourcePtr VideoSystem::createGenICamVideoSourceMono(int camera_idx)
-{
-    return GenICamVideoSourcePtr();
-}
-
-GenICamVideoSourcePtr VideoSystem::createGenICamVideoSourceStereo(int left_camera_idx, int right_camera_idx)
+GenICamVideoSourcePtr VideoSystem::createGenICamVideoSource(const std::vector<int>& camera_ids)
 {
     return GenICamVideoSourcePtr();
 }

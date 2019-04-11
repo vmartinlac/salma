@@ -8,7 +8,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <memory>
-#include <initializer_list>
 #include <vector>
 #include <opencv2/core.hpp>
 #include "ExternalTrigger.h"
@@ -20,11 +19,11 @@ class GenICamRig : public GenICamVideoSource
 {
 public:
 
-    GenICamRig( const std::initializer_list<std::string>& cameras );
+    GenICamRig( const std::vector<std::string>& cameras );
 
     virtual ~GenICamRig();
 
-    void setCameras(const std::initializer_list<std::string>& cameras);
+    void setCameras(const std::vector<std::string>& cameras);
 
     bool open() override;
 

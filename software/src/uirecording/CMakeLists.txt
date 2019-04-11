@@ -6,10 +6,8 @@ add_library(
 
     SyncIO.cpp
     SyncIO.h
-    NewMonoRecordingDialog.cpp
-    NewMonoRecordingDialog.h
-    NewStereoRecordingDialog.cpp
-    NewStereoRecordingDialog.h
+    NewRecordingDialog.cpp
+    NewRecordingDialog.h
     RecordingOperation.cpp
     RecordingOperation.h
     RecordingPanel.cpp

@@ -6,11 +6,11 @@
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
 
-/*
+//
 #define MOCK_GENICAM_CAMERAS
 #define MOCK_GENICAM_CAMERA_WIDTH 1292
 #define MOCK_GENICAM_CAMERA_HEIGHT 964
-*/
+//
 
 VideoSystemImpl::VideoSystemImpl()
 {
@@ -73,50 +73,37 @@ std::string VideoSystemImpl::getNameOfGenICamCamera(int idx)
 #endif
 }
 
-GenICamVideoSourcePtr VideoSystemImpl::createGenICamVideoSourceMono(int camera_idx)
+GenICamVideoSourcePtr VideoSystemImpl::createGenICamVideoSource(const std::vector<int>& camera_ids)
 {
 #ifdef MOCK_GENICAM_CAMERAS
 
-    return MockCameraPtr(new MockCamera(1, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
+    return MockCameraPtr(new MockCamera(camera_ids.size(), MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
 
 #else
 
+    std::vector<std::string> ids(camera_ids.size());
     GenICamRigPtr ret;
 
-    const bool ok = (0 <= camera_idx && camera_idx < mGenICamCameras.size());
-
-    if(ok)
-    {
-        std::string& id = mGenICamCameras.at(camera_idx);
-        ret.reset( new GenICamRig( { id } ) );
-    }
-
-    return ret;
-
-#endif
-}
-
-GenICamVideoSourcePtr VideoSystemImpl::createGenICamVideoSourceStereo(int left_camera_idx, int right_camera_idx)
-{
-#ifdef MOCK_GENICAM_CAMERAS
-
-    return MockCameraPtr(new MockCamera(2, MOCK_GENICAM_CAMERA_WIDTH, MOCK_GENICAM_CAMERA_HEIGHT));
-
-#else
-
-    GenICamRigPtr ret;
     bool ok = true;
 
-    ok = ok && (left_camera_idx != right_camera_idx);
-    ok = ok && (0 <= left_camera_idx && left_camera_idx < mGenICamCameras.size());
-    ok = ok && (0 <= right_camera_idx && right_camera_idx < mGenICamCameras.size());
+    if(ok)
+    {
+        ok = (camera_ids.empty() == false);
+    }
+
+    for(size_t i=0; ok && i<camera_ids.size(); i++)
+    {
+        ok = ( 0 <= camera_ids[i] && camera_ids[i] < mGenICamCameras.size() );
+
+        if(ok)
+        {
+            ids[i] = mGenICamCameras[camera_ids[i]];
+        }
+    }
 
     if(ok)
     {
-        std::string& left_id = mGenICamCameras[left_camera_idx];
-        std::string& right_id = mGenICamCameras[right_camera_idx];
-
-        ret.reset( new GenICamRig( {left_id, right_id} ) );
+        ret.reset( new GenICamRig( ids ) );
     }
 
     return ret;
