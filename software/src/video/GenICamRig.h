@@ -47,9 +47,7 @@ protected:
 
     void produceImages();
 
-protected:
-
-    class Counter;
+    static cv::Mat convertBufferToMap(ArvBuffer* buffer);
 
 protected:
 

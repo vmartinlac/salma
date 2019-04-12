@@ -1,6 +1,8 @@
 #include "GenICamRig.h"
 #include "GenICamCamera.h"
 
+#define GENICAM_NUM_BUFFERS 40
+
 GenICamCamera::GenICamCamera(GenICamRig* rig, const std::string& id, int rank) :
     mRig(rig),
     mRank(rank),
@@ -19,8 +21,7 @@ bool GenICamCamera::open(bool software_trigger)
     bool ok = true;
     const char* err = "";
 
-    mTab1.clear();
-    mTab2.clear();
+    if( mReceivedBuffer ) throw std::logic_error("internal error");
 
     if(ok)
     {
@@ -95,7 +96,7 @@ bool GenICamCamera::open(bool software_trigger)
     if(ok == false)
     {
         std::cout << err << std::endl;
-        throw;
+        throw std::runtime_error("could not open camera");
     }
 
     return ok;
@@ -119,30 +120,19 @@ void GenICamCamera::close()
         mCamera = nullptr;
     }
 
+    mReceivedBufferMutex.lock();
+    if(mReceivedBuffer)
     {
-        std::array<ArvBuffer*, GENICAM_NUM_BUFFERS+1> tmp;
-        std::fill(tmp.begin(), tmp.end(), nullptr);
-        mTab1.take(tmp.begin());
-        for(auto it = tmp.begin(); *it!=nullptr; it++)
-        {
-            g_object_unref(*it);
-            it++;
-        }
+        g_object_unref(mReceivedBuffer);
+        mReceivedBuffer = nullptr;
     }
-
-    {
-        for(std::pair<guint32,ArvBuffer*> p : mTab2)
-        {
-            g_object_unref(p.second);
-        }
-        mTab2.clear();
-    }
+    mReceivedBufferMutex.unlock();
 }
 
 void GenICamCamera::stream_callback(ArvStream *stream, void *user_data)
 {
     GenICamCamera* const cam = reinterpret_cast<GenICamCamera*>(user_data);
-    ArvBuffer* const buffer = arv_stream_try_pop_buffer (stream);
+    ArvBuffer* const buffer = arv_stream_try_pop_buffer(stream);
     bool ok = true;
 
     if(ok)
@@ -162,12 +152,13 @@ void GenICamCamera::stream_callback(ArvStream *stream, void *user_data)
 
     if(ok)
     {
-        ArvBuffer* const to_push = cam->mTab1.push(buffer);
-
-        if(to_push)
+        cam->mReceivedBufferMutex.lock();
+        if(cam->mReceivedBuffer)
         {
-            arv_stream_push_buffer(cam->mStream, to_push);
+            arv_stream_push_buffer(cam->mStream, cam->mReceivedBuffer);
         }
+        cam->mReceivedBuffer = buffer;
+        cam->mReceivedBufferMutex.unlock();
 
         cam->mRig->signalImageAvailability();
     }

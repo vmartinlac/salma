@@ -24,7 +24,6 @@ add_library(
     MockCamera.cpp
     VideoErrorCode.h
     GenICamSemaphore.h
-    GenICamConfig.h
     GenICamRig.cpp
     GenICamRig.h
     GenICamCamera.cpp
