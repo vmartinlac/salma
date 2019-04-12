@@ -6,11 +6,11 @@
 #include "GenICamRig.h"
 #include "VideoSystemImpl.h"
 
-//
+/*
 #define MOCK_GENICAM_CAMERAS
 #define MOCK_GENICAM_CAMERA_WIDTH 1292
 #define MOCK_GENICAM_CAMERA_HEIGHT 964
-//
+*/
 
 VideoSystemImpl::VideoSystemImpl()
 {

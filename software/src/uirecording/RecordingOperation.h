@@ -34,7 +34,6 @@ public:
     VideoSourcePtr mCamera;
     bool mVisualizationOnly;
     double mMaxFrameRate;
-    bool mSoftwareTrigger;
 
 protected:
 

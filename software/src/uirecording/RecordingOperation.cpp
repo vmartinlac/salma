@@ -15,7 +15,6 @@ RecordingOperation::RecordingOperation()
 {
     mVisualizationOnly = false;
     mMaxFrameRate = 1000;
-    mSoftwareTrigger = true;
 }
 
 RecordingOperation::~RecordingOperation()
@@ -60,7 +59,7 @@ bool RecordingOperation::before()
         mSuccess = mCamera->open();
     }
 
-    if(mSuccess && mSoftwareTrigger)
+    if(mSuccess)
     {
         mCamera->trigger();
     }
@@ -76,10 +75,7 @@ bool RecordingOperation::step()
 
         mCamera->read(image);
 
-        if(mSoftwareTrigger)
-        {
-            mCamera->trigger();
-        }
+        mCamera->trigger();
 
         if( image.isValid() )
         {

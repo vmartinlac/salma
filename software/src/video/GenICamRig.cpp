@@ -211,21 +211,21 @@ void GenICamRig::produceImages()
                 if(buffer)
                 {
                     planes[i] = convertBufferToMap(buffer);
-                    arv_stream_push_buffer(mCameras[i]->mStream, buffer);
 
                     if(i == 0)
                     {
-                        /*
+                        const double this_timestamp = static_cast<double>(arv_buffer_get_timestamp(buffer)) * 1.0e-9;
+
                         if(mHasFirstTimestamp == false)
                         {
                             mHasFirstTimestamp = true;
                             mFirstTimestamp = this_timestamp;
                         }
 
-                        const double timestamp = this_timestamp - mFirstTimestamp;
-                        */
-                        // TODO: set timestamp.
+                        timestamp = this_timestamp - mFirstTimestamp;
                     }
+
+                    arv_stream_push_buffer(mCameras[i]->mStream, buffer);
                 }
 
                 ready = ready && bool(planes[i].data);

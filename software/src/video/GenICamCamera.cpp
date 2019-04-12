@@ -1,12 +1,13 @@
 #include "GenICamRig.h"
 #include "GenICamCamera.h"
 
-#define GENICAM_NUM_BUFFERS 40
+#define GENICAM_NUM_BUFFERS 5
 
 GenICamCamera::GenICamCamera(GenICamRig* rig, const std::string& id, int rank) :
     mRig(rig),
     mRank(rank),
-    mId(id)
+    mId(id),
+    mReceivedBuffer(nullptr)
 {
 }
 

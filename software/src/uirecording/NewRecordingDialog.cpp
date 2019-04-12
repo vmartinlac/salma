@@ -4,6 +4,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "NewRecordingDialog.h"
 #include "VideoSystem.h"
 #include "RecordingOperation.h"
@@ -24,6 +27,7 @@ NewRecordingDialog::NewRecordingDialog(int num_cameras, Project* proj, QWidget* 
     mHardwareTriggerPath = new PathWidget(PathWidget::GET_OPEN_FILENAME);
 
     mSoftwareTrigger->setChecked(true);
+    mHardwareTriggerPath->setPath("/dev/ttyACM0");
 
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
@@ -121,11 +125,24 @@ void NewRecordingDialog::accept()
         else
         {
             const std::string device = mHardwareTriggerPath->path().toStdString();
+            struct stat info;
 
-            // TODO: check that file exist and is device.
+            if(ok)
+            {
+                ok = (0 == stat(device.c_str(), &info));
+                err = "Trigger device does not exist!";
+            }
 
-            camera->setHardwareTrigger(device);
-            err = "Incorrect trigger!";
+            if(ok)
+            {
+                ok = ((info.st_mode & S_IFMT) == S_IFCHR);
+                err = "Path is not a valid trigger device!";
+            }
+
+            if(ok)
+            {
+                camera->setHardwareTrigger(device);
+            }
         }
     }
 
