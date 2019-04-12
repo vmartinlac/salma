@@ -11,9 +11,9 @@ void loop()
   if( Serial.read() >= 0 )
   {
     digitalWrite(2, HIGH);
-    delay(1);
+    delay(2);
   }
   
   digitalWrite(2, LOW);
-  delay(1);
+  delay(2);
 }
