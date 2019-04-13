@@ -1,17 +1,15 @@
 
-Content
-=======
-
-The added value offered by this project is:
+Features
+========
 
 * an user interface allowing to
-  * record mono or stereo video stream,
+  * record multiple view video stream,
   * calibrate cameras and stereo rigs,
   * compute visual odometry trajectory,
-  * display trajectory and odometry data.
-* a stereo visual odometry algorithm.
-* a algorithm to track calibration target.
-* a code for synchronizing video stream from multiple cameras.
+  * display odometry trajectory and data.
+* stereo visual odometry algorithm.
+* algorithm to track calibration target.
+* multiple view video stream acquisition.
 
 Dependencies
 ============
