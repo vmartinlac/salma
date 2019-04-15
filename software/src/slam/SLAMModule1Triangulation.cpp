@@ -76,6 +76,7 @@ SLAMModuleResult SLAMModule1Triangulation::operator()()
 
     std::cout << "      Number of new mappoints: " << triangulation_count << std::endl;
 
+    /*
     if( context()->configuration->dense_reconstruction.enabled )
     {
         return SLAMModuleResult(false, SLAM_MODULE1_DENSERECONSTRUCTION);
@@ -84,6 +85,8 @@ SLAMModuleResult SLAMModule1Triangulation::operator()()
     {
         return SLAMModuleResult(true, SLAM_MODULE1_RECTIFICATION);
     }
+    */
+    return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
 }
 
 SLAMMapPointPtr SLAMModule1Triangulation::triangulate(SLAMFramePtr frame, int left_keypoint, int right_keypoint)

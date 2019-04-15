@@ -38,7 +38,7 @@ bool SLAMEngine::initialize(
         {
 
         case SLAM_PIPELINE1:
-            mModules.emplace_back(new SLAMModule1Rectification(mContext));
+            //mModules.emplace_back(new SLAMModule1Rectification(mContext));
             mModules.emplace_back(new SLAMModule1Features(mContext));
             mModules.emplace_back(new SLAMModule1TemporalMatcher(mContext));
             mModules.emplace_back(new SLAMModule1Alignment(mContext));
@@ -46,8 +46,8 @@ bool SLAMEngine::initialize(
             mModules.emplace_back(new SLAMModule1LBA(mContext));
             mModules.emplace_back(new SLAMModule1StereoMatcher(mContext));
             mModules.emplace_back(new SLAMModule1Triangulation(mContext));
-            mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
-            mNextModule = SLAM_MODULE1_RECTIFICATION;
+            //mModules.emplace_back(new SLAMModule1DenseReconstruction(mContext));
+            mNextModule = SLAM_MODULE1_FEATURES;
             break;
 
         /*
@@ -105,7 +105,7 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
 
         mContext->reconstruction->frames.push_back(curr_frame);
 
-        std::cout << "PROCESSING FRAME " << curr_frame->id << std::endl;
+        std::cout << "PROCESSING FRAME " << curr_frame->rank_in_recording << std::endl;
 
         int milliseconds = 0;
 

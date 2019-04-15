@@ -14,7 +14,7 @@
 NewRecordingDialog::NewRecordingDialog(int num_cameras, Project* proj, QWidget* parent) : NewOperationDialog(proj, parent)
 {
     mName = new QLineEdit();
-    mName->setText("My Recording");
+    mName->setText("my recording");
 
     for(int i=0; i<num_cameras; i++)
     {

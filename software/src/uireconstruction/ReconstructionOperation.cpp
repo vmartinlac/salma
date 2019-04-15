@@ -42,6 +42,11 @@ bool ReconstructionOperation::before()
 
     if(ok)
     {
+        ok = ( mRecordingHeader->num_views() == 2 );
+    }
+
+    if(ok)
+    {
         mRecordingReader.reset(new RecordingReader(mRecordingHeader));
         mEngine.reset(new SLAMEngine());
         const bool ok = mEngine->initialize(mCalibration, mConfiguration);
@@ -64,20 +69,22 @@ bool ReconstructionOperation::before()
 
 bool ReconstructionOperation::step()
 {
+    int current_frame = 0;
     Image image;
     bool ret = true;
 
     if(ret)
     {
-        ret = (mNextFrame < mRecordingHeader->num_frames() || mNextFrame <= mFrameLast)
+        ret = ( mNextFrame < mRecordingHeader->num_frames() && (mFrameLast < 0 || mNextFrame <= mFrameLast) );
     }
 
     if(ret)
     {
+        current_frame = mNextFrame;
         mRecordingReader->seek(mNextFrame);
         mRecordingReader->trigger();
         mRecordingReader->read(image);
-        mNextFrame++;
+        mNextFrame += mFrameStride;
 
         ret = image.isValid();
     }
@@ -105,14 +112,14 @@ bool ReconstructionOperation::step()
         // set stats output.
         {
             std::stringstream s;
-            s << "Processing frame " << mNextFrame << std::endl;
+            s << "Processing frame " << current_frame << std::endl;
 
             statsPort()->beginWrite();
             statsPort()->data().text = s.str().c_str();
             statsPort()->endWrite();
         }
 
-        mEngine->processFrame(mNextFrame, image);
+        mEngine->processFrame(current_frame, image);
     }
 
     return ret;

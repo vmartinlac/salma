@@ -42,6 +42,8 @@ QWidget* NewReconstructionDialog::createNameAndInputTab()
     mRecording = new RecordingListWidget(project());
     mCalibration = new CalibrationListWidget(project());
 
+    mName->setText("new reconstruction");
+
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Recording:", mRecording);

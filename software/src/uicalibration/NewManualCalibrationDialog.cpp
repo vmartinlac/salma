@@ -18,6 +18,8 @@ NewManualCalibrationDialog::NewManualCalibrationDialog(Project* proj, QWidget* p
     mName = new QLineEdit();
     mRecording = new RecordingListWidget(mProject);
 
+    mName->setText("my calibration");
+
     QFormLayout* form = new QFormLayout();
     form->addRow("Name:", mName);
     form->addRow("Recording:", mRecording);

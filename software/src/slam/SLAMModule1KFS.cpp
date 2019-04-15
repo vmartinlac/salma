@@ -54,7 +54,7 @@ SLAMModuleResult SLAMModule1KFS::operator()()
     else
     {
         rec->frames.pop_back();
-        return SLAMModuleResult(true, SLAM_MODULE1_RECTIFICATION);
+        return SLAMModuleResult(true, SLAM_MODULE1_FEATURES);
     }
 }
 
