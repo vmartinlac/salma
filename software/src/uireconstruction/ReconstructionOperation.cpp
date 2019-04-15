@@ -4,6 +4,9 @@
 
 ReconstructionOperation::ReconstructionOperation()
 {
+    mFrameFirst = 0;
+    mFrameLast = -1;
+    mFrameStride = 1;
 }
 
 ReconstructionOperation::~ReconstructionOperation()
@@ -25,7 +28,7 @@ bool ReconstructionOperation::before()
     bool ok = true;
 
     mReconstruction.reset();
-    mNextFrame = 0;
+    mNextFrame = mFrameFirst;
 
     if(ok)
     {
@@ -49,14 +52,11 @@ bool ReconstructionOperation::before()
         ok = mRecordingReader->open();
     }
 
-    if(ok)
-    {
-        mRecordingReader->trigger();
-    }
-    else
+    if(ok == false)
     {
         mEngine.reset();
         mRecordingReader.reset();
+        mReconstruction.reset();
     }
 
     return ok;
@@ -64,55 +64,55 @@ bool ReconstructionOperation::before()
 
 bool ReconstructionOperation::step()
 {
+    Image image;
     bool ret = true;
 
-    if(mNextFrame >= mRecordingHeader->num_frames())
+    if(ret)
     {
-        ret = false;
+        ret = (mNextFrame < mRecordingHeader->num_frames() || mNextFrame <= mFrameLast)
     }
-    else
+
+    if(ret)
     {
-        Image image;
-
         mRecordingReader->seek(mNextFrame);
-        mRecordingReader->read(image);
         mRecordingReader->trigger();
+        mRecordingReader->read(image);
+        mNextFrame++;
 
-        if(image.isValid())
+        ret = image.isValid();
+    }
+
+    if(ret)
+    {
+        // set video output.
         {
+            Image concat;
+            image.concatenate(concat);
 
-            // set video output.
+            videoPort()->beginWrite();
+            if( concat.isValid() )
             {
-                Image concat;
-                image.concatenate(concat);
-
-                videoPort()->beginWrite();
-                if( concat.isValid() )
-                {
-                    videoPort()->data().image = concat.getFrame();
-                }
-                else
-                {
-                    videoPort()->data().image.create(640, 480, CV_8UC3);
-                    videoPort()->data().image = cv::Scalar(64, 64, 64);
-                }
-                videoPort()->endWrite();
+                videoPort()->data().image = concat.getFrame();
             }
-
-            // set stats output.
+            else
             {
-                std::stringstream s;
-                s << "Processing frame " << mNextFrame << std::endl;
-
-                statsPort()->beginWrite();
-                statsPort()->data().text = s.str().c_str();
-                statsPort()->endWrite();
+                videoPort()->data().image.create(640, 480, CV_8UC3);
+                videoPort()->data().image = cv::Scalar(64, 64, 64);
             }
-
-            mEngine->processFrame(mNextFrame, image);
+            videoPort()->endWrite();
         }
 
-        mNextFrame++;
+        // set stats output.
+        {
+            std::stringstream s;
+            s << "Processing frame " << mNextFrame << std::endl;
+
+            statsPort()->beginWrite();
+            statsPort()->data().text = s.str().c_str();
+            statsPort()->endWrite();
+        }
+
+        mEngine->processFrame(mNextFrame, image);
     }
 
     return ret;
@@ -123,6 +123,7 @@ void ReconstructionOperation::after()
     mEngine->finalize(mReconstruction);
     mEngine.reset();
     mRecordingReader->close();
+    mRecordingReader.reset();
 }
 
 void ReconstructionOperation::uiafter(QWidget* parent, Project* project)

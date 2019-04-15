@@ -142,6 +142,10 @@ void NewReconstructionDialog::accept()
         myop->mCalibration = calibration;
         myop->mRecordingHeader = recording;
 
+        myop->mFrameFirst = 0;
+        myop->mFrameStride = 1;
+        myop->mFrameLast = recording->num_frames() - 1;
+
         myop->mConfiguration.reset(new SLAMConfiguration());
 
         myop->mConfiguration->dense_reconstruction.enabled = mCheckDenseReconstruction->isChecked();

@@ -33,6 +33,9 @@ public:
     RecordingHeaderPtr mRecordingHeader;
     StereoRigCalibrationPtr mCalibration;
     SLAMConfigurationPtr mConfiguration;
+    int mFrameFirst;
+    int mFrameLast;
+    int mFrameStride;
 
 protected:
 
