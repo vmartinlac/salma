@@ -1,9 +1,9 @@
-#include <g2o/core/sparse_optimizer.h>
+#include <g2o/core/optimization_algorithm_factory.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
-#include <g2o/solvers/eigen/linear_solver_eigen.h>
-#include <g2o/core/block_solver.h>
 #include "EdgeProjectP2R.h"
 #include "SLAMModule1LBA.h"
+
+G2O_USE_OPTIMIZATION_LIBRARY(eigen)
 
 SLAMModule1LBA::SLAMModule1LBA(SLAMContextPtr con) :
     SLAMModule(SLAM_MODULE1_LOCALBUNDLEADJUSTMENT, con)
@@ -20,6 +20,13 @@ bool SLAMModule1LBA::init()
 
     mRig = con->calibration;
 
+    //g2o::OptimizationAlgorithmFactory::instance()->listSolvers(std::cout);
+
+    g2o::OptimizationAlgorithmProperty property;
+    mGraph.setAlgorithm( g2o::OptimizationAlgorithmFactory::instance()->construct("lm_var_eigen", property) );
+
+    mGraph.setVerbose( con->configuration->lba.verbose );
+
     return true;
 }
 
@@ -32,10 +39,12 @@ SLAMModuleResult SLAMModule1LBA::operator()()
     SLAMReconstructionPtr reconstr = context()->reconstruction;
     std::vector<g2o::VertexSE3Expmap*> frame_vertices;
     std::vector<g2o::VertexSBAPointXYZ*> mappoint_vertices;
-    g2o::SparseOptimizer optimizer;
+    g2o::SparseOptimizer& optimizer = mGraph;
     bool go_on = true;
 
     std::cout << "   LOCAL BUNDLE ADJUSTMENT" << std::endl;
+
+    optimizer.clear();
 
     // find which frames are to be vertices of the graph.
 
@@ -217,16 +226,6 @@ SLAMModuleResult SLAMModule1LBA::operator()()
         std::cout << "      Num frames: " << frames.size() << std::endl;
         std::cout << "      Num mappoints: " << mappoints.size() << std::endl;
 
-        g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>* linear_solver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-        g2o::BlockSolver_6_3* block_solver = new g2o::BlockSolver_6_3(std::unique_ptr< g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType> >(linear_solver));
-
-        g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(std::unique_ptr<g2o::BlockSolver_6_3>(block_solver));
-
-        optimizer.setAlgorithm(solver);
-
-        optimizer.setVerbose( context()->configuration->lba.verbose );
-
         optimizer.initializeOptimization();
 
         optimizer.optimize( context()->configuration->lba.max_steps );
@@ -247,6 +246,8 @@ SLAMModuleResult SLAMModule1LBA::operator()()
             mappoints[i]->position = mappoint_vertices[i]->estimate();
         }
     }
+
+    optimizer.clear();
 
     return SLAMModuleResult(false, SLAM_MODULE1_STEREOMATCHER);
 }

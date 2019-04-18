@@ -2,6 +2,7 @@
 #pragma once
 
 #include <random>
+#include <g2o/core/sparse_optimizer.h>
 #include "StereoRigCalibration.h"
 #include "SLAMDataStructures.h"
 #include "SLAMModule.h"
@@ -20,5 +21,6 @@ protected:
 
     std::default_random_engine mEngine;
     StereoRigCalibrationPtr mRig;
+    g2o::SparseOptimizer mGraph;
 };
 
