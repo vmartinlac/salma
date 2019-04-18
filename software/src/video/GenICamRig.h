@@ -31,7 +31,7 @@ public:
 
     void read(Image& image) override;
 
-    void trigger();
+    void trigger() override;
 
     std::string getHumanName() override;
 
