@@ -168,7 +168,6 @@ bool Project::clear()
         ok = ok && q.exec("DELETE FROM `poses`");
         ok = ok && q.exec("DELETE FROM `cameras`");
         ok = ok && q.exec("DELETE FROM `distortion_coefficients`");
-        ok = ok && q.exec("DELETE FROM `photometric_luts`");
         ok = ok && q.exec("DELETE FROM `rigs`");
         ok = ok && q.exec("DELETE FROM `recordings`");
         ok = ok && q.exec("DELETE FROM `recording_frames`");
@@ -422,35 +421,6 @@ bool Project::describeCalibration(int id, QString& descr)
                 s << "</table>" << std::endl;
             }
 
-            s << "<h4>Photometric LUT</h4>" << std::endl;
-            //s << "<p>Present</p>" << std::endl;
-            //
-            {
-                std::stringstream ss[3];
-                for(int i=0; i<256; i++)
-                {
-                    if(i > 0)
-                    {
-                        ss[0] << " ; ";
-                        ss[1] << " ; ";
-                        ss[2] << " ; ";
-                    }
-
-                    const cv::Vec3f value = cam.photometric_lut.at<cv::Vec3f>(0, i);
-
-                    ss[0] << value[0];
-                    ss[1] << value[1];
-                    ss[2] << value[2];
-                }
-
-                s << "<ul>" << std::endl;
-                s << "<li>Blue: { " << ss[0].str() << " }</li>" << std::endl;
-                s << "<li>Green: { " << ss[1].str() << " }</li>" << std::endl;
-                s << "<li>Red: { " << ss[2].str() << " }</li>" << std::endl;
-                s << "</ul>" << std::endl;
-            }
-            //
-
             s << "<h4>Pose</h4>" << std::endl;
             s << "<table>" << std::endl;
             s << "<tr><th>camera_to_rig_tx</th><td>" << cam.camera_to_rig.translation().x() << "</td></tr>" << std::endl;
@@ -608,16 +578,6 @@ bool Project::removeCalibration(int id)
         ok = q.exec();
     }
 
-    // delete photometric LUTs.
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("DELETE FROM photometric_luts WHERE camera_id IN (SELECT id FROM cameras WHERE rig_id=?)");
-        q.addBindValue(id);
-        ok = q.exec();
-    }
-
     // delete cameras.
 
     if(ok)
@@ -766,28 +726,6 @@ bool Project::saveCamera(CameraCalibration& camera, int rig_id, int rank, int& i
 
     if(ok)
     {
-        const cv::Mat lut = camera.photometric_lut;
-
-        if( lut.cols != 256 || lut.rows != 1 || lut.type() != CV_32FC3 ) throw std::runtime_error("internal error");
-
-        for(int j=0; ok && j<256; j++)
-        {
-            const cv::Vec3f value = lut.at<cv::Vec3f>(0, j);
-
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO photometric_luts (camera_id, level, red_value, green_value, blue_value) VALUES (?,?,?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(j);
-            q.addBindValue(value[2]);
-            q.addBindValue(value[1]);
-            q.addBindValue(value[0]);
-
-            ok = q.exec();
-        }
-    }
-
-    if(ok)
-    {
         const cv::Mat dist = camera.distortion_coefficients;
 
         for(int j=0; ok && j<dist.cols; j++)
@@ -848,39 +786,6 @@ bool Project::loadCamera(int id, CameraCalibration& camera)
             camera.calibration_matrix.at<double>(2,0) = 0.0;
             camera.calibration_matrix.at<double>(2,1) = 0.0;
             camera.calibration_matrix.at<double>(2,2) = 1.0;
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT level, red_value, green_value, blue_value FROM photometric_luts WHERE camera_id=? ORDER BY level ASC");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        ok = q.exec();
-
-        if(ok)
-        {
-            camera.photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
-
-            while(ok && q.next())
-            {
-                const int level = q.value(0).toInt();
-                const float red_value = q.value(1).toFloat();
-                const float green_value = q.value(2).toFloat();
-                const float blue_value = q.value(3).toFloat();
-
-                if(ok)
-                {
-                    ok = (0 <= level && level < 256);
-                }
-
-                if(ok)
-                {
-                    camera.photometric_lut.at<cv::Vec3f>(0, level) = cv::Vec3f(blue_value, green_value, red_value);
-                }
-            }
         }
     }
 

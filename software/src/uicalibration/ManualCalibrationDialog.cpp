@@ -22,7 +22,6 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     QAction* aModeLeft = tb->addAction("Left");
     QAction* aModeRight = tb->addAction("Right");
     QAction* aModeStereo = tb->addAction("Stereo");
-    QAction* aModePhotometric = tb->addAction("Photometric");
     tb->addSeparator();
     QAction* aClear = tb->addAction("Clear");
     QAction* aTake = tb->addAction("Take");
@@ -35,12 +34,10 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     grp_mode->addAction(aModeLeft);
     grp_mode->addAction(aModeRight);
     grp_mode->addAction(aModeStereo);
-    grp_mode->addAction(aModePhotometric);
 
     aModeLeft->setCheckable(true);
     aModeRight->setCheckable(true);
     aModeStereo->setCheckable(true);
-    aModePhotometric->setCheckable(true);
 
     mSlider = new QSlider;
     mSlider->setOrientation(Qt::Horizontal);
@@ -74,7 +71,6 @@ ManualCalibrationDialog::ManualCalibrationDialog(
     connect(aModeLeft, SIGNAL(triggered()), this, SLOT(setModeToLeft()));
     connect(aModeRight, SIGNAL(triggered()), this, SLOT(setModeToRight()));
     connect(aModeStereo, SIGNAL(triggered()), this, SLOT(setModeToStereo()));
-    connect(aModePhotometric, SIGNAL(triggered()), this, SLOT(setModeToPhotometric()));
 
     connect(mSlider, SIGNAL(valueChanged(int)), this, SLOT(setFrame(int)));
     connect(aCancel, SIGNAL(triggered()), this, SLOT(reject()));
@@ -161,12 +157,6 @@ void ManualCalibrationDialog::setModeToRight()
 void ManualCalibrationDialog::setModeToStereo()
 {
     mView->setMode(ManualCalibrationView::MODE_STEREO);
-    //updateListOfFramesWithData();
-}
-
-void ManualCalibrationDialog::setModeToPhotometric()
-{
-    mView->setMode(ManualCalibrationView::MODE_PHOTOMETRIC);
     //updateListOfFramesWithData();
 }
 

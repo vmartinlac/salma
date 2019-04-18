@@ -33,16 +33,6 @@ CREATE TABLE 'cameras'
     'camera_to_rig' INTEGER
 );
 
-CREATE TABLE 'photometric_luts'
-(
-    'id' INTEGER PRIMARY KEY,
-    'camera_id' INTEGER,
-    'level' INTEGER,
-    'red_value' FLOAT,
-    'green_value' FLOAT,
-    'blue_value' FLOAT
-);
-
 CREATE TABLE 'distortion_coefficients'
 (
     'id' INTEGER PRIMARY KEY,

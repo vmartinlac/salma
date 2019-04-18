@@ -39,12 +39,11 @@ SLAMModuleResult SLAMModule1LBA::operator()()
     SLAMReconstructionPtr reconstr = context()->reconstruction;
     std::vector<g2o::VertexSE3Expmap*> frame_vertices;
     std::vector<g2o::VertexSBAPointXYZ*> mappoint_vertices;
-    g2o::SparseOptimizer& optimizer = mGraph;
     bool go_on = true;
 
     std::cout << "   LOCAL BUNDLE ADJUSTMENT" << std::endl;
 
-    optimizer.clear();
+    mGraph.clear();
 
     // find which frames are to be vertices of the graph.
 
@@ -153,7 +152,7 @@ SLAMModuleResult SLAMModule1LBA::operator()()
                 world_to_rig.unit_quaternion(),
                 world_to_rig.translation() ));
 
-            optimizer.addVertex(v);
+            mGraph.addVertex(v);
             frame_vertices.push_back(v);
         }
 
@@ -170,7 +169,7 @@ SLAMModuleResult SLAMModule1LBA::operator()()
 
             v->setEstimate(mp->position);
 
-            optimizer.addVertex(v);
+            mGraph.addVertex(v);
             mappoint_vertices.push_back(v);
         }
 
@@ -211,7 +210,7 @@ SLAMModuleResult SLAMModule1LBA::operator()()
                             e->setView(j);
                             e->setRigCalibration(mRig);
 
-                            optimizer.addEdge(e);
+                            mGraph.addEdge(e);
                         }
                     }
                 }
@@ -226,9 +225,9 @@ SLAMModuleResult SLAMModule1LBA::operator()()
         std::cout << "      Num frames: " << frames.size() << std::endl;
         std::cout << "      Num mappoints: " << mappoints.size() << std::endl;
 
-        optimizer.initializeOptimization();
+        mGraph.initializeOptimization();
 
-        optimizer.optimize( context()->configuration->lba.max_steps );
+        mGraph.optimize( context()->configuration->lba.max_steps );
     }
 
     // retrieve result.
@@ -247,7 +246,7 @@ SLAMModuleResult SLAMModule1LBA::operator()()
         }
     }
 
-    optimizer.clear();
+    mGraph.clear();
 
     return SLAMModuleResult(false, SLAM_MODULE1_STEREOMATCHER);
 }

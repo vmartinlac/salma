@@ -50,22 +50,6 @@ QJsonValue CameraCalibration::toJson() const
         distarr.push_back(distortion_coefficients.at<double>(0,i));
     }
 
-    QJsonArray lutarr_red;
-    QJsonArray lutarr_green;
-    QJsonArray lutarr_blue;
-    for(int i=0; i<256; i++)
-    {
-        const cv::Vec3f value = photometric_lut.at<cv::Vec3f>(0,i);
-        lutarr_blue.push_back(value[0]);
-        lutarr_green.push_back(value[1]);
-        lutarr_red.push_back(value[2]);
-    }
-
-    QJsonObject lutobj;
-    lutobj["red"] = lutarr_red;
-    lutobj["green"] = lutarr_green;
-    lutobj["blue"] = lutarr_blue;
-
     QJsonObject obj;
     obj["image_width"] = image_size.width;
     obj["image_height"] = image_size.height;
@@ -74,7 +58,6 @@ QJsonValue CameraCalibration::toJson() const
     obj["cx"] = calibration_matrix.at<double>(0,2);
     obj["cy"] = calibration_matrix.at<double>(1,2);
     obj["distortion_coefficients"] = distarr;
-    obj["photometric_lut"] = lutobj;
     obj["camera_to_rig_tx"] = camera_to_rig.translation().x();
     obj["camera_to_rig_ty"] = camera_to_rig.translation().y();
     obj["camera_to_rig_tz"] = camera_to_rig.translation().z();

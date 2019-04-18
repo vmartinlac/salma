@@ -15,7 +15,6 @@ public:
     cv::Mat distortion_coefficients;
     cv::Size image_size;
     Sophus::SE3d camera_to_rig;
-    cv::Mat photometric_lut;
 
 public:
 

@@ -31,7 +31,6 @@ protected slots:
     void setModeToLeft();
     void setModeToRight();
     void setModeToStereo();
-    void setModeToPhotometric();
     void updateListOfFramesWithData();
     void frameWithDataClicked(QListWidgetItem* item);
 

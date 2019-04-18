@@ -33,8 +33,7 @@ public:
     {
         MODE_LEFT,
         MODE_RIGHT,
-        MODE_STEREO,
-        MODE_PHOTOMETRIC
+        MODE_STEREO
     };
 
 signals:
@@ -89,14 +88,6 @@ protected:
 
     typedef std::shared_ptr<StereoFrameData> StereoFrameDataPtr;
 
-    struct PhotometricFrameData
-    {
-        cv::Mat left_pdf;
-        cv::Mat right_pdf;
-    };
-
-    typedef std::shared_ptr<PhotometricFrameData> PhotometricFrameDataPtr;
-
 protected:
 
     void mousePressEvent(QMouseEvent* ev) override;
@@ -141,6 +132,5 @@ protected:
     std::map<int,CameraFrameDataPtr> mLeftCameraData;
     std::map<int,CameraFrameDataPtr> mRightCameraData;
     std::map<int,StereoFrameDataPtr> mStereoData;
-    std::map<int,PhotometricFrameDataPtr> mPhotometricData;
 };
 

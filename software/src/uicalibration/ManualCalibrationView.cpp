@@ -104,10 +104,6 @@ void ManualCalibrationView::doClear()
         {
             mStereoData.erase(mCurrentFrameId);
         }
-        else if(mMode == MODE_PHOTOMETRIC)
-        {
-            mPhotometricData.erase(mCurrentFrameId);
-        }
         else
         {
             throw std::runtime_error("internal error");
@@ -215,32 +211,6 @@ void ManualCalibrationView::paintEvent(QPaintEvent* ev)
                 }
 
                 p.restore();
-            }
-        }
-        else if(mMode == MODE_PHOTOMETRIC)
-        {
-            const QBrush my_brush(QColor(Qt::green), Qt::DiagCrossPattern);
-
-            if(mPhotometricData.end() != mPhotometricData.find(mCurrentFrameId))
-            {
-                const double left_margin = mLeftROI.width/8;
-
-                const double right_margin = mRightROI.width/8;
-
-                const QRect rect_left(
-                    half_width + mZoom.factor * (mLeftROI.x + left_margin - mZoom.point.x),
-                    half_height + mZoom.factor * (mLeftROI.y + left_margin - mZoom.point.y),
-                    (mLeftROI.width-2*left_margin) * mZoom.factor,
-                    (mLeftROI.height-2*right_margin) * mZoom.factor );
-
-                const QRect rect_right(
-                    half_width + mZoom.factor * (mRightROI.x + right_margin - mZoom.point.x),
-                    half_height + mZoom.factor * (mRightROI.y + right_margin - mZoom.point.y),
-                    (mRightROI.width-2*right_margin) * mZoom.factor,
-                    (mRightROI.height-2*right_margin) * mZoom.factor );
-
-                p.fillRect(rect_left, my_brush);
-                p.fillRect(rect_right, my_brush);
             }
         }
         else
@@ -388,52 +358,6 @@ void ManualCalibrationView::doTake()
                 listOfFramesWithDataChanged();
             }
         }
-        else if(mMode == MODE_PHOTOMETRIC)
-        {
-            cv::Mat left_image = mCurrentImage.getFrame(0);
-            cv::Mat right_image = mCurrentImage.getFrame(1);
-
-            const int left_margin = left_image.cols/8;
-            const int right_margin = right_image.cols/8;
-
-            cv::Mat left_roi = left_image(cv::Rect(
-                left_margin,
-                left_margin,
-                mLeftROI.width-2*left_margin,
-                mLeftROI.height-2*left_margin));
-
-            cv::Mat right_roi = right_image(cv::Rect(
-                right_margin,
-                right_margin,
-                mRightROI.width-2*right_margin,
-                mRightROI.height-2*right_margin));
-
-            PhotometricFrameDataPtr data(new PhotometricFrameData());
-
-            data->left_pdf = cv::Mat::zeros(3, 256, CV_32S);
-            data->right_pdf = cv::Mat::zeros(3, 256, CV_32S);
-
-            for(auto it = left_roi.begin<cv::Vec3b>(); left_roi.end<cv::Vec3b>() != it; it++)
-            {
-                for(int i=0; i<3; i++)
-                {
-                    data->left_pdf.at<int32_t>(i, (*it)[i])++;
-                }
-            }
-
-            for(auto it = right_roi.begin<cv::Vec3b>(); right_roi.end<cv::Vec3b>() != it; it++)
-            {
-                for(int i=0; i<3; i++)
-                {
-                    data->right_pdf.at<int32_t>(i, (*it)[i])++;
-                }
-            }
-
-            mPhotometricData[mCurrentFrameId] = data;
-
-            update();
-            listOfFramesWithDataChanged();
-        }
         else
         {
             throw std::runtime_error("internal error");
@@ -579,8 +503,6 @@ bool ManualCalibrationView::doCalibrate(
     {
         calib->cameras[0].image_size = mCurrentImage.getFrame(0).size();
         calib->cameras[1].image_size = mCurrentImage.getFrame(1).size();
-        calib->cameras[0].photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
-        calib->cameras[1].photometric_lut = cv::Mat::zeros(1, 256, CV_32FC3);
     }
 
     std::cout << "Retrieving left camera calibration data..." << std::endl;
@@ -673,88 +595,6 @@ bool ManualCalibrationView::doCalibrate(
         calib->cameras[1].camera_to_rig.translation() = -Rbis.transpose() * Tbis;
 
         // TODO compare OpenCV and own essential and fundamental matrices.
-    }
-
-    std::cout << "Photometric calibration..." << std::endl;
-
-    if(ok)
-    {
-        cv::Mat left_pdf = cv::Mat::zeros(3, 256, CV_32S);
-        cv::Mat right_pdf = cv::Mat::zeros(3, 256, CV_32S);
-
-        for(std::pair<int,PhotometricFrameDataPtr> p : mPhotometricData)
-        {
-            left_pdf += p.second->left_pdf;
-            right_pdf += p.second->right_pdf;
-        }
-
-        cv::Mat left_cdf(3, 256, CV_32S);
-        cv::Mat right_cdf(3, 256, CV_32S);
-
-        int left_sum = 0;
-        int right_sum = 0;
-
-        for(int i=0; i<256; i++)
-        {
-            for(int j=0; j<3; j++)
-            {
-                int32_t& value = left_cdf.at<int32_t>(j,i);
-
-                value = left_pdf.at<int32_t>(j,i);
-
-                if(i > 0)
-                {
-                    value += left_cdf.at<int32_t>(j,i-1);
-                }
-            }
-        }
-
-        calib->cameras[0].photometric_lut.create(1, 256, CV_32FC3);
-        calib->cameras[1].photometric_lut.create(1, 256, CV_32FC3);
-
-        cv::Mat left_lut = calib->cameras[0].photometric_lut;
-        cv::Mat right_lut = calib->cameras[1].photometric_lut;
-
-        /*
-        auto F_right = [&right_cdf, right_sum] = (int) -> double
-        {
-            int alpha = 0;
-            if(j > 0)
-            {
-                alpha = right_cdf.at<int32_t>(i, j-1);
-            }
-
-            const int beta = right_cdf.at<int32_t>(i, j);
-        };
-        */
-
-        // fill left LUT.
-
-        for(int j=0; j<256; j++)
-        {
-            double kappa = double(j) / 255.0;
-            left_lut.at<cv::Vec3f>(0, j) = cv::Vec3f(kappa, kappa, kappa);
-        }
-
-        // fill right LUT.
-
-        /*
-        for(int j=0; j<256; j++)
-        {
-            for(int i=0; i<3; i++)
-            {
-
-                int k = 0;
-                while( k+1 < 256 && left_cdf.at<int32_t>(i, k+1)*(2*right_sum) < (alpha+beta)*(left_sum) )
-                {
-                    k++;
-                }
-
-                //const int k = inv_F_left(F_right(j));
-                right_lut.at<cv::Vec3f>(0, j)[i] = left_lut.at<cv::Vec3f>(0, k)[i];
-            }
-        }
-        */
     }
 
     if(ok == false)
@@ -868,13 +708,6 @@ void ManualCalibrationView::enumerateFramesWithData(std::vector<int>& list)
     else if(mMode == MODE_STEREO)
     {
         for(std::pair<int,StereoFrameDataPtr> item : mStereoData)
-        {
-            list.push_back(item.first);
-        }
-    }
-    else if(mMode == MODE_PHOTOMETRIC)
-    {
-        for(std::pair<int,PhotometricFrameDataPtr> item : mPhotometricData)
         {
             list.push_back(item.first);
         }
