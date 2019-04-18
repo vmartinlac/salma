@@ -52,7 +52,6 @@ target_link_libraries(
     Qt5::Core
     #Qt5::Widgets
     Eigen3::Eigen
-    OpenMP::OpenMP_CXX
     opencv_imgproc
     opencv_features2d
     opencv_calib3d
