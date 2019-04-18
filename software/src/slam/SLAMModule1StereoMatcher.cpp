@@ -272,7 +272,7 @@ SLAMModuleResult SLAMModule1StereoMatcher::operator()()
             matches2,
             outimg);
 
-        context()->debug->saveImage(f->id, "STEREOMATCHING_matching.png", outimg);
+        context()->debug->saveImage(f, "STEREOMATCHING_matching.png", outimg);
     }
 
     std::cout << "      Number of stereo matches: " << f->stereo_matches.size() << std::endl;

@@ -86,8 +86,8 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
     if( context()->configuration->dense_reconstruction.debug )
     {
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_left.png", rectified_left);
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_rectified_right.png", rectified_right);
+        context()->debug->saveImage(frame, "DENSERECONSTRUCTION_rectified_left.png", rectified_left);
+        context()->debug->saveImage(frame, "DENSERECONSTRUCTION_rectified_right.png", rectified_right);
     }
 
     cv::Mat disparity;
@@ -105,7 +105,7 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
         tmp = (tmp - mini) * (255.0 / (maxi - mini));
 
-        context()->debug->saveImage(frame->id, "DENSERECONSTRUCTION_disparity.png", tmp);
+        context()->debug->saveImage(frame, "DENSERECONSTRUCTION_disparity.png", tmp);
     }
 
     cv::Mat reconstruction;
@@ -152,7 +152,7 @@ SLAMModuleResult SLAMModule1DenseReconstruction::operator()()
 
     if( context()->configuration->dense_reconstruction.debug )
     {
-        context()->debug->savePointCloud(frame->id, "DENSERECONSTRUCTION_cloud.txt", frame->dense_cloud);
+        context()->debug->savePointCloud(frame, "DENSERECONSTRUCTION_cloud.txt", frame->dense_cloud);
     }
 
     return SLAMModuleResult(true, SLAM_MODULE1_RECTIFICATION);

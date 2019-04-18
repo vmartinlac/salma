@@ -89,14 +89,15 @@ bool SLAMEngine::processFrame(int rank_in_recording, Image& image)
         curr_frame->rank_in_recording = rank_in_recording;
         curr_frame->timestamp = image.getTimestamp();
 
-
-        //curr_frame->views[0].image = image.getFrame(0);
-        //curr_frame->views[1].image = image.getFrame(1);
-
+#if 1
+        curr_frame->views[0].image = image.getFrame(0);
+        curr_frame->views[1].image = image.getFrame(1);
+#else
         cv::cvtColor(image.getFrame(0), curr_frame->views[0].image, cv::COLOR_BGR2GRAY);
         cv::cvtColor(image.getFrame(1), curr_frame->views[1].image, cv::COLOR_BGR2GRAY);
 
         if( curr_frame->views[0].image.type() != CV_8UC1 || curr_frame->views[1].image.type() != CV_8UC1 ) throw std::runtime_error("internal error");
+#endif
 
 #if SALMA_WITH_CUDA
         curr_frame->views[0].d_image.upload( curr_frame->views[0].image );

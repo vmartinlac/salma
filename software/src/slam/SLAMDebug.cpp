@@ -66,16 +66,17 @@ bool SLAMDebug::init()
     return ok;
 }
 
-void SLAMDebug::saveImage(int frame, const std::string& name, const cv::Mat& image)
+void SLAMDebug::saveImage(SLAMFramePtr frame, const std::string& name, const cv::Mat& image)
 {
     const std::string fpath = getNextSaveFileName(frame, name);
 
     cv::imwrite(fpath, image);
 }
 
-std::string SLAMDebug::getNextSaveFileName(int frame, const std::string& basename)
+std::string SLAMDebug::getNextSaveFileName(SLAMFramePtr frame, const std::string& basename)
 {
-    const QString fname = QString("%1_F%2_%3").arg(mFileCount, 6, 10, QChar('0')).arg(frame).arg(basename.c_str());
+    const int rank = frame->rank_in_recording;
+    const QString fname = QString("%1_F%2_%3").arg(mFileCount, 6, 10, QChar('0')).arg(rank).arg(basename.c_str());
     const QString fpath = mDir.absoluteFilePath(fname);
 
     mFileCount++;
@@ -103,7 +104,7 @@ std::string SLAMDebug::describeOpenCVMat(const cv::Mat& mat)
     return s.str();
 }
 
-void SLAMDebug::savePointCloud(int frame, const std::string& name, const std::vector<SLAMColoredPoint>& cloud)
+void SLAMDebug::savePointCloud(SLAMFramePtr frame, const std::string& name, const std::vector<SLAMColoredPoint>& cloud)
 {
     const std::string fpath = getNextSaveFileName(frame, name);
 
