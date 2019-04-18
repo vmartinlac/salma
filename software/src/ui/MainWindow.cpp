@@ -77,20 +77,27 @@ void MainWindow::showAvailableCameras()
 
 void MainWindow::clearProject()
 {
-    const int ret = QMessageBox::question(this, "Clear Project", "Do you really want to clear project's content?", QMessageBox::Yes|QMessageBox::No);
-
-    if(ret == QMessageBox::Yes)
+    if( mProject->isOpen() == false )
     {
-        bool ok = true;
-        
-        if(ok)
-        {
-            ok = mProject->clear();
-        }
+        QMessageBox::critical(this, "Error", "No project is open!");
+    }
+    else
+    {
+        const int ret = QMessageBox::question(this, "Clear Project", "Do you really want to clear project's content?", QMessageBox::Yes|QMessageBox::No);
 
-        if(ok == false)
+        if(ret == QMessageBox::Yes)
         {
-            QMessageBox::critical(this, "Error", "An error happened while clearing the project!");
+            bool ok = true;
+            
+            if(ok)
+            {
+                ok = mProject->clear();
+            }
+
+            if(ok == false)
+            {
+                QMessageBox::critical(this, "Error", "An error happened while clearing the project!");
+            }
         }
     }
 }

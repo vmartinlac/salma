@@ -41,8 +41,6 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
     QToolBar* tb = new QToolBar();
     tb->addWidget(bNew);
-    //QAction* aNewMono = tb->addAction("New mono");
-    //QAction* aNewStereo = tb->addAction("New stereo");
     QAction* aPlay = tb->addAction("Play");
     QAction* aRename = tb->addAction("Rename");
     QAction* aDelete = tb->addAction("Delete");
@@ -67,22 +65,43 @@ RecordingPanel::RecordingPanel(Project* project, QWidget* parent)
 
 void RecordingPanel::onNewMonoRecording()
 {
-    onNewRecording(1);
+    if(mProject->isOpen() == false)
+    {
+        QMessageBox::critical(this, "Error", "No project is open!");
+    }
+    else
+    {
+        onNewRecording(1);
+    }
 }
 
 void RecordingPanel::onNewStereoRecording()
 {
-    onNewRecording(2);
+    if(mProject->isOpen() == false)
+    {
+        QMessageBox::critical(this, "Error", "No project is open!");
+    }
+    else
+    {
+        onNewRecording(2);
+    }
 }
 
 void RecordingPanel::onNewArbitraryRecording()
 {
-    bool ok = true;
-    const int num_cameras = QInputDialog::getInt(this, "Number of cameras", "Number of cameras?", 1, 1, 10, 1, &ok);
-
-    if(ok)
+    if(mProject->isOpen() == false)
     {
-        onNewRecording(num_cameras);
+        QMessageBox::critical(this, "Error", "No project is open!");
+    }
+    else
+    {
+        bool ok = true;
+        const int num_cameras = QInputDialog::getInt(this, "Number of cameras", "Number of cameras?", 1, 1, 10, 1, &ok);
+
+        if(ok)
+        {
+            onNewRecording(num_cameras);
+        }
     }
 }
 

@@ -47,28 +47,35 @@ CalibrationPanel::CalibrationPanel(Project* project, QWidget* parent)
 
 void CalibrationPanel::onNew()
 {
-    RecordingList recs;
-    mProject->listRecordings(recs);
-
-    if(recs.empty())
+    if(mProject->isOpen() == false)
     {
-        QMessageBox::critical(this, "Error", "You need at least one recording!");
+        QMessageBox::critical(this, "Error", "No project is open!");
     }
     else
     {
-        NewManualCalibrationDialog* dlg = new NewManualCalibrationDialog(mProject, this);
+        RecordingList recs;
+        mProject->listRecordings(recs);
 
-        dlg->exec();
-
-        ManualCalibrationParametersPtr params = dlg->getParameters();
-
-        delete dlg;
-
-        if(params)
+        if(recs.empty())
         {
-            ManualCalibrationDialog* dlg2 = new ManualCalibrationDialog(mProject, params, this);
-            dlg2->exec();
-            delete dlg2;
+            QMessageBox::critical(this, "Error", "You need at least one recording!");
+        }
+        else
+        {
+            NewManualCalibrationDialog* dlg = new NewManualCalibrationDialog(mProject, this);
+
+            dlg->exec();
+
+            ManualCalibrationParametersPtr params = dlg->getParameters();
+
+            delete dlg;
+
+            if(params)
+            {
+                ManualCalibrationDialog* dlg2 = new ManualCalibrationDialog(mProject, params, this);
+                dlg2->exec();
+                delete dlg2;
+            }
         }
     }
 }

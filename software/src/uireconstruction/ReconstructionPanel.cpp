@@ -56,8 +56,17 @@ void ReconstructionPanel::onNew()
     RecordingList recordings;
     CalibrationList calibrations;
 
-    mProject->listRecordings(recordings);
-    mProject->listCalibrations(calibrations);
+    if(ok)
+    {
+        ok = mProject->isOpen();
+        err = "No project is open!";
+    }
+
+    if(ok)
+    {
+        mProject->listRecordings(recordings);
+        mProject->listCalibrations(calibrations);
+    }
 
     if(ok)
     {
