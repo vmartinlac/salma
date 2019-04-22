@@ -2,22 +2,22 @@
 
 int BuildInfo::getVersionMajor()
 {
-    return BI_VERSION_MAJOR;
+    return SALMA_VERSION_MAJOR;
 }
 
 int BuildInfo::getVersionMinor()
 {
-    return BI_VERSION_MINOR;
+    return SALMA_VERSION_MINOR;
 }
 
 int BuildInfo::getVersionRevision()
 {
-    return BI_VERSION_REVISION;
+    return SALMA_VERSION_REVISION;
 }
 
 std::string BuildInfo::getBuildType()
 {
-    std::string tmp(BI_BUILD_TYPE);
+    std::string tmp(SALMA_BUILD_TYPE);
 
     if(tmp.length() > 0)
     {
@@ -36,12 +36,12 @@ std::string BuildInfo::getCompilationDate()
 
 std::string BuildInfo::getCompilerName()
 {
-        return BI_CXX_COMPILER_ID " " BI_CXX_COMPILER_VERSION;
+        return SALMA_CXX_COMPILER_ID " " SALMA_CXX_COMPILER_VERSION;
 }
 
 std::string BuildInfo::getVersionString()
 {
-    return std::to_string(BI_VERSION_MAJOR) + "." + std::to_string(BI_VERSION_MINOR) + "." + std::to_string(BI_VERSION_REVISION);
+    return std::to_string(SALMA_VERSION_MAJOR) + "." + std::to_string(SALMA_VERSION_MINOR) + "." + std::to_string(SALMA_VERSION_REVISION);
 }
 
 std::string BuildInfo::getAsciiLogo()
