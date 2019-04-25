@@ -68,6 +68,7 @@ ReconstructionInspectorDialog::ReconstructionInspectorDialog(SLAMReconstructionP
 
     setWindowTitle("Reconstruction Visualization");
     setLayout(lay);
+    showMaximized();
 
     mViewer->buildScene();
     onSelectSegment();

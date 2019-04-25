@@ -62,12 +62,8 @@ protected:
     bool loadPose(int id, Sophus::SE3d& pose);
 
     bool saveMapPoint(SLAMMapPointPtr mappoint, int& id);
-    bool loadMapPoint(int id, SLAMMapPointPtr& mappoint);
 
     bool saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id);
-
-    bool loadKeyPoints(int frame_id, SLAMFramePtr frame);
-    bool loadDensePoints(int frame_id, SLAMFramePtr frame);
 
     bool saveCamera(CameraCalibration& camera, int rig_id, int rank, int& id);
     bool loadCamera(int id, CameraCalibration& camera);

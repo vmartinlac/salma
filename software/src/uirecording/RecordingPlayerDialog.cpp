@@ -79,6 +79,7 @@ RecordingPlayerDialog::RecordingPlayerDialog(RecordingHeaderPtr header, QWidget*
     
     setLayout(lay);
     setWindowTitle("Play Recording");
+    showMaximized();
 
     showFrame(-1);
     QMetaObject::invokeMethod(this, "showFrame", Qt::QueuedConnection, Q_ARG(int,0));

@@ -5,6 +5,7 @@ Left is index 0.
 Right is index 1.
 */
 
+#include <array>
 #include <memory>
 #include <list>
 #include <opencv2/core.hpp>
@@ -78,7 +79,7 @@ public:
     int rank_in_recording;
     double timestamp;
 
-    SLAMView views[2];
+    std::array<SLAMView,2> views;
     std::vector< std::pair<int,int> > stereo_matches;
 
     bool aligned_wrt_previous_frame;

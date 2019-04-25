@@ -1,4 +1,5 @@
 #include <QSqlQuery>
+#include <QTime>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSqlError>
@@ -447,6 +448,9 @@ bool Project::describeCalibration(int id, QString& descr)
 
 bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
 {
+    QTime time;
+    time.start();
+
     bool ok = isOpen();
 
     rig.reset(new StereoRigCalibration());
@@ -497,7 +501,12 @@ bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
         }
     }
 
-    if(ok == false)
+    if(ok)
+    {
+        const int msec = time.elapsed();
+        std::cout << "Calibration loaded in " << msec << " milliseconds." << std::endl;
+    }
+    else
     {
         rig.reset();
     }
@@ -913,6 +922,9 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
 bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
 {
+    QTime time;
+    time.start();
+
     bool ok = isOpen();
 
     rec.reset(new RecordingHeader());
@@ -989,7 +1001,12 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
         }
     }
 
-    if(ok == false)
+    if(ok)
+    {
+        const int msec = time.elapsed();
+        std::cout << "Recording loaded in " << msec << " milliseconds." << std::endl;
+    }
+    else
     {
         rec.reset();
     }
@@ -1811,42 +1828,6 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
     return ok;
 }
 
-bool Project::loadMapPoint(int id, SLAMMapPointPtr& mappoint)
-{
-    bool ok = true;
-
-    std::map<int,SLAMMapPointPtr>::iterator it = mMapPointFromDB.find(id);
-
-    if( it == mMapPointFromDB.end() )
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT rank, world_x, world_y, world_z FROM mappoints WHERE id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-        ok = q.exec() && q.next();
-
-        if(ok)
-        {
-            mappoint.reset(new SLAMMapPoint());
-            mappoint->id = q.value(0).toInt();
-            mappoint->position.x() = q.value(1).toDouble();
-            mappoint->position.y() = q.value(2).toDouble();
-            mappoint->position.z() = q.value(3).toDouble();
-        }
-    }
-    else
-    {
-        mappoint = it->second;
-    }
-
-    if(ok == false)
-    {
-        mappoint.reset();
-    }
-
-    return ok;
-}
-
 bool Project::saveMapPoint(SLAMMapPointPtr mappoint, int& id)
 {
     bool ok = true;
@@ -1887,12 +1868,18 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 {
     int recording_id = -1;
     int rig_id = -1;
+    std::map<int,SLAMFramePtr> frames;
+    std::map<int,SLAMMapPointPtr> mappoints;
+
+    QTime time;
+    time.start();
 
     bool ok = isOpen();
 
-    rec.reset(new SLAMReconstruction);
-
-    mMapPointFromDB.clear();
+    if(ok)
+    {
+        rec.reset(new SLAMReconstruction());
+    }
 
     if(ok)
     {
@@ -1923,6 +1910,8 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         ok = loadRecording(recording_id, rec->recording);
     }
 
+    // load frames.
+
     if(ok)
     {
         QSqlQuery q(mDB);
@@ -1936,6 +1925,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         {
             const int frame_id = q.value(0).toInt();
             SLAMFramePtr frame(new SLAMFrame());
+            frames[frame_id] = frame;
 
             if(ok)
             {
@@ -1952,21 +1942,6 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
 
             if(ok)
             {
-                ok = loadPose( q.value(4).toInt(), frame->frame_to_world );
-            }
-
-            if(ok)
-            {
-                ok = loadKeyPoints(frame_id, frame);
-            }
-
-            if(ok)
-            {
-                ok = loadDensePoints(frame_id, frame);
-            }
-
-            if(ok)
-            {
                 rec->frames.push_back(frame);
             }
 
@@ -1974,147 +1949,213 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
         }
     }
 
+    // load poses.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("SELECT frames.id, poses.qx, poses.qy, poses.qz, poses.qw, poses.x, poses.y, poses.z FROM frames, poses WHERE poses.id=frames.rig_to_world AND frames.reconstruction_id=? ORDER BY frames.rank ASC");
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while(ok && q.next())
+        {
+            const int frame_id = q.value(0).toInt();
+
+            std::map<int,SLAMFramePtr>::iterator it = frames.find(frame_id);
+
+            if(it == frames.end())
+            {
+                ok = false;
+            }
+            else
+            {
+                Eigen::Quaterniond r;
+                Eigen::Vector3d t;
+
+                r.x() = q.value(1).toDouble();
+                r.y() = q.value(2).toDouble();
+                r.z() = q.value(3).toDouble();
+                r.w() = q.value(4).toDouble();
+                t.x() = q.value(5).toDouble();
+                t.y() = q.value(6).toDouble();
+                t.z() = q.value(7).toDouble();
+
+                Sophus::SE3d& pose = it->second->frame_to_world;
+                pose.setQuaternion(r);
+                pose.translation() = t;
+            }
+        }
+    }
+
+    // load keypoints.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare(
+            "SELECT keypoints.frame_id, keypoints.view, keypoints.rank, keypoints.u, keypoints.v FROM keypoints, frames "
+            "WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=? ORDER BY frames.rank ASC, keypoints.rank ASC"
+        );
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while(ok && q.next())
+        {
+            SLAMFramePtr frame;
+
+            const int frame_id = q.value(0).toInt();
+            const int view = q.value(1).toInt();
+            const int rank = q.value(2).toInt();
+            const double point_u = q.value(3).toDouble();
+            const double point_v = q.value(4).toDouble();
+
+            if(ok)
+            {
+                ok = (view == 0 || view == 1);
+            }
+
+            if(ok)
+            {
+                std::map<int,SLAMFramePtr>::iterator it = frames.find(frame_id);
+
+                if(it == frames.end())
+                {
+                    ok = false;
+                }
+                else
+                {
+                    frame = it->second;
+                }
+            }
+
+            if(ok)
+            {
+                ok = (rank == frame->views[view].keypoints.size());
+            }
+
+            if(ok)
+            {
+                frame->views[view].keypoints.emplace_back();
+                frame->views[view].keypoints.back().pt.x = point_u;
+                frame->views[view].keypoints.back().pt.y = point_v;
+            }
+        }
+    }
+
+    if(ok)
+    {
+        for( std::pair<int,SLAMFramePtr> item : frames )
+        {
+            for( SLAMView& v : item.second->views )
+            {
+                v.tracks.resize(v.keypoints.size());
+            }
+        }
+    }
+
+    // load mappoints and projections.
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare(
+            "SELECT keypoints.frame_id, keypoints.view, keypoints.rank, mappoints.id, mappoints.rank, mappoints.world_x, mappoints.world_y, mappoints.world_z "
+            "FROM mappoints, keypoints, frames, projections "
+            "WHERE projections.mappoint_id=mappoints.id AND projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?"
+        );
+        q.addBindValue(id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while(ok && q.next())
+        {
+            SLAMFramePtr frame;
+            SLAMMapPointPtr mappoint;
+
+            const int frame_id = q.value(0).toInt();
+            const int view = q.value(1).toInt();
+            const int keypoint_rank = q.value(2).toInt();
+            const int mappoint_id = q.value(3).toInt();
+            const int mappoint_rank = q.value(4).toInt();
+            const double mappoint_worldx = q.value(5).toDouble();
+            const double mappoint_worldy = q.value(6).toDouble();
+            const double mappoint_worldz = q.value(7).toDouble();
+
+            if(ok)
+            {
+                std::map<int,SLAMFramePtr>::iterator it = frames.find(frame_id);
+
+                if(it == frames.end())
+                {
+                    ok = false;
+                }
+                else
+                {
+                    frame = it->second;
+                }
+            }
+
+            if(ok)
+            {
+                ok = (view == 0 || view == 1);
+            }
+
+            if(ok)
+            {
+                ok = (0 <= keypoint_rank && keypoint_rank < frame->views[view].keypoints.size());
+            }
+
+            if(ok)
+            {
+                ok = !frame->views[view].tracks[keypoint_rank].mappoint;
+            }
+
+            if(ok)
+            {
+                std::map<int,SLAMMapPointPtr>::iterator it = mappoints.find(mappoint_id);
+
+                if(it == mappoints.end())
+                {
+                    mappoint.reset(new SLAMMapPoint());
+                    mappoints[mappoint_id] = mappoint;
+
+                    mappoint->id = mappoint_rank;
+                    mappoint->position.x() = mappoint_worldx;
+                    mappoint->position.y() = mappoint_worldy;
+                    mappoint->position.z() = mappoint_worldz;
+                }
+                else
+                {
+                    mappoint = it->second;
+                }
+            }
+
+            if(ok)
+            {
+                frame->views[view].tracks[keypoint_rank].mappoint = mappoint;
+            }
+        }
+    }
+
+    // TODO: load dense points.
+
     if(ok)
     {
         rec->buildSegments();
         //std::cout << rec->frames.front()->dense_cloud.size() << std::endl;
     }
 
-    mMapPointFromDB.clear();
-
-    if(ok == false)
+    if(ok)
+    {
+        const int msec = time.elapsed();
+        std::cout << "Reconstruction loaded in " << msec << " milliseconds." << std::endl;
+    }
+    else
     {
         rec.reset();
-    }
-
-    return ok;
-}
-
-bool Project::loadDensePoints(int frame_id, SLAMFramePtr frame)
-{
-    bool ok = true;
-
-    frame->dense_cloud.clear();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT rig_x, rig_y, rig_z, color_red, color_green, color_blue FROM densepoints WHERE frame_id=?");
-        q.addBindValue(frame_id);
-        q.setForwardOnly(true);
-        ok = q.exec();
-
-        while(ok && q.next())
-        {
-            SLAMColoredPoint cpt;
-
-            cpt.point.x = q.value(0).toFloat();
-            cpt.point.y = q.value(1).toFloat();
-            cpt.point.z = q.value(2).toFloat();
-
-            cpt.color[0] = q.value(5).toFloat();
-            cpt.color[1] = q.value(4).toFloat();
-            cpt.color[2] = q.value(3).toFloat();
-
-            frame->dense_cloud.push_back(cpt);
-        }
-    }
-
-    return ok;
-}
-
-bool Project::loadKeyPoints(int frame_id, SLAMFramePtr frame)
-{
-    bool ok = true;
-
-    frame->views[0].keypoints.clear();
-    frame->views[0].tracks.clear();
-    frame->views[1].keypoints.clear();
-    frame->views[1].tracks.clear();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT id, view, rank, u, v FROM keypoints WHERE frame_id=? ORDER BY view ASC, rank ASC");
-        q.addBindValue(frame_id);
-        q.setForwardOnly(true);
-        ok = q.exec();
-
-        while(ok && q.next())
-        {
-            int keypoint_id = -1;
-            int view = -1;
-
-            cv::KeyPoint kpt;
-
-            if(ok)
-            {
-                keypoint_id = q.value(0).toInt();
-                view = q.value(1).toInt();
-                ok = (view == 0 || view == 1);
-            }
-
-            if(ok)
-            {
-                ok = ( frame->views[view].keypoints.size() == q.value(2).toInt() );
-            }
-
-            if(ok)
-            {
-                kpt.pt.x = q.value(3).toDouble();
-                kpt.pt.y = q.value(4).toDouble();
-            }
-
-            if(ok)
-            {
-                frame->views[view].keypoints.push_back(kpt);
-            }
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT projections.mappoint_id, keypoints.view, keypoints.rank FROM projections, keypoints WHERE keypoints.frame_id=? AND projections.keypoint_id=keypoints.id");
-        q.addBindValue(frame_id);
-        q.setForwardOnly(true);
-        ok = q.exec();
-
-        frame->views[0].tracks.resize( frame->views[0].keypoints.size() );
-        frame->views[1].tracks.resize( frame->views[1].keypoints.size() );
-
-        while(ok && q.next())
-        {
-            int keypoint_rank = -1;
-            int view = -1;
-
-            if(ok)
-            {
-                view = q.value(1).toInt();
-                ok = (view == 0 || view == 1);
-            }
-
-            if(ok)
-            {
-                keypoint_rank = q.value(2).toInt();
-                ok = ( 0 <= keypoint_rank && keypoint_rank < frame->views[view].keypoints.size() );
-            }
-
-            if(ok)
-            {
-                ok = loadMapPoint( q.value(0).toInt(), frame->views[view].tracks[keypoint_rank].mappoint );
-            }
-        }
-    }
-
-    // TODO: load descriptors!
-
-    if(ok == false)
-    {
-        frame->views[0].keypoints.clear();
-        frame->views[0].tracks.clear();
-        frame->views[1].keypoints.clear();
-        frame->views[1].tracks.clear();
     }
 
     return ok;

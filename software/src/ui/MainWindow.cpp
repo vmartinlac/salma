@@ -59,6 +59,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     //statusBar()->showMessage("SALMA v1.0");
 
     setWindowTitle("SALMA");
+    showMaximized();
 }
 
 void MainWindow::about()
