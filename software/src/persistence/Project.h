@@ -59,14 +59,10 @@ public:
 protected:
 
     bool savePose(const Sophus::SE3d& pose, int& id);
-    bool loadPose(int id, Sophus::SE3d& pose);
 
     bool saveMapPoint(SLAMMapPointPtr mappoint, int& id);
 
     bool saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id);
-
-    bool saveCamera(CameraCalibration& camera, int rig_id, int rank, int& id);
-    bool loadCamera(int id, CameraCalibration& camera);
 
     static std::string htmlEscape(const std::string& from);
 
@@ -87,6 +83,5 @@ protected:
     ReconstructionModel* mReconstructionModel;
 
     std::map<int,int> mMapPointToDB;
-    std::map<int,SLAMMapPointPtr> mMapPointFromDB;
 };
 

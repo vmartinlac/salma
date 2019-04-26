@@ -237,18 +237,18 @@ bool Project::savePose(const Sophus::SE3d& pose, int& id)
 
     if(ok)
     {
-        Eigen::Quaterniond r = pose.unit_quaternion();
-        Eigen::Vector3d t = pose.translation();
+        const Eigen::Quaterniond r = pose.unit_quaternion();
+        const Eigen::Vector3d t = pose.translation();
 
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
-        q.addBindValue(r.x());
-        q.addBindValue(r.y());
-        q.addBindValue(r.z());
-        q.addBindValue(r.w());
-        q.addBindValue(t.x());
-        q.addBindValue(t.y());
-        q.addBindValue(t.z());
+        q.bindValue(0, r.x());
+        q.bindValue(1, r.y());
+        q.bindValue(2, r.z());
+        q.bindValue(3, r.w());
+        q.bindValue(4, t.x());
+        q.bindValue(5, t.y());
+        q.bindValue(6, t.z());
 
         ok = q.exec();
 
@@ -261,51 +261,15 @@ bool Project::savePose(const Sophus::SE3d& pose, int& id)
     return ok;
 }
 
-bool Project::loadPose(int id, Sophus::SE3d& pose)
-{
-    bool ok = isOpen();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT qx, qy, qz, qw, x, y, z FROM poses WHERE id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        ok = ( q.exec() && q.next() );
-
-        if(ok)
-        {
-            Eigen::Quaterniond r;
-            Eigen::Vector3d t;
-
-            r.x() = q.value(0).toFloat();
-            r.y() = q.value(1).toFloat();
-            r.z() = q.value(2).toFloat();
-            r.w() = q.value(3).toFloat();
-            t.x() = q.value(4).toFloat();
-            t.y() = q.value(5).toFloat();
-            t.z() = q.value(6).toFloat();
-
-            pose.setQuaternion(r);
-            pose.translation() = t;
-        }
-    }
-
-    if(ok == false)
-    {
-        pose = Sophus::SE3d();
-    }
-
-    return ok;
-}
-
 // CALIBRATION
 
 bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
 {
     bool has_transaction = false;
     bool ok = true;
+
+    std::vector<int> pose_ids;
+    std::vector<int> camera_ids;
 
     if(ok)
     {
@@ -325,7 +289,7 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
     {
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO `rigs` (`name`, `date`) VALUES (?, DATETIME('NOW'))");
-        q.addBindValue(rig->name.c_str());
+        q.bindValue(0, rig->name.c_str());
 
         ok = q.exec();
 
@@ -335,10 +299,84 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
         }
     }
 
-    for(int i=0; ok && i<rig->cameras.size(); i++)
+    if(ok)
     {
-        int camera_id = -1;
-        ok = saveCamera(rig->cameras[i], id, i, camera_id);
+        pose_ids.resize(rig->cameras.size());
+
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
+
+        for(int i=0; ok && i<rig->cameras.size(); i++)
+        {
+            const Sophus::SE3d& pose = rig->cameras[i].camera_to_rig;
+            const Eigen::Quaterniond r = pose.unit_quaternion();
+            const Eigen::Vector3d t = pose.translation();
+
+            q.bindValue(0, r.x());
+            q.bindValue(1, r.y());
+            q.bindValue(2, r.z());
+            q.bindValue(3, r.w());
+            q.bindValue(4, t.x());
+            q.bindValue(5, t.y());
+            q.bindValue(6, t.z());
+
+            ok = q.exec();
+
+            if(ok)
+            {
+                pose_ids[i] = q.lastInsertId().toInt();
+            }
+        }
+    }
+
+    if(ok)
+    {
+        camera_ids.resize(rig->cameras.size());
+
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO cameras (rig_id, rank_in_rig, image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
+
+        for(int i=0; ok && i<rig->cameras.size(); i++)
+        {
+            const CameraCalibration& camera = rig->cameras[i];
+
+            q.bindValue(0, id);
+            q.bindValue(1, i);
+            q.bindValue(2, camera.image_size.width);
+            q.bindValue(3, camera.image_size.height);
+            q.bindValue(4, camera.calibration_matrix.at<double>(0,0));
+            q.bindValue(5, camera.calibration_matrix.at<double>(1,1));
+            q.bindValue(6, camera.calibration_matrix.at<double>(0,2));
+            q.bindValue(7, camera.calibration_matrix.at<double>(1,2));
+            q.bindValue(8, pose_ids[i]);
+
+            const bool ok = q.exec();
+
+            if(ok)
+            {
+                camera_ids[i] = q.lastInsertId().toInt();
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO `distortion_coefficients` (`camera_id`, `rank`, `value`) VALUES (?,?,?)");
+
+        for(int i=0; ok && i<rig->cameras.size(); i++)
+        {
+            const cv::Mat dist = rig->cameras[i].distortion_coefficients;
+
+            for(int j=0; ok && j<dist.cols; j++)
+            {
+                q.bindValue(0, camera_ids[i]);
+                q.bindValue(1, j);
+                q.bindValue(2, dist.at<double>(0, j));
+
+                ok = q.exec();
+            }
+        }
     }
 
     if(has_transaction)
@@ -460,7 +498,7 @@ bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime') FROM `rigs` WHERE `id`=?");
 
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -475,28 +513,101 @@ bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT id,rank_in_rig FROM cameras WHERE rig_id=? ORDER BY rank_in_rig ASC");
-        q.addBindValue(id);
+        q.prepare(
+            "SELECT c.id, c.rank_in_rig, c.image_width, c.image_height, c.fx, c.fy, c.cx, c.cy, c.distortion_model, p.qx, p.qy, p.qz, p.qw, p.x, p.y, p.z "
+            "FROM cameras c, poses p "
+            "WHERE p.id=c.camera_to_rig AND c.rig_id=?"
+        );
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
-        if(ok)
+        while(ok && q.next())
         {
-            int rank = 0;
+            const int rank = q.value(1).toInt();
 
-            while(ok && q.next())
+            if(ok)
             {
-                if(ok)
-                {
-                    ok = (rank < 2 && q.value(1).toInt() == rank );
-                }
+                ok = (rank == 0 || rank == 1) && (q.value(8).toInt() == 0);
+            }
 
-                if(ok)
-                {
-                    ok = loadCamera( q.value(0).toInt(), rig->cameras[rank] );
-                }
+            if(ok)
+            {
+                CameraCalibration& camera = rig->cameras[rank];
 
-                rank++;
+                Eigen::Quaterniond r;
+                Eigen::Vector3d t;
+
+                r.x() = q.value(9).toFloat();
+                r.y() = q.value(10).toFloat();
+                r.z() = q.value(11).toFloat();
+                r.w() = q.value(12).toFloat();
+                t.x() = q.value(13).toFloat();
+                t.y() = q.value(14).toFloat();
+                t.z() = q.value(15).toFloat();
+
+                camera.camera_to_rig.setQuaternion(r);
+                camera.camera_to_rig.translation() = t;
+
+                camera.image_size.width = q.value(2).toInt();
+                camera.image_size.height = q.value(3).toInt();
+
+                camera.calibration_matrix.create(3, 3, CV_64F);
+                camera.calibration_matrix.at<double>(0,0) = q.value(4).toDouble();
+                camera.calibration_matrix.at<double>(0,1) = 0.0;
+                camera.calibration_matrix.at<double>(0,2) = q.value(6).toDouble();
+                camera.calibration_matrix.at<double>(1,0) = 0.0;
+                camera.calibration_matrix.at<double>(1,1) = q.value(5).toDouble();
+                camera.calibration_matrix.at<double>(1,2) = q.value(7).toDouble();
+                camera.calibration_matrix.at<double>(2,0) = 0.0;
+                camera.calibration_matrix.at<double>(2,1) = 0.0;
+                camera.calibration_matrix.at<double>(2,2) = 1.0;
+            }
+        }
+    }
+
+    if(ok)
+    {
+        std::array< std::vector<double>, 2> coeffs;
+
+        QSqlQuery q(mDB);
+        q.prepare(
+            "SELECT ca.rank_in_rig, co.rank, co.value FROM distortion_coefficients co, cameras ca "
+            "WHERE ca.rig_id=? AND co.camera_id=ca.id "
+            "ORDER BY ca.rank_in_rig ASC, co.rank ASC"
+        );
+        q.bindValue(0, id);
+        q.setForwardOnly(true);
+        ok = q.exec();
+
+        while(ok && q.next())
+        {
+            const int camera_rank = q.value(0).toInt();
+            const int coefficient_rank = q.value(1).toInt();
+
+            if(ok)
+            {
+                ok = (camera_rank == 0 || camera_rank == 1);
+            }
+
+            if(ok)
+            {
+                ok = (coeffs[camera_rank].size() == coefficient_rank);
+            }
+
+            if(ok)
+            {
+                coeffs[camera_rank].push_back( q.value(2).toDouble() );
+            }
+        }
+
+        for(int i=0; i<2; i++)
+        {
+            rig->cameras[i].distortion_coefficients.create(1, coeffs[i].size(), CV_64F);
+
+            for(size_t j=0; j<coeffs[i].size(); j++)
+            {
+                rig->cameras[i].distortion_coefficients.at<double>(0, j) = coeffs[i][j];
             }
         }
     }
@@ -516,7 +627,6 @@ bool Project::loadCalibration(int id, StereoRigCalibrationPtr& rig)
     {
         QJsonDocument doc( rig->toJson().toObject() );
         std::cout << doc.toJson().toStdString() << std::endl;
-
     }
     */
 
@@ -531,8 +641,8 @@ bool Project::renameCalibration(int id, const QString& new_name)
     {
         QSqlQuery q(mDB);
         q.prepare("UPDATE rigs SET name=? WHERE id=?");
-        q.addBindValue(new_name);
-        q.addBindValue(id);
+        q.bindValue(0, new_name);
+        q.bindValue(1, id);
 
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
@@ -573,7 +683,7 @@ bool Project::removeCalibration(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM poses WHERE id IN (SELECT camera_to_rig FROM cameras WHERE rig_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -583,7 +693,7 @@ bool Project::removeCalibration(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM distortion_coefficients WHERE camera_id IN (SELECT id FROM cameras WHERE rig_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -593,7 +703,7 @@ bool Project::removeCalibration(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM cameras WHERE rig_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -603,7 +713,7 @@ bool Project::removeCalibration(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM rigs WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -638,7 +748,7 @@ bool Project::isCalibrationMutable(int id, bool& ismutable)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM rigs WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
@@ -649,7 +759,7 @@ bool Project::isCalibrationMutable(int id, bool& ismutable)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE rig_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
@@ -701,138 +811,6 @@ bool Project::listCalibrations(CalibrationList& list)
     return ok;
 }
 
-bool Project::saveCamera(CameraCalibration& camera, int rig_id, int rank, int& id)
-{
-    bool ok = isOpen();
-    int pose_id = -1;
-
-    if(ok)
-    {
-        ok = savePose(camera.camera_to_rig, pose_id);
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO cameras (rig_id, rank_in_rig, image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
-        q.addBindValue(rig_id);
-        q.addBindValue(rank);
-        q.addBindValue(camera.image_size.width);
-        q.addBindValue(camera.image_size.height);
-        q.addBindValue(camera.calibration_matrix.at<double>(0,0));
-        q.addBindValue(camera.calibration_matrix.at<double>(1,1));
-        q.addBindValue(camera.calibration_matrix.at<double>(0,2));
-        q.addBindValue(camera.calibration_matrix.at<double>(1,2));
-        q.addBindValue(pose_id);
-
-        const bool ok = q.exec();
-
-        if(ok)
-        {
-            id = q.lastInsertId().toInt();
-        }
-    }
-
-    if(ok)
-    {
-        const cv::Mat dist = camera.distortion_coefficients;
-
-        for(int j=0; ok && j<dist.cols; j++)
-        {
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO `distortion_coefficients` (`camera_id`, `rank`, `value`) VALUES (?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(j);
-            q.addBindValue(dist.at<double>(0, j));
-
-            ok = q.exec();
-        }
-    }
-
-    if(ok == false)
-    {
-        id = -1;
-    }
-
-    return ok;
-}
-
-bool Project::loadCamera(int id, CameraCalibration& camera)
-{
-    bool ok = isOpen();
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig FROM cameras WHERE id=?");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        bool ok = q.exec() && q.next();
-
-        if(ok)
-        {
-            ok = ok && (q.value(6).toInt() == 0);
-        }
-
-        if(ok)
-        {
-            ok = loadPose(q.value(7).toInt(), camera.camera_to_rig);
-        }
-
-        if(ok)
-        {
-            camera.image_size.width = q.value(0).toInt();
-            camera.image_size.height = q.value(1).toInt();
-
-            camera.calibration_matrix.create(3, 3, CV_64F);
-            camera.calibration_matrix.at<double>(0,0) = q.value(2).toDouble();
-            camera.calibration_matrix.at<double>(0,1) = 0.0;
-            camera.calibration_matrix.at<double>(0,2) = q.value(4).toDouble();
-            camera.calibration_matrix.at<double>(1,0) = 0.0;
-            camera.calibration_matrix.at<double>(1,1) = q.value(3).toDouble();
-            camera.calibration_matrix.at<double>(1,2) = q.value(5).toDouble();
-            camera.calibration_matrix.at<double>(2,0) = 0.0;
-            camera.calibration_matrix.at<double>(2,1) = 0.0;
-            camera.calibration_matrix.at<double>(2,2) = 1.0;
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("SELECT `rank`, `value` FROM `distortion_coefficients` WHERE `camera_id`=? ORDER BY `rank` ASC");
-        q.addBindValue(id);
-        q.setForwardOnly(true);
-
-        std::vector<double> values;
-
-        ok = q.exec();
-
-        if(ok)
-        {
-            while(ok && q.next())
-            {
-                const int rank = q.value(0).toInt();
-                ok = (values.size() == rank);
-                values.push_back( q.value(1).toDouble() );
-            }
-        }
-
-        if(ok)
-        {
-            camera.distortion_coefficients.create(1, values.size(), CV_64F);
-
-            for(size_t j=0; j<values.size(); j++)
-            {
-                camera.distortion_coefficients.at<double>(0, j) = values[j];
-            }
-        }
-    }
-
-    return ok;
-}
-
 // RECORDING
 
 bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
@@ -861,8 +839,8 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO recordings(name, date, directory) VALUES(?,DATETIME('now'),?)");
-        q.addBindValue(rec->name.c_str());
-        q.addBindValue(dir_name);
+        q.bindValue(0, rec->name.c_str());
+        q.bindValue(1, dir_name);
         ok = q.exec();
 
         if(ok)
@@ -873,27 +851,33 @@ bool Project::saveRecording(RecordingHeaderPtr rec, int& id)
 
     if(ok)
     {
+        QSqlQuery q(mDB);
+
+        q.prepare("INSERT INTO recording_views(recording_id, rank, width, height) VALUES(?,?,?,?)");
+
         for(int i=0; ok && i<rec->num_views(); i++)
         {
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO recording_views(recording_id, rank, width, height) VALUES(?,?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(i);
-            q.addBindValue(rec->views[i].width);
-            q.addBindValue(rec->views[i].height);
+            q.bindValue(0, id);
+            q.bindValue(1, i);
+            q.bindValue(2, rec->views[i].width);
+            q.bindValue(3, rec->views[i].height);
+
             ok = q.exec();
         }
     }
 
     if(ok)
     {
+        QSqlQuery q(mDB);
+
+        q.prepare("INSERT INTO recording_frames(recording_id, rank, timestamp) VALUES(?,?,?)");
+
         for(int i=0; ok && i<rec->num_frames(); i++)
         {
-            QSqlQuery q(mDB);
-            q.prepare("INSERT INTO recording_frames(recording_id, rank, timestamp) VALUES(?,?,?)");
-            q.addBindValue(id);
-            q.addBindValue(i);
-            q.addBindValue(rec->timestamps[i]);
+            q.bindValue(0, id);
+            q.bindValue(1, i);
+            q.bindValue(2, rec->timestamps[i]);
+
             ok = q.exec();
         }
     }
@@ -933,7 +917,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory` FROM `recordings` WHERE `id`=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -952,7 +936,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT rank, width, height FROM recording_views WHERE recording_id=? ORDER BY rank ASC");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -973,7 +957,7 @@ bool Project::loadRecording(int id, RecordingHeaderPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT rank, timestamp FROM recording_frames WHERE recording_id=? ORDER BY rank ASC");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -1034,7 +1018,7 @@ bool Project::removeRecording(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT directory FROM recordings WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1063,7 +1047,7 @@ bool Project::removeRecording(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM recording_views WHERE recording_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1073,7 +1057,7 @@ bool Project::removeRecording(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM recording_frames WHERE recording_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1083,7 +1067,7 @@ bool Project::removeRecording(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM recordings WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1129,7 +1113,7 @@ bool Project::isRecordingMutable(int id, bool& ismutable)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM recordings WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
@@ -1140,7 +1124,7 @@ bool Project::isRecordingMutable(int id, bool& ismutable)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(DISTINCT id) FROM reconstructions WHERE recording_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
@@ -1171,7 +1155,7 @@ bool Project::describeRecording(int id, QString& descr)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT MAX(`rank`)+1 AS `number_of_frames`, MAX(`timestamp`) AS `duration` FROM `recording_frames` WHERE recording_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
         
@@ -1194,7 +1178,7 @@ bool Project::describeRecording(int id, QString& descr)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT MAX(`rank`)+1 AS `number_of_views` FROM `recording_views` WHERE `recording_id`=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -1215,7 +1199,7 @@ bool Project::describeRecording(int id, QString& descr)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT `name`, DATETIME(`date`, 'localtime'), `directory` FROM `recordings` WHERE `id`=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1257,8 +1241,8 @@ bool Project::renameRecording(int id, const QString& new_name)
     {
         QSqlQuery q(mDB);
         q.prepare("UPDATE recordings SET name=? WHERE id=?");
-        q.addBindValue(new_name);
-        q.addBindValue(id);
+        q.bindValue(0, new_name);
+        q.bindValue(1, id);
 
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
@@ -1384,8 +1368,12 @@ bool Project::describeReconstruction(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name FROM reconstructions reconstruction, rigs rig, recordings recording WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?");
-        q.addBindValue(id);
+        q.prepare(
+            "SELECT reconstruction.name, DATETIME(reconstruction.date, 'localtime'), rig.id, rig.name, recording.id, recording.name "
+            "FROM reconstructions reconstruction, rigs rig, recordings recording "
+            "WHERE rig.id=reconstruction.rig_id AND recording.id=reconstruction.recording_id AND reconstruction.id=?"
+        );
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1404,7 +1392,7 @@ bool Project::describeReconstruction(int id, QString& descr)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(id) FROM frames WHERE reconstruction_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1417,8 +1405,12 @@ bool Project::describeReconstruction(int id, QString& descr)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT COUNT(DISTINCT projections.mappoint_id) FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?");
-        q.addBindValue(id);
+        q.prepare(
+            "SELECT COUNT(DISTINCT projections.mappoint_id) "
+            "FROM projections,keypoints,frames "
+            "WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?"
+        );
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1432,7 +1424,7 @@ bool Project::describeReconstruction(int id, QString& descr)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT COUNT(densepoints.id) FROM densepoints, frames WHERE densepoints.frame_id=frames.id AND frames.reconstruction_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
 
@@ -1483,8 +1475,8 @@ bool Project::renameReconstruction(int id, const QString& new_name)
     {
         QSqlQuery q(mDB);
         q.prepare("UPDATE reconstructions SET name=? WHERE id=?");
-        q.addBindValue(new_name);
-        q.addBindValue(id);
+        q.bindValue(0, new_name);
+        q.bindValue(1, id);
 
         ok = q.exec() && (q.numRowsAffected() >= 1);
     }
@@ -1506,7 +1498,7 @@ bool Project::isReconstructionMutable(int id, bool& ismutable)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT id FROM reconstructions WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec() && q.next();
     }
@@ -1553,8 +1545,11 @@ bool Project::removeReconstruction(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM mappoints WHERE id IN (SELECT projections.mappoint_id FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
-        q.addBindValue(id);
+        q.prepare(
+            "DELETE FROM mappoints WHERE id IN "
+            "(SELECT projections.mappoint_id FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
+        );
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1564,7 +1559,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM densepoints WHERE frame_id IN (SELECT id FROM frames WHERE reconstruction_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1573,8 +1568,11 @@ bool Project::removeReconstruction(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM projections WHERE id IN (SELECT projections.id FROM projections, keypoints, frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
-        q.addBindValue(id);
+        q.prepare(
+            "DELETE FROM projections WHERE id IN "
+            "(SELECT projections.id FROM projections, keypoints, frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
+        );
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1584,7 +1582,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM descriptors WHERE keypoint_id IN (SELECT keypoints.id FROM keypoints, frames WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1594,7 +1592,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM keypoints WHERE frame_id IN (SELECT id FROM frames WHERE reconstruction_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1604,7 +1602,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM poses WHERE id IN (SELECT rig_to_world FROM frames WHERE reconstruction_id=?)");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1614,7 +1612,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM frames WHERE reconstruction_id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1624,7 +1622,7 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare("DELETE FROM reconstructions WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         ok = q.exec();
     }
 
@@ -1672,9 +1670,9 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
     {
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO reconstructions(name, date, rig_id, recording_id) VALUES(?, DATETIME('now'), ?, ?)");
-        q.addBindValue(rec->name.c_str());
-        q.addBindValue(rec->calibration->id);
-        q.addBindValue(rec->recording->id);
+        q.bindValue(0, rec->name.c_str());
+        q.bindValue(1, rec->calibration->id);
+        q.bindValue(2, rec->recording->id);
         ok = q.exec();
 
         if(ok)
@@ -1735,12 +1733,12 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
     {
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO frames(reconstruction_id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous) VALUES(?,?,?,?,?,?)");
-        q.addBindValue(reconstruction_id);
-        q.addBindValue(frame->id);
-        q.addBindValue(frame->rank_in_recording);
-        q.addBindValue(frame->timestamp);
-        q.addBindValue(pose_id);
-        q.addBindValue(frame->aligned_wrt_previous_frame);
+        q.bindValue(0, reconstruction_id);
+        q.bindValue(1, frame->id);
+        q.bindValue(2, frame->rank_in_recording);
+        q.bindValue(3, frame->timestamp);
+        q.bindValue(4, pose_id);
+        q.bindValue(5, frame->aligned_wrt_previous_frame);
         ok = q.exec();
 
         if(ok)
@@ -1808,13 +1806,13 @@ bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int
         {
             SLAMColoredPoint& cpt = frame->dense_cloud[i];
 
-            q.addBindValue(id);
-            q.addBindValue(cpt.point.x);
-            q.addBindValue(cpt.point.y);
-            q.addBindValue(cpt.point.z);
-            q.addBindValue(cpt.color[2]);
-            q.addBindValue(cpt.color[1]);
-            q.addBindValue(cpt.color[0]);
+            q.bindValue(0, id);
+            q.bindValue(1, cpt.point.x);
+            q.bindValue(2, cpt.point.y);
+            q.bindValue(3, cpt.point.z);
+            q.bindValue(4, cpt.color[2]);
+            q.bindValue(5, cpt.color[1]);
+            q.bindValue(6, cpt.color[0]);
 
             ok = q.exec();
         }
@@ -1885,7 +1883,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT name,DATETIME(date,'localtime'),rig_id,recording_id FROM reconstructions WHERE id=?");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
 
         ok = q.exec() && q.next();
@@ -1916,7 +1914,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare("SELECT id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous FROM frames WHERE reconstruction_id=? ORDER BY rank ASC");
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -1954,8 +1952,12 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("SELECT frames.id, poses.qx, poses.qy, poses.qz, poses.qw, poses.x, poses.y, poses.z FROM frames, poses WHERE poses.id=frames.rig_to_world AND frames.reconstruction_id=? ORDER BY frames.rank ASC");
-        q.addBindValue(id);
+        q.prepare(
+            "SELECT frames.id, poses.qx, poses.qy, poses.qz, poses.qw, poses.x, poses.y, poses.z "
+            "FROM frames, poses "
+            "WHERE poses.id=frames.rig_to_world AND frames.reconstruction_id=? ORDER BY frames.rank ASC"
+        );
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -1995,10 +1997,11 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
     {
         QSqlQuery q(mDB);
         q.prepare(
-            "SELECT keypoints.frame_id, keypoints.view, keypoints.rank, keypoints.u, keypoints.v FROM keypoints, frames "
+            "SELECT keypoints.frame_id, keypoints.view, keypoints.rank, keypoints.u, keypoints.v "
+            "FROM keypoints, frames "
             "WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=? ORDER BY frames.rank ASC, keypoints.rank ASC"
         );
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 
@@ -2066,7 +2069,7 @@ bool Project::loadReconstruction(int id, SLAMReconstructionPtr& rec)
             "FROM mappoints, keypoints, frames, projections "
             "WHERE projections.mappoint_id=mappoints.id AND projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?"
         );
-        q.addBindValue(id);
+        q.bindValue(0, id);
         q.setForwardOnly(true);
         ok = q.exec();
 

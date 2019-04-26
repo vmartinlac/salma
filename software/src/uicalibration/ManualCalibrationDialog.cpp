@@ -67,7 +67,7 @@ ManualCalibrationDialog::ManualCalibrationDialog(
 
     setLayout(lay);
     setWindowTitle("Manual Camera Calibration");
-    showMaximized();
+    resize(640, 480);
 
     connect(aModeLeft, SIGNAL(triggered()), this, SLOT(setModeToLeft()));
     connect(aModeRight, SIGNAL(triggered()), this, SLOT(setModeToRight()));
