@@ -58,12 +58,6 @@ public:
 
 protected:
 
-    bool savePose(const Sophus::SE3d& pose, int& id);
-
-    bool saveMapPoint(SLAMMapPointPtr mappoint, int& id);
-
-    bool saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id);
-
     static std::string htmlEscape(const std::string& from);
 
 signals:
@@ -81,7 +75,5 @@ protected:
     RecordingModel* mRecordingModel;
     CalibrationModel* mCalibrationModel;
     ReconstructionModel* mReconstructionModel;
-
-    std::map<int,int> mMapPointToDB;
 };
 

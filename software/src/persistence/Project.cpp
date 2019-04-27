@@ -229,38 +229,6 @@ ReconstructionModel* Project::reconstructionModel()
     return mReconstructionModel;
 }
 
-// POSE
-
-bool Project::savePose(const Sophus::SE3d& pose, int& id)
-{
-    bool ok = isOpen();
-
-    if(ok)
-    {
-        const Eigen::Quaterniond r = pose.unit_quaternion();
-        const Eigen::Vector3d t = pose.translation();
-
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
-        q.bindValue(0, r.x());
-        q.bindValue(1, r.y());
-        q.bindValue(2, r.z());
-        q.bindValue(3, r.w());
-        q.bindValue(4, t.x());
-        q.bindValue(5, t.y());
-        q.bindValue(6, t.z());
-
-        ok = q.exec();
-
-        if(ok)
-        {
-            id = q.lastInsertId().toInt();
-        }
-    }
-
-    return ok;
-}
-
 // CALIBRATION
 
 bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
@@ -301,7 +269,7 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
 
     if(ok)
     {
-        pose_ids.resize(rig->cameras.size());
+        pose_ids.resize(rig->cameras.size(), -1);
 
         QSqlQuery q(mDB);
         q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
@@ -331,10 +299,14 @@ bool Project::saveCalibration(StereoRigCalibrationPtr rig, int& id)
 
     if(ok)
     {
-        camera_ids.resize(rig->cameras.size());
+        camera_ids.resize(rig->cameras.size(), -1);
 
         QSqlQuery q(mDB);
-        q.prepare("INSERT INTO cameras (rig_id, rank_in_rig, image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
+
+        q.prepare(
+            "INSERT INTO cameras (rig_id, rank_in_rig, image_width, image_height, fx, fy, cx, cy, distortion_model, camera_to_rig) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)"
+        );
 
         for(int i=0; ok && i<rig->cameras.size(); i++)
         {
@@ -1546,8 +1518,9 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare(
-            "DELETE FROM mappoints WHERE id IN "
-            "(SELECT projections.mappoint_id FROM projections,keypoints,frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
+            "DELETE FROM mappoints WHERE id IN ("
+            "SELECT projections.mappoint_id FROM projections,keypoints,frames "
+            "WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=? )"
         );
         q.bindValue(0, id);
         ok = q.exec();
@@ -1569,8 +1542,9 @@ bool Project::removeReconstruction(int id)
     {
         QSqlQuery q(mDB);
         q.prepare(
-            "DELETE FROM projections WHERE id IN "
-            "(SELECT projections.id FROM projections, keypoints, frames WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
+            "DELETE FROM projections WHERE id IN ("
+            "SELECT projections.id FROM projections, keypoints, frames "
+            "WHERE projections.keypoint_id=keypoints.id AND keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
         );
         q.bindValue(0, id);
         ok = q.exec();
@@ -1581,7 +1555,10 @@ bool Project::removeReconstruction(int id)
     if(ok)
     {
         QSqlQuery q(mDB);
-        q.prepare("DELETE FROM descriptors WHERE keypoint_id IN (SELECT keypoints.id FROM keypoints, frames WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=?)");
+        q.prepare(
+            "DELETE FROM descriptors WHERE keypoint_id IN ("
+            "SELECT keypoints.id FROM keypoints, frames WHERE keypoints.frame_id=frames.id AND frames.reconstruction_id=?)"
+        );
         q.bindValue(0, id);
         ok = q.exec();
     }
@@ -1647,10 +1624,12 @@ bool Project::removeReconstruction(int id)
 
 bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 {
+    std::vector<int> pose_ids;
+    std::vector<int> frame_ids;
+    std::map<int,int> mappoints; // mappoint id to mappoint db id.
+
     bool has_transaction = false;
     bool ok = isOpen();
-
-    mMapPointToDB.clear();
 
     if(ok)
     {
@@ -1660,6 +1639,7 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
     if(ok)
     {
         ok = mDB.transaction();
+
         if(ok)
         {
             has_transaction = true;
@@ -1683,10 +1663,162 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
 
     if(ok)
     {
+        QSqlQuery q(mDB);
+
+        q.prepare("INSERT INTO poses(qx, qy, qz, qw, x, y, z) VALUES(?,?,?,?,?,?,?)");
+
+        pose_ids.resize(rec->frames.size(), -1);
+
         for(int i=0; ok && i<rec->frames.size(); i++)
         {
-            int frame_id = -1;
-            ok = saveFrame(rec->frames[i], i, id, frame_id);
+            const Sophus::SE3d& pose = rec->frames[i]->frame_to_world;
+            const Eigen::Quaterniond r = pose.unit_quaternion();
+            const Eigen::Vector3d t = pose.translation();
+
+            q.bindValue(0, r.x());
+            q.bindValue(1, r.y());
+            q.bindValue(2, r.z());
+            q.bindValue(3, r.w());
+            q.bindValue(4, t.x());
+            q.bindValue(5, t.y());
+            q.bindValue(6, t.z());
+
+            ok = q.exec();
+
+            if(ok)
+            {
+                pose_ids[i] = q.lastInsertId().toInt();
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+
+        q.prepare("INSERT INTO frames(reconstruction_id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous) VALUES(?,?,?,?,?,?)");
+
+        frame_ids.resize(rec->frames.size(), -1);
+
+        for(int i=0; ok && i<rec->frames.size(); i++)
+        {
+            SLAMFramePtr frame = rec->frames[i];
+
+            q.bindValue(0, id);
+            q.bindValue(1, frame->id);
+            q.bindValue(2, frame->rank_in_recording);
+            q.bindValue(3, frame->timestamp);
+            q.bindValue(4, pose_ids[i]);
+            q.bindValue(5, frame->aligned_wrt_previous_frame);
+            ok = q.exec();
+
+            if(ok)
+            {
+                frame_ids[i] = q.lastInsertId().toInt();
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q1(mDB);
+        q1.prepare("INSERT INTO keypoints (frame_id, view, rank, u, v) VALUES (?,?,?,?,?)");
+
+        QSqlQuery q2(mDB);
+        q2.prepare("INSERT INTO projections (keypoint_id, mappoint_id) VALUES(?,?)");
+
+        QSqlQuery q3(mDB);
+        q3.prepare("INSERT INTO mappoints(rank, world_x, world_y, world_z) VALUES(?,?,?,?)");
+
+        for(int i=0; ok && i<rec->frames.size(); i++)
+        {
+            const SLAMFramePtr frame = rec->frames[i];
+
+            for(int v=0; ok && v<2; v++)
+            {
+                const SLAMView& view = frame->views[v];
+
+                for(int j=0; ok && j<view.keypoints.size(); j++)
+                {
+                    int keypoint_id = -1;
+                    const SLAMMapPointPtr mp = view.tracks[j].mappoint;
+
+                    q1.bindValue(0, frame_ids[i]);
+                    q1.bindValue(1, v);
+                    q1.bindValue(2, j);
+                    q1.bindValue(3, view.keypoints[j].pt.x );
+                    q1.bindValue(4, view.keypoints[j].pt.y );
+                    ok = q1.exec();
+
+                    if(ok)
+                    {
+                        keypoint_id = q1.lastInsertId().toInt();
+                    }
+
+                    // TODO: save descriptor.
+
+                    if(ok && mp)
+                    {
+                        int mappoint_id = -1;
+
+                        std::map<int,int>::iterator it = mappoints.find(mp->id);
+
+                        if(mappoints.end() == it)
+                        {
+                            q3.addBindValue(mp->id);
+                            q3.addBindValue(mp->position.x());
+                            q3.addBindValue(mp->position.y());
+                            q3.addBindValue(mp->position.z());
+
+                            ok = q3.exec();
+
+                            if(ok)
+                            {
+                                mappoint_id = q3.lastInsertId().toInt();
+                                mappoints[mp->id] = mappoint_id;
+                            }
+                        }
+                        else
+                        {
+                            mappoint_id = it->second;
+                        }
+
+                        if(ok)
+                        {
+                            q2.addBindValue(keypoint_id);
+                            q2.addBindValue(mappoint_id);
+
+                            ok = q2.exec();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(ok)
+    {
+        QSqlQuery q(mDB);
+        q.prepare("INSERT INTO densepoints(frame_id, rig_x, rig_y, rig_z, color_red, color_green, color_blue) VALUES (?,?,?,?,?,?,?)");
+
+        for(int i=0; ok && i<rec->frames.size(); i++)
+        {
+            const SLAMFramePtr frame = rec->frames[i];
+
+            for(int j=0; ok && j<frame->dense_cloud.size(); j++)
+            {
+                const SLAMColoredPoint& cpt = frame->dense_cloud[j];
+
+                q.bindValue(0, frame_ids[i]);
+                q.bindValue(1, cpt.point.x);
+                q.bindValue(2, cpt.point.y);
+                q.bindValue(3, cpt.point.z);
+                q.bindValue(4, cpt.color[2]);
+                q.bindValue(5, cpt.color[1]);
+                q.bindValue(6, cpt.color[0]);
+
+                ok = q.exec();
+            }
         }
     }
 
@@ -1711,153 +1843,7 @@ bool Project::saveReconstruction(SLAMReconstructionPtr rec, int& id)
         id = -1;
     }
 
-    mMapPointToDB.clear();
-
     reconstructionModelChanged();
-
-    return ok;
-}
-
-bool Project::saveFrame(SLAMFramePtr frame, int rank, int reconstruction_id, int& id)
-{
-    int pose_id = -1;
-
-    bool ok = true;
-
-    if(ok)
-    {
-        ok = savePose(frame->frame_to_world, pose_id);
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO frames(reconstruction_id, rank, rank_in_recording, timestamp, rig_to_world, aligned_wrt_previous) VALUES(?,?,?,?,?,?)");
-        q.bindValue(0, reconstruction_id);
-        q.bindValue(1, frame->id);
-        q.bindValue(2, frame->rank_in_recording);
-        q.bindValue(3, frame->timestamp);
-        q.bindValue(4, pose_id);
-        q.bindValue(5, frame->aligned_wrt_previous_frame);
-        ok = q.exec();
-
-        if(ok)
-        {
-            id = q.lastInsertId().toInt();
-        }
-    }
-
-    for(int v=0; ok && v<2; v++)
-    {
-        const int N_keypoints = frame->views[v].keypoints.size();
-
-        QSqlQuery q1(mDB);
-        q1.prepare("INSERT INTO keypoints (frame_id, view, rank, u, v) VALUES (?,?,?,?,?)");
-
-        QSqlQuery q2(mDB);
-        q2.prepare("INSERT INTO projections (keypoint_id, mappoint_id) VALUES(?,?)");
-
-        for(int i=0; ok && i<N_keypoints; i++)
-        {
-            int keypoint_id = -1;
-
-            {
-                q1.addBindValue(id);
-                q1.addBindValue(v);
-                q1.addBindValue(i);
-                q1.addBindValue( frame->views[v].keypoints[i].pt.x );
-                q1.addBindValue( frame->views[v].keypoints[i].pt.y );
-                ok = q1.exec();
-
-                if(ok)
-                {
-                    keypoint_id = q1.lastInsertId().toInt();
-                }
-            }
-
-            if( frame->views[v].tracks[i].mappoint )
-            {
-                int mappoint_id = -1;
-
-                if(ok)
-                {
-                    ok = saveMapPoint(frame->views[v].tracks[i].mappoint, mappoint_id);
-                }
-
-                if(ok)
-                {
-                    q2.addBindValue(keypoint_id);
-                    q2.addBindValue(mappoint_id);
-
-                    ok = q2.exec();
-                }
-            }
-
-            // TODO: save descriptor.
-        }
-    }
-
-    if(ok)
-    {
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO densepoints(frame_id, rig_x, rig_y, rig_z, color_red, color_green, color_blue) VALUES (?,?,?,?,?,?,?)");
-
-        for(int i=0; ok && i<frame->dense_cloud.size(); i++)
-        {
-            SLAMColoredPoint& cpt = frame->dense_cloud[i];
-
-            q.bindValue(0, id);
-            q.bindValue(1, cpt.point.x);
-            q.bindValue(2, cpt.point.y);
-            q.bindValue(3, cpt.point.z);
-            q.bindValue(4, cpt.color[2]);
-            q.bindValue(5, cpt.color[1]);
-            q.bindValue(6, cpt.color[0]);
-
-            ok = q.exec();
-        }
-    }
-
-    if(ok == false)
-    {
-        id = -1;
-    }
-
-    return ok;
-}
-
-bool Project::saveMapPoint(SLAMMapPointPtr mappoint, int& id)
-{
-    bool ok = true;
-
-    std::map<int,int>::iterator it = mMapPointToDB.find(mappoint->id);
-
-    if(it == mMapPointToDB.end())
-    {
-        QSqlQuery q(mDB);
-        q.prepare("INSERT INTO mappoints(rank, world_x, world_y, world_z) VALUES(?,?,?,?)");
-        q.addBindValue(mappoint->id);
-        q.addBindValue(mappoint->position.x());
-        q.addBindValue(mappoint->position.y());
-        q.addBindValue(mappoint->position.z());
-
-        ok = q.exec();
-
-        if(ok)
-        {
-            id = q.lastInsertId().toInt();
-            mMapPointToDB[mappoint->id] = id;
-        }
-    }
-    else
-    {
-        id = it->second;
-    }
-
-    if(ok == false)
-    {
-        id = -1;
-    }
 
     return ok;
 }
