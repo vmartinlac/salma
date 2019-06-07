@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(slam)
+project(salma)
 
 set(SALMA_VERSION_MAJOR 1)
 set(SALMA_VERSION_MINOR 0)
